@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+.next-env.d.ts
+next-env.d.ts
+
+# Environment files — never commit secrets.
+# Use .env.example as the documented template.
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production
+.env.production.local
+!.env.example
+
+# Netlify
+.netlify/
+.netlify-cli/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+/tmp/
+
+# Testing & coverage
+coverage/
+.nyc_output/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Embedded SQLite database (created automatically at runtime)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+!data/.gitkeep
+
+# Misc
+.vercel
+.turbo

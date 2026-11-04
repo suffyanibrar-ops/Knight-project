@@ -1,0 +1,370 @@
+import "server-only";
+import fs from "node:fs";
+import Database from "better-sqlite3";
+
+/**
+ * Embedded SQLite storage — a single local file, no external service, no API key
+ * and no ORM. Only parameterized SQL statements are executed.
+ *
+ * The database file is created automatically on first use at:
+ *   ./data/app.db           (override with SQLITE_PATH)
+ *
+ * The driver is better-sqlite3 (a bundled native module with prebuilt binaries
+ * for Linux, macOS and Windows). If the file cannot be opened — for example on a
+ * read-only or ephemeral serverless filesystem — every helper degrades
+ * gracefully: the site keeps working and the admin panel explains the situation
+ * instead of crashing.
+ */
+
+export type SqliteRunResult = { lastInsertRowid: number; changes: number };
+
+type Driver = {
+  exec: (sql: string) => void;
+  run: (sql: string, params: unknown[]) => SqliteRunResult;
+  all: <T>(sql: string, params: unknown[]) => T[];
+  get: <T>(sql: string, params: unknown[]) => T | undefined;
+};
+
+type DriverState = { driver: Driver | null; path: string; error: string | null; kind: string | null };
+
+const globalForSqlite = globalThis as typeof globalThis & { __knightSqlite?: DriverState };
+
+/** Default location: ./data/app.db relative to the project root. */
+const DEFAULT_DB_DIR = "data";
+const DEFAULT_DB_FILE = "data/app.db";
+
+/**
+ * Resolved database location.
+ *
+ * SQLITE_PATH may be relative (resolved from the project root) or absolute
+ * (recommended in production, e.g. /var/data/app.db on a mounted volume).
+ * There is deliberately NO fallback to a temporary directory: an unwritable
+ * path is reported as an error rather than silently losing submissions.
+ */
+export function sqlitePath(): string {
+  const configured = process.env.SQLITE_PATH?.trim();
+  const target = configured || DEFAULT_DB_FILE;
+  return target.startsWith("/") ? target : `${process.cwd()}/${target}`;
+}
+
+function parentOf(target: string): string {
+  const index = target.lastIndexOf("/");
+  if (index <= 0) return "/";
+  return target.slice(0, index);
+}
+
+/**
+ * Creates the parent directory if needed, failing fast.
+ *
+ * IMPORTANT: we never call mkdir() blindly. On read-only or virtual
+ * filesystems (and on stalled network mounts) a recursive mkdir can block
+ * indefinitely, which would hang every request. We first locate the nearest
+ * existing ancestor and verify it is writable — that check returns in
+ * microseconds and lets us fail with a clear message instead.
+ */
+function ensureDirectory(file: string) {
+  const dir = parentOf(file);
+  if (fs.existsSync(dir)) return;
+
+  // Walk up to the nearest existing ancestor and confirm we may write there.
+  let probe = dir;
+  for (let depth = 0; depth < 32; depth += 1) {
+    const next = parentOf(probe);
+    if (!next || next === probe) break;
+    probe = next;
+    if (fs.existsSync(probe)) break;
+  }
+
+  try {
+    fs.accessSync(probe, fs.constants.W_OK);
+  } catch {
+    throw new Error(
+      `SQLite directory "${dir}" does not exist and "${probe}" is not writable by the server process. ` +
+        "Set SQLITE_PATH to a writable path on a persistent volume.",
+    );
+  }
+
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  practice TEXT,
+  specialty TEXT,
+  practice_size TEXT,
+  providers TEXT,
+  interests TEXT,
+  message TEXT,
+  source TEXT NOT NULL DEFAULT 'website',
+  email_status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_submissions_created_at ON submissions (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`;
+
+function wrapBetterSqlite3(instance: unknown): Driver {
+  const db = instance as {
+    exec: (sql: string) => unknown;
+    prepare: (sql: string) => {
+      run: (...params: unknown[]) => { lastInsertRowid: number | bigint; changes: number };
+      all: (...params: unknown[]) => unknown[];
+      get: (...params: unknown[]) => unknown;
+    };
+  };
+  return {
+    exec: (sql) => void db.exec(sql),
+    run: (sql, params) => {
+      const result = db.prepare(sql).run(...params);
+      return { lastInsertRowid: Number(result.lastInsertRowid), changes: Number(result.changes) };
+    },
+    all: <T,>(sql: string, params: unknown[]) => db.prepare(sql).all(...params) as T[],
+    get: <T,>(sql: string, params: unknown[]) => db.prepare(sql).get(...params) as T | undefined,
+  };
+}
+
+function open(): DriverState {
+  const file = sqlitePath();
+
+  const attempt = (kind: string, factory: () => Driver): DriverState | null => {
+    try {
+      ensureDirectory(file);
+      const driver = factory();
+      // WAL improves concurrent reads; ignore failures on unusual filesystems.
+      try {
+        driver.exec("PRAGMA journal_mode = WAL;");
+      } catch {
+        /* non-fatal */
+      }
+      driver.exec(SCHEMA);
+      return { driver, path: file, error: null, kind };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[sqlite] ${kind} unavailable: ${message}`);
+      return null;
+    }
+  };
+
+  // 1. better-sqlite3 (bundled native module, prebuilt for common platforms)
+  try {
+    const state = attempt("better-sqlite3", () => wrapBetterSqlite3(new Database(file)));
+    if (state) return state;
+  } catch {
+    /* fall through to the Node built-in driver */
+  }
+
+  return {
+    driver: null,
+    path: file,
+    error:
+      `SQLite could not open "${file}". The directory must exist and be writable by the server process. ` +
+      "Set SQLITE_PATH to a persistent volume (for example /var/data/app.db) and redeploy. " +
+      "Submissions are NOT being stored until this is resolved.",
+    kind: null,
+  };
+}
+
+function state(): DriverState {
+  if (!globalForSqlite.__knightSqlite) {
+    globalForSqlite.__knightSqlite = open();
+    if (globalForSqlite.__knightSqlite.driver) {
+      console.info(`[sqlite] using ${globalForSqlite.__knightSqlite.kind} at ${globalForSqlite.__knightSqlite.path}`);
+    }
+  }
+  return globalForSqlite.__knightSqlite;
+}
+
+export function isSqliteAvailable(): boolean {
+  return state().driver !== null;
+}
+
+export function sqliteStatus() {
+  const current = state();
+  return { available: current.driver !== null, driver: current.kind, path: current.path, error: current.error };
+}
+
+/* ------------------------------------------------------------------ */
+/* Submissions                                                         */
+/* ------------------------------------------------------------------ */
+
+export type SubmissionInput = {
+  name: string;
+  email: string;
+  phone?: string | null;
+  practice?: string | null;
+  specialty?: string | null;
+  practiceSize?: string | null;
+  providers?: string | null;
+  interests?: string[];
+  message?: string | null;
+  source?: string | null;
+};
+
+export type SubmissionRow = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  practice: string | null;
+  specialty: string | null;
+  practice_size: string | null;
+  providers: string | null;
+  interests: string | null;
+  message: string | null;
+  source: string;
+  email_status: string;
+  created_at: string;
+};
+
+export function insertSubmission(input: SubmissionInput): { ok: boolean; id?: number; error?: string } {
+  const current = state();
+  if (!current.driver) return { ok: false, error: current.error ?? "SQLite unavailable" };
+
+  try {
+    const result = current.driver.run(
+      `INSERT INTO submissions (name, email, phone, practice, specialty, practice_size, providers, interests, message, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        input.name,
+        input.email,
+        input.phone ?? null,
+        input.practice ?? null,
+        input.specialty ?? null,
+        input.practiceSize ?? null,
+        input.providers ?? null,
+        JSON.stringify(input.interests ?? []),
+        input.message ?? null,
+        input.source ?? "website",
+      ],
+    );
+    return { ok: true, id: result.lastInsertRowid };
+  } catch (error) {
+    console.error("[sqlite] insert failed", error);
+    return { ok: false, error: "Could not save submission." };
+  }
+}
+
+export function listSubmissions(options: { query?: string; limit?: number } = {}): SubmissionRow[] {
+  const current = state();
+  if (!current.driver) return [];
+
+  const limit = Math.min(Math.max(options.limit ?? 200, 1), 500);
+  const query = options.query?.trim();
+
+  try {
+    if (query) {
+      const like = `%${query.replace(/[%_]/g, (match) => `\\${match}`)}%`;
+      return current.driver.all<SubmissionRow>(
+        `SELECT * FROM submissions
+         WHERE name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR practice LIKE ? ESCAPE '\\'
+            OR specialty LIKE ? ESCAPE '\\' OR COALESCE(message, '') LIKE ? ESCAPE '\\'
+         ORDER BY datetime(created_at) DESC, id DESC
+         LIMIT ?`,
+        [like, like, like, like, like, limit],
+      );
+    }
+    return current.driver.all<SubmissionRow>(
+      `SELECT * FROM submissions ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`,
+      [limit],
+    );
+  } catch (error) {
+    console.error("[sqlite] list failed", error);
+    return [];
+  }
+}
+
+export function countSubmissions(): number {
+  const current = state();
+  if (!current.driver) return 0;
+  try {
+    const row = current.driver.get<{ total: number }>("SELECT COUNT(*) AS total FROM submissions", []);
+    return Number(row?.total ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+export function deleteSubmission(id: number): boolean {
+  const current = state();
+  if (!current.driver) return false;
+  try {
+    const result = current.driver.run("DELETE FROM submissions WHERE id = ?", [id]);
+    return result.changes > 0;
+  } catch (error) {
+    console.error("[sqlite] delete failed", error);
+    return false;
+  }
+}
+
+/**
+ * Duplicate-submission guard: returns the existing row when the same email sent
+ * an identical message within the cooldown window, so retries and double-clicks
+ * do not create multiple enquiries (and therefore do not send duplicate emails).
+ */
+export function findRecentDuplicate(email: string, message: string | null, windowMinutes = 10): { id: number } | null {
+  const current = state();
+  if (!current.driver) return null;
+  try {
+    const row = current.driver.get<{ id: number }>(
+      `SELECT id FROM submissions
+       WHERE email = ?
+         AND COALESCE(message, '') = COALESCE(?, '')
+         AND datetime(created_at) >= datetime('now', ?)
+       ORDER BY id DESC LIMIT 1`,
+      [email, message, `-${Math.max(1, Math.floor(windowMinutes))} minutes`],
+    );
+    return row ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSubmissionEmailStatus(id: number, status: "pending" | "sent" | "failed"): void {
+  const current = state();
+  if (!current.driver) return;
+  try {
+    current.driver.run("UPDATE submissions SET email_status = ? WHERE id = ?", [status, id]);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings (used for the admin password)                              */
+/* ------------------------------------------------------------------ */
+
+export function getSetting(key: string): string | null {
+  const current = state();
+  if (!current.driver) return null;
+  try {
+    const row = current.driver.get<{ value: string }>("SELECT value FROM settings WHERE key = ?", [key]);
+    return row?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSetting(key: string, value: string): boolean {
+  const current = state();
+  if (!current.driver) return false;
+  try {
+    current.driver.run(
+      `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+      [key, value],
+    );
+    return true;
+  } catch (error) {
+    console.error("[sqlite] settings write failed", error);
+    return false;
+  }
+}

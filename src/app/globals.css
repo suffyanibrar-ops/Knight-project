@@ -1,0 +1,538 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  --color-ink-950: #04141f;
+  --color-ink-900: #071f2f;
+  --color-ink-800: #0b2b3f;
+  --color-ink-700: #0b2f42;
+  --color-ink-600: #123a4d;
+
+  --color-brand-50: #effafe;
+  --color-brand-100: #d8f2fc;
+  --color-brand-200: #b3e7f8;
+  --color-brand-300: #7cd7f2;
+  --color-brand-400: #3dc0e6;
+  --color-brand-500: #19a3cd;
+  --color-brand-600: #0e83ab;
+  --color-brand-700: #0f6988;
+  --color-brand-800: #135670;
+  --color-brand-900: #14485e;
+
+  --color-mint-50: #eefbf6;
+  --color-mint-100: #d5f5e9;
+  --color-mint-200: #b4eedd;
+  --color-mint-300: #7ee0c1;
+  --color-mint-400: #33c9a3;
+  --color-mint-500: #16b98b;
+  --color-mint-600: #0d9a74;
+  --color-mint-700: #0c7a5e;
+
+  --color-gold-300: #f7d794;
+  --color-gold-400: #f0bd5f;
+  --color-gold-500: #e2a23b;
+
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-night: #04141f;
+  --color-night-soft: #071f2f;
+
+  --color-mist-50: #f7fafc;
+  --color-mist-100: #eff5f8;
+  --color-mist-200: #e1ebf1;
+  --color-mist-300: #cddce5;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.75rem;
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-marquee-slow: marquee 60s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-pulse-ring: pulse-ring 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-spin-slow: spin 22s linear infinite;
+}
+
+@keyframes gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes gradient-text-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -180% 0;
+  }
+  100% {
+    background-position: 180% 0;
+  }
+}
+
+
+/* ==========================================================================
+   THEME — light / dark
+   Tokens are overridden inside `.dark` so every existing utility class
+   (bg-surface, text-ink-900, border-mist-200 …) adapts without duplication.
+   `--color-night` stays constant: those are the intentional dark panels.
+   ========================================================================== */
+.dark {
+  color-scheme: dark;
+
+  --color-surface: #07161f;
+  --color-surface-raised: #0b2130;
+
+  /* Text tones invert to a light ramp */
+  --color-ink-950: #f2f8fb;
+  --color-ink-900: #e6f1f7;
+  --color-ink-800: #d3e6ef;
+  --color-ink-700: #bedbe7;
+  --color-ink-600: #a8c9d8;
+
+  /* Neutral surfaces -> deep navy ramps */
+  --color-mist-50: #0a1c27;
+  --color-mist-100: #0e2634;
+  --color-mist-200: #16384a;
+  --color-mist-300: #1f4759;
+
+  /* Soft tints need dark equivalents so chips stay legible */
+  --color-brand-50: #082633;
+  --color-brand-100: #0a3141;
+  --color-brand-200: #0f4356;
+  --color-mint-50: #06231d;
+  --color-mint-100: #0a3029;
+  --color-mint-200: #10473b;
+}
+
+.dark body {
+  background-color: var(--color-surface);
+}
+
+/* Keep dark-panel sections legible when the page is in light mode too. */
+.dark .btn-light {
+  background-color: var(--color-surface-raised);
+  border-color: var(--color-mist-200);
+  color: var(--color-ink-900);
+}
+
+.dark .btn-light:hover {
+  border-color: var(--color-brand-400);
+  color: var(--color-brand-300);
+}
+
+/* Elevated cards get a subtle lift instead of a white shadow */
+.dark .shadow-soft,
+.dark .card-hover:hover {
+  box-shadow: 0 28px 60px -32px rgba(0, 0, 0, 0.75);
+}
+
+/* Form controls follow the theme */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--color-surface-raised);
+  color: var(--color-ink-900);
+  border-color: var(--color-mist-200);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: color-mix(in srgb, var(--color-ink-600) 60%, transparent);
+}
+
+.dark option {
+  background-color: var(--color-surface-raised);
+  color: var(--color-ink-900);
+}
+
+/* Global high-contrast accessibility mode */
+html[data-contrast="high"] {
+  --color-ink-600: #0a2733;
+  --color-mist-200: #9fb6c2;
+}
+
+html[data-contrast="high"] .dark {
+  --color-ink-600: #ffffff;
+  --color-ink-700: #ffffff;
+  --color-mist-200: #7fd4ee;
+}
+
+html[data-contrast="high"] a,
+html[data-contrast="high"] button {
+  text-decoration-thickness: 2px;
+}
+
+/* User-selected text size from the accessibility panel */
+html[data-textsize="large"] {
+  font-size: 112.5%;
+}
+
+html[data-textsize="xlarge"] {
+  font-size: 125%;
+}
+
+/* Force-reduced motion from the accessibility panel */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-mist-200);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    /* Prevents decorative/absolute elements from creating a horizontal
+       scrollbar on narrow screens. `clip` keeps position: sticky working. */
+    overflow-x: clip;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+    /* NOTE: overflow-x must stay on <html> (clip) — setting it here would make
+       <body> a scroll container and silently break position: sticky. */
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-ink-950);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 3px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .shell {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 84rem;
+    padding-inline: 1.25rem;
+  }
+
+  /* Grid items default to min-width:auto, which lets long words or fixed-width
+     children push a column wider than its track and create horizontal overflow
+     on narrow screens. Allowing them to shrink is safe: tables that genuinely
+     need width live inside overflow-x-auto containers. */
+  .shell .grid > *,
+  .shell.grid > * {
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .shell {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .display-serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .card-hover {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease,
+      border-color 0.35s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 28px 60px -32px rgba(4, 20, 31, 0.45);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    line-height: 1;
+    padding: 0.95rem 1.5rem;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.25s ease,
+      background-color 0.25s ease,
+      color 0.25s ease,
+      border-color 0.25s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn:active {
+    transform: translateY(1px) scale(0.995);
+  }
+
+  .btn-primary {
+    background-color: var(--color-night-soft);
+    color: #fff;
+    box-shadow: 0 16px 30px -18px rgba(4, 20, 31, 0.7);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-brand-600);
+    box-shadow: 0 20px 36px -16px rgba(14, 131, 171, 0.55);
+  }
+
+  .btn-accent {
+    background-color: var(--color-brand-500);
+    color: #fff;
+    box-shadow: 0 16px 30px -16px rgba(25, 163, 205, 0.65);
+  }
+
+  .btn-accent:hover {
+    background-color: var(--color-brand-400);
+  }
+
+  .btn-light {
+    background-color: #fff;
+    color: var(--color-ink-900);
+    border: 1px solid var(--color-mist-200);
+  }
+
+  .btn-light:hover {
+    border-color: var(--color-brand-300);
+    color: var(--color-brand-700);
+  }
+
+  .btn-ghost-light {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(6px);
+  }
+
+  .btn-ghost-light:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, rgba(19, 86, 112, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(19, 86, 112, 0.07) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(rgba(25, 163, 205, 0.22) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  .dark .glass {
+    background: rgba(7, 22, 31, 0.78);
+  }
+
+  .glass-dark {
+    background: rgba(4, 20, 31, 0.55);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .animated-gradient {
+    background-image: linear-gradient(115deg, #04141f 0%, #0a2b3d 28%, #0e83ab 52%, #16b98b 74%, #04141f 100%);
+    background-size: 280% 280%;
+    animation: gradient-pan 22s ease-in-out infinite;
+  }
+
+  .text-gradient-animated {
+    background-image: linear-gradient(100deg, var(--color-brand-600), var(--color-brand-400), var(--color-mint-500), var(--color-brand-600));
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-text-pan 9s ease-in-out infinite;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 24px 60px -34px rgba(4, 20, 31, 0.35);
+  }
+
+  .prose-knight {
+    color: #33505f;
+    font-size: 1.0625rem;
+    line-height: 1.8;
+  }
+
+  .prose-knight h2 {
+    color: var(--color-ink-900);
+    font-size: 1.65rem;
+    font-weight: 800;
+    margin-top: 2.5rem;
+    margin-bottom: 0.85rem;
+    letter-spacing: -0.02em;
+  }
+
+  .prose-knight h3 {
+    color: var(--color-ink-900);
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-top: 1.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .prose-knight p {
+    margin-bottom: 1.1rem;
+  }
+
+  .prose-knight ul {
+    margin: 0 0 1.25rem;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .prose-knight li {
+    position: relative;
+    padding-left: 1.6rem;
+  }
+
+  .prose-knight li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--color-brand-400);
+  }
+
+  .mask-fade-x {
+    mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-gradient,
+  .text-gradient-animated {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

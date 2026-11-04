@@ -1,0 +1,104 @@
+# Knight Medical Billing
+
+Custom-tailored medical billing and revenue cycle management website, admin console and form pipeline.
+
+- **Stack:** Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL · Framer Motion
+- **Website:** home, services (10), who we serve (5 + index), specialties (30 + index), process, results,
+  about, resources (6 guides), FAQ, contact, schedule a consultation, HIPAA, privacy, terms
+- **Admin console:** `/admin` — submissions, email outbox, subscribers, ROI estimates, CSV exports
+- **Forms:** consultation wizard, contact, newsletter, ROI calculator — stored in Postgres and emailed to the owner
+
+## Quick start
+
+```bash
+npm install
+cp .env.example .env      # optional — the site runs without any env vars
+npm run dev               # http://localhost:3000
+```
+
+Database (optional, enables admin storage):
+
+```bash
+npx drizzle-kit push
+node --experimental-strip-types scripts/seed.mjs
+```
+
+Production:
+
+```bash
+npm run build
+npm run start          # honours the PORT environment variable
+```
+
+Images use `next/image`; `res.cloudinary.com` is allow-listed in
+`next.config.ts`, and `sharp` is installed so optimisation works on any Node host.
+
+### Embedded SQLite inbox
+
+Consultation and contact submissions are stored in a single local file,
+`./data/app.db`, created automatically on first run (plain SQL, no ORM):
+
+- `POST /api/submissions` — validates, enforces length limits, parameterized insert
+- `GET  /api/submissions` — admin-only listing
+- `/admin/inbox` — newest-first list with search, view, delete and CSV export
+- `/admin/settings` — change the admin password (scrypt hash stored in SQLite)
+
+Requires a writable, persistent directory. On read-only serverless hosts the
+endpoint responds with a clear message and the rest of the site keeps working.
+
+### Email notifications
+
+- **Web3Forms** (client-side, access key in `src/lib/web3forms.ts`) sends every
+  form submission to the owner inbox. Failures are logged silently; the SQLite
+  save remains the source of truth and the admin shows delivery status.
+- **Optional server-side channels** (`/api/leads`, `/api/contact`, …) use Resend
+  or SMTP when configured, with an outbox in Postgres.
+
+Database schema:
+
+```bash
+npm run db:push        # drizzle-kit push (reads DATABASE_URL)
+npm run db:seed        # node --experimental-strip-types scripts/seed.mjs
+```
+
+This is a full-stack app — do not add `output: 'export'`.
+
+Admin password: `Medical#213` (digest stored server-side; override with `ADMIN_PASSWORD_HASH`).
+
+## Before you deploy — required environment
+
+```bash
+ADMIN_PASSWORD=<long random passphrase>          # required in production
+ADMIN_SESSION_SECRET=<64 hex chars>              # required in production
+NEXT_PUBLIC_SITE_URL=https://your-domain.com     # required for correct SEO
+SQLITE_PATH=/var/data/app.db                     # persistent, writable volume
+DATABASE_URL=postgresql://…?sslmode=require      # optional (CRM/content)
+RESEND_API_KEY=… | SMTP_HOST=…                   # optional (server-side email)
+```
+
+Generate a session secret:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Check deployment readiness at any time:
+
+```bash
+curl -s https://your-domain.com/api/health | jq
+```
+
+Full hosting instructions, email setup and troubleshooting: **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+Data storage, email behaviour and the admin security model: **[DATA-AND-EMAIL.md](./DATA-AND-EMAIL.md)**
+
+Motion system and interaction rules: **[MOTION-SYSTEM.md](./MOTION-SYSTEM.md)**
+
+Browser tests (Playwright, real Chromium):
+
+```bash
+npm run build && npm run start &
+BASE_URL=http://127.0.0.1:3000 npm run test:browser       # routes, console, responsive, forms
+BASE_URL=http://127.0.0.1:3000 npm run test:interactions  # motion, lightbox, toasts, a11y
+BASE_URL=http://127.0.0.1:3000 npm run test:redesign      # theme, sticky header, new sections
+BASE_URL=http://127.0.0.1:3000 npm run test:breakpoints   # 7 widths × 11 routes overflow
+```
