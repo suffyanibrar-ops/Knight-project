@@ -2,41 +2,59 @@ import { ArrowRight, Download, Mail, MailWarning, MessageSquare, PieChart, Users
 import Link from "next/link";
 import { desc, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { contactMessages, emailOutbox, leads, roiEstimates, subscribers } from "@/db/schema";
+import { contactMessages, emailOutbox, leads } from "@/db/schema";
+import { countRoiEstimates, countSubscribers, isSqliteAvailable } from "@/lib/sqlite";
+import { StorageNotice } from "@/components/admin/storage-notice";
 import { AdminPageHeader, EmptyState, StatCard, StatusPill, formatDate } from "@/components/admin/ui";
 import { OWNER_EMAIL } from "@/lib/email";
 
 import { redirect } from "next/navigation";
-import { isDatabaseConfigured } from "@/db";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { PostgresNotice } from "@/components/admin/postgres-notice";
 
 export const dynamic = "force-dynamic";
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-11-05" (SQLite `date()`) → "Nov 05" for the weekly trend bars. */
+function trendDayLabel(day: string): string {
+  const [, month, date] = day.split("-").map(Number);
+  if (!month || !date) return day;
+  return `${MONTH_LABELS[month - 1] ?? ""} ${String(date).padStart(2, "0")}`;
+}
+
 export default async function AdminOverviewPage() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  if (!isDatabaseConfigured()) return <PostgresNotice />;
-  const [leadRows, contactRows, subscriberRows, roiRows, outboxRows] = await Promise.all([
+  if (!isSqliteAvailable()) return <StorageNotice />;
+
+  const [leadRows, contactRows, outboxRows] = await Promise.all([
     db.select().from(leads).orderBy(desc(leads.createdAt)).limit(6),
     db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(4),
-    db.select({ count: sql<number>`count(*)::int` }).from(subscribers),
-    db.select({ count: sql<number>`count(*)::int` }).from(roiEstimates),
     db.select().from(emailOutbox).orderBy(desc(emailOutbox.createdAt)).limit(5),
   ]);
 
-  const [leadCount] = await db.select({ count: sql<number>`count(*)::int` }).from(leads);
-  const [contactCount] = await db.select({ count: sql<number>`count(*)::int` }).from(contactMessages);
-  const [newLeadCount] = await db.select({ count: sql<number>`count(*)::int` }).from(leads).where(sql`${leads.status} = 'new'`);
-  const [queuedEmailCount] = await db.select({ count: sql<number>`count(*)::int` }).from(emailOutbox).where(sql`${emailOutbox.status} <> 'sent'`);
+  const [leadCount] = await db.select({ count: sql<number>`count(*)` }).from(leads);
+  const [contactCount] = await db.select({ count: sql<number>`count(*)` }).from(contactMessages);
+  const [newLeadCount] = await db.select({ count: sql<number>`count(*)` }).from(leads).where(sql`${leads.status} = 'new'`);
+  const [queuedEmailCount] = await db.select({ count: sql<number>`count(*)` }).from(emailOutbox).where(sql`${emailOutbox.status} <> 'sent'`);
 
+  const subscriberCount = countSubscribers();
+  const roiEstimateCount = countRoiEstimates();
+
+  // SQLite stores created_at as epoch milliseconds, so the day bucket and the
+  // rolling window are computed with SQLite's own date functions.
   const weekTrend = await db
-    .select({ day: sql<string>`to_char(date_trunc('day', ${leads.createdAt}), 'Mon DD')`, total: sql<number>`count(*)::int` })
+    .select({
+      day: sql<string>`date(${leads.createdAt} / 1000, 'unixepoch')`,
+      total: sql<number>`count(*)`,
+    })
     .from(leads)
-    .where(sql`${leads.createdAt} > now() - interval '7 days'`)
-    .groupBy(sql`date_trunc('day', ${leads.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${leads.createdAt})`);
+    .where(sql`${leads.createdAt} > ${Date.now() - SEVEN_DAYS_MS}`)
+    .groupBy(sql`date(${leads.createdAt} / 1000, 'unixepoch')`)
+    .orderBy(sql`date(${leads.createdAt} / 1000, 'unixepoch')`);
 
-  const maxTrend = Math.max(1, ...weekTrend.map((row) => row.total));
+  const maxTrend = Math.max(1, ...weekTrend.map((row) => Number(row.total)));
 
   return (
     <div className="space-y-6">
@@ -58,8 +76,8 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Consultation requests" value={leadCount?.count ?? 0} hint={`${newLeadCount?.count ?? 0} awaiting response`} tone="brand" />
         <StatCard label="Contact messages" value={contactCount?.count ?? 0} hint="From the contact form" />
-        <StatCard label="Newsletter subscribers" value={subscriberRows[0]?.count ?? 0} hint="Opt-in email list" tone="good" />
-        <StatCard label="ROI estimates" value={roiRows.length ? roiRows[0]?.count ?? 0 : 0} hint="Calculator completions" />
+        <StatCard label="Newsletter subscribers" value={subscriberCount} hint="Opt-in email list" tone="good" />
+        <StatCard label="ROI estimates" value={roiEstimateCount} hint="Calculator completions" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
@@ -111,9 +129,9 @@ export default async function AdminOverviewPage() {
               <div className="mt-4 flex h-24 items-end gap-2">
                 {weekTrend.map((row) => (
                   <div key={row.day} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                    <span className="text-[0.6rem] font-extrabold text-ink-700">{row.total}</span>
-                    <div style={{ height: `${(row.total / maxTrend) * 100}%` }} className="w-full rounded-t bg-gradient-to-t from-brand-200 to-brand-500" />
-                    <span className="text-[0.52rem] font-semibold text-ink-600/70">{row.day}</span>
+                    <span className="text-[0.6rem] font-extrabold text-ink-700">{Number(row.total)}</span>
+                    <div style={{ height: `${(Number(row.total) / maxTrend) * 100}%` }} className="w-full rounded-t bg-gradient-to-t from-brand-200 to-brand-500" />
+                    <span className="text-[0.52rem] font-semibold text-ink-600/70">{trendDayLabel(row.day)}</span>
                   </div>
                 ))}
               </div>

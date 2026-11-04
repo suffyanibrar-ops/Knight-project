@@ -1,42 +1,42 @@
 import { NextResponse } from "next/server";
 import { pingDatabase } from "@/db";
-import { isSqliteAvailable, sqliteStatus } from "@/lib/sqlite";
-import { configIssues, isProduction, siteUrl } from "@/lib/config";
+import { sqliteStatus } from "@/lib/sqlite";
+import { configStatus, isProduction } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Deployment health report.
  * Never returns secret values — only booleans and actionable messages.
+ *
+ * The application has a single embedded store (SQLite), so the top-level `ok`
+ * is true only when that store opens AND answers a query. There is no external
+ * database to report.
  */
 export async function GET() {
-  const postgres = await pingDatabase();
+  const database = pingDatabase();
   const sqlite = sqliteStatus();
-  const issues = configIssues();
-  const errors = issues.filter((issue) => issue.severity === "error");
+  const status = configStatus();
+  const errors = status.issues.filter((issue) => issue.severity === "error");
 
   return NextResponse.json(
     {
-      ok: true,
+      ok: database.ok,
       service: "knight-medical-billing",
-      environment: process.env.NODE_ENV ?? "development",
-      siteUrl: siteUrl(),
+      environment: status.environment,
+      siteUrl: status.siteUrl,
       stores: {
         sqlite: {
-          role: "primary form storage",
-          available: isSqliteAvailable(),
+          role: "primary and only store — submissions, CRM leads, email outbox, subscribers, ROI estimates, audit and content",
+          available: database.ok,
           path: sqlite.path,
           driver: sqlite.driver,
-          error: sqlite.error,
-        },
-        postgres: {
-          role: "CRM mirror, content, outbox",
-          configured: postgres.configured,
-          status: postgres.configured ? (postgres.ok ? "connected" : "unavailable") : "not-configured",
+          error: database.error ?? sqlite.error,
         },
       },
-      config: { blockingErrors: errors.length, issues },
-      fallbackContent: !postgres.ok,
+      email: status.email,
+      config: { blockingErrors: errors.length, issues: status.issues },
+      fallbackContent: !database.ok,
       production: isProduction,
       timestamp: new Date().toISOString(),
     },

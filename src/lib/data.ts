@@ -1,10 +1,18 @@
 import { asc, desc, eq } from "drizzle-orm";
-import { db, isDatabaseConfigured } from "@/db";
+import { db } from "@/db";
 import { articlesTable, faqsTable, specialtiesTable } from "@/db/schema";
 import { articles as fallbackArticles, faqs as fallbackFaqs, specialties as fallbackSpecialties, type Article, type Specialty } from "./site";
 
+/**
+ * Content access layer (specialties, articles, FAQs).
+ *
+ * The editable copy lives in the embedded SQLite database. The built-in content
+ * in `src/lib/site.ts` remains the seed source and the safety net: if SQLite is
+ * unavailable or a table has not been seeded yet, the site still renders the
+ * same built-in content instead of showing an empty page.
+ */
+
 export async function getSpecialties(): Promise<Specialty[]> {
-  if (!isDatabaseConfigured()) return fallbackSpecialties;
   try {
     const rows = await db.select().from(specialtiesTable).orderBy(asc(specialtiesTable.sortOrder));
     if (!rows.length) return fallbackSpecialties;
@@ -27,7 +35,6 @@ export async function getSpecialty(slug: string): Promise<Specialty | undefined>
 }
 
 export async function getArticles(): Promise<Article[]> {
-  if (!isDatabaseConfigured()) return fallbackArticles;
   try {
     const rows = await db.select().from(articlesTable).where(eq(articlesTable.published, true)).orderBy(desc(articlesTable.publishedAt));
     if (!rows.length) return fallbackArticles;
@@ -53,7 +60,6 @@ export async function getArticle(slug: string): Promise<Article | undefined> {
 }
 
 export async function getFaqs(): Promise<{ q: string; a: string }[]> {
-  if (!isDatabaseConfigured()) return fallbackFaqs;
   try {
     const rows = await db.select().from(faqsTable).orderBy(asc(faqsTable.sortOrder));
     if (!rows.length) return fallbackFaqs;

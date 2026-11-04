@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { db, isDatabaseConfigured } from "@/db";
+import { db } from "@/db";
 import { leads } from "@/db/schema";
 import { buildConsultationEmail, buildVisitorConfirmationEmail } from "@/lib/email";
 import { queueSubmissionEmails } from "@/lib/notify";
 import { findRecentDuplicate, isSqliteAvailable } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
-import { isPostgresConfigured } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +19,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Too many requests. Please try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
   }
 
-  if (!isPostgresConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "Enquiry storage is not configured on this deployment. Please call (812) 994-0046 or email admin@knightmedicalbilling.com." },
-      { status: 503 },
-    );
-  }
-
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const name = String(body.name ?? "").trim();
@@ -37,28 +29,32 @@ export async function POST(request: Request) {
 
     const interests = Array.isArray(body.interests) ? body.interests.map(String).slice(0, 12) : [];
 
-    const lead = isDatabaseConfigured()
-      ? (await db
-      .insert(leads)
-      .values({
-        name: name.slice(0, 160),
-        email: email.slice(0, 200),
-        phone: String(body.phone ?? "").trim().slice(0, 40) || null,
-        practice: String(body.practice ?? "").trim().slice(0, 200) || null,
-        specialty: String(body.specialty ?? "").trim().slice(0, 120) || null,
-        practiceSize: String(body.practiceSize ?? "").trim().slice(0, 80) || null,
-        monthlyCollections: String(body.monthlyCollections ?? "").trim().slice(0, 80) || null,
-        interests,
-        message: String(body.message ?? "").trim().slice(0, 4000) || null,
-        source: String(body.source ?? "schedule-form").slice(0, 120),
-      })
-      .returning({ id: leads.id }))[0]
-      : undefined;
+    // Single embedded store: the CRM lead lives in SQLite alongside the
+    // submission row written by POST /api/submissions. No external database.
+    const lead = (
+      await db
+        .insert(leads)
+        .values({
+          name: name.slice(0, 160),
+          email: email.slice(0, 200),
+          phone: String(body.phone ?? "").trim().slice(0, 40) || null,
+          practice: String(body.practice ?? "").trim().slice(0, 200) || null,
+          specialty: String(body.specialty ?? "").trim().slice(0, 120) || null,
+          practiceSize: String(body.practiceSize ?? "").trim().slice(0, 80) || null,
+          monthlyCollections: String(body.monthlyCollections ?? "").trim().slice(0, 80) || null,
+          interests,
+          message: String(body.message ?? "").trim().slice(0, 4000) || null,
+          source: String(body.source ?? "schedule-form").slice(0, 120),
+          status: "new",
+          emailStatus: "pending",
+        })
+        .returning({ id: leads.id })
+    )[0];
 
     // Email delivery for a website enquiry is owned by POST /api/submissions.
-    // This route runs immediately after it as a Postgres mirror — or as the
-    // fallback when SQLite is unavailable. Send only when the primary route did
-    // not already handle this same enquiry, so the owner never gets two copies.
+    // This route runs immediately after it and records the CRM lead; send only
+    // when the primary route did not already handle this same enquiry, so the
+    // owner never gets two copies.
     const messageText = String(body.message ?? "").trim();
     const alreadyEmailed = isSqliteAvailable() && findRecentDuplicate(email, messageText || null, 5) !== null;
 

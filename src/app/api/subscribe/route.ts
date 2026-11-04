@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { db, isDatabaseConfigured } from "@/db";
-import { subscribers } from "@/db/schema";
 import { buildSubscriberEmail } from "@/lib/email";
 import { queueOwnerNotification } from "@/lib/notify";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
@@ -26,24 +24,12 @@ export async function POST(request: Request) {
 
     const stored = email.slice(0, 200);
 
-    // SQLite is the primary store: it is required for the site to run, so a
-    // subscription is never accepted without being written somewhere. Postgres
-    // is an optional mirror and its failure must not lose the opt-in.
+    // SQLite is the single store: a subscription is never reported as saved
+    // unless the write succeeded.
     const local = insertSubscriber({ email: stored });
 
-    let mirrored = false;
-    if (isDatabaseConfigured()) {
-      try {
-        await db.insert(subscribers).values({ email: stored }).onConflictDoNothing();
-        mirrored = true;
-      } catch (error) {
-        console.error("[subscribe] Postgres mirror failed", error);
-      }
-    }
-
-    if (!local.ok && !mirrored) {
-      // Nothing accepted the write — say so instead of reporting a false success.
-      console.error("[subscribe] no store accepted the subscription", { sqlite: local.error });
+    if (!local.ok) {
+      console.error("[subscribe] SQLite rejected the subscription", { sqlite: local.error });
       return NextResponse.json(
         { ok: false, error: "We could not save your subscription right now. Please try again or email us directly." },
         { status: 503 },
@@ -55,7 +41,7 @@ export async function POST(request: Request) {
       { type: "subscriber", email },
     );
 
-    return NextResponse.json({ ok: true, stored: local.ok ? "sqlite" : "postgres" });
+    return NextResponse.json({ ok: true, stored: "sqlite" });
   } catch (error) {
     console.error("subscribe error", error);
     return NextResponse.json({ ok: false, error: "Subscription failed. Please try again." }, { status: 500 });

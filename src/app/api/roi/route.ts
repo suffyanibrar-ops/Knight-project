@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { db, isDatabaseConfigured } from "@/db";
-import { roiEstimates } from "@/db/schema";
 import { buildRoiEmail } from "@/lib/email";
 import { queueOwnerNotification } from "@/lib/notify";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
@@ -37,35 +35,24 @@ export async function POST(request: Request) {
       estimatedAnnualUplift: Number.isFinite(estimatedAnnualUplift) ? Math.round(estimatedAnnualUplift) : 0,
     };
 
-    // SQLite is the primary store, so an estimate is never reported as saved
-    // unless a store actually accepted it. Postgres is an optional mirror.
+    // SQLite is the single store, so an estimate is never reported as saved
+    // unless the write succeeded.
     const local = insertRoiEstimate(values);
 
-    let mirrored: { id?: number } | undefined;
-    if (isDatabaseConfigured()) {
-      try {
-        mirrored = (await db.insert(roiEstimates).values(values).returning({ id: roiEstimates.id }))[0];
-      } catch (error) {
-        console.error("[roi] Postgres mirror failed", error);
-      }
-    }
-
-    if (!local.ok && mirrored === undefined) {
-      console.error("[roi] no store accepted the estimate", { sqlite: local.error });
+    if (!local.ok) {
+      console.error("[roi] SQLite rejected the estimate", { sqlite: local.error });
       return NextResponse.json(
         { ok: false, error: "We could not save your estimate right now. Please try again or email us directly." },
         { status: 503 },
       );
     }
 
-    const storedId = local.id ?? mirrored?.id;
-
     queueOwnerNotification(
-      { kind: "roi", ...buildRoiEmail(values), replyTo: values.email ?? undefined, relatedType: "roi", relatedId: storedId },
-      { type: "roi", id: storedId },
+      { kind: "roi", ...buildRoiEmail(values), replyTo: values.email ?? undefined, relatedType: "roi", relatedId: local.id },
+      { type: "roi", id: local.id },
     );
 
-    return NextResponse.json({ ok: true, id: storedId, stored: local.ok ? "sqlite" : "postgres" });
+    return NextResponse.json({ ok: true, id: local.id, stored: "sqlite" });
   } catch (error) {
     console.error("roi error", error);
     return NextResponse.json({ ok: false, error: "Could not save estimate." }, { status: 500 });

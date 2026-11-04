@@ -1,5 +1,5 @@
 import "server-only";
-import { db, isDatabaseConfigured } from "@/db";
+import { db, isSqliteAvailable } from "@/db";
 import { emailOutbox } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -321,7 +321,7 @@ export function emailChannelStatus() {
 
 export async function sendOwnerNotification(payload: MailPayload): Promise<DeliveryResult & { outboxId?: number }> {
   let outboxId: number | undefined;
-  const persist = isDatabaseConfigured();
+  const persist = isSqliteAvailable();
   if (persist) try {
     const [row] = await db
       .insert(emailOutbox)

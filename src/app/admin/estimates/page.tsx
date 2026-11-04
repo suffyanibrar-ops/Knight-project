@@ -1,18 +1,14 @@
 import { Download } from "lucide-react";
-import { desc } from "drizzle-orm";
-import { db } from "@/db";
-import { roiEstimates } from "@/db/schema";
 import { isSqliteAvailable, listRoiEstimates, parseSqliteDate } from "@/lib/sqlite";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
 
 import { redirect } from "next/navigation";
-import { isDatabaseConfigured } from "@/db";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { PostgresNotice } from "@/components/admin/postgres-notice";
+import { StorageNotice } from "@/components/admin/storage-notice";
 
 export const dynamic = "force-dynamic";
 
-/** The shape this page renders, whichever store answered the query. */
+/** The shape this page renders. */
 type EstimateRecord = {
   id: number;
   email: string | null;
@@ -24,26 +20,18 @@ type EstimateRecord = {
   createdAt: Date | null;
 };
 
-/**
- * SQLite is the primary store for ROI calculator submissions; Postgres is an
- * optional mirror. Returns null when neither store is configured so the page
- * can show the setup notice.
- */
-async function loadEstimates(): Promise<EstimateRecord[] | null> {
-  if (isSqliteAvailable()) {
-    return listRoiEstimates().map((row) => ({
-      id: row.id,
-      email: row.email,
-      monthlyCollections: row.monthly_collections,
-      denialRate: row.denial_rate,
-      daysInAr: row.days_in_ar,
-      estimatedAnnualUplift: row.estimated_annual_uplift,
-      emailStatus: row.email_status,
-      createdAt: parseSqliteDate(row.created_at),
-    }));
-  }
-  if (!isDatabaseConfigured()) return null;
-  return db.select().from(roiEstimates).orderBy(desc(roiEstimates.createdAt));
+/** ROI calculator submissions live only in the embedded SQLite file. */
+function loadEstimates(): EstimateRecord[] {
+  return listRoiEstimates().map((row) => ({
+    id: row.id,
+    email: row.email,
+    monthlyCollections: row.monthly_collections,
+    denialRate: row.denial_rate,
+    daysInAr: row.days_in_ar,
+    estimatedAnnualUplift: row.estimated_annual_uplift,
+    emailStatus: row.email_status,
+    createdAt: parseSqliteDate(row.created_at),
+  }));
 }
 
 function money(value: number) {
@@ -52,8 +40,8 @@ function money(value: number) {
 
 export default async function EstimatesPage() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  const rows = await loadEstimates();
-  if (!rows) return <PostgresNotice />;
+  if (!isSqliteAvailable()) return <StorageNotice />;
+  const rows = loadEstimates();
   const withEmail = rows.filter((row) => row.email).length;
   const avg = rows.length ? Math.round(rows.reduce((sum, row) => sum + row.estimatedAnnualUplift, 0) / rows.length) : 0;
 

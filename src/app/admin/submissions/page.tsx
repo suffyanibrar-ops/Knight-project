@@ -7,9 +7,9 @@ import { AdminPageHeader, EmptyState, StatCard, StatusPill, formatDate } from "@
 import { deleteSubmissionAction, updateStatusAction } from "../actions";
 
 import { redirect } from "next/navigation";
-import { isDatabaseConfigured } from "@/db";
+import { isSqliteAvailable } from "@/lib/sqlite";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { PostgresNotice } from "@/components/admin/postgres-notice";
+import { StorageNotice } from "@/components/admin/storage-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ const statuses = ["new", "contacted", "quoted", "won", "closed"];
 
 export default async function SubmissionsPage({ searchParams }: { searchParams: Promise<{ type?: string; q?: string; status?: string; id?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  if (!isDatabaseConfigured()) return <PostgresNotice />;
+  if (!isSqliteAvailable()) return <StorageNotice />;
   const params = await searchParams;
   const type = params.type === "contact" ? "contact" : "consultation";
   const query = (params.q ?? "").trim().toLowerCase();
@@ -43,7 +43,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
 
   const selectedLead = type === "consultation" ? leadRows.find((row) => row.id === selectedId) : undefined;
   const selectedContact = type === "contact" ? contactRows.find((row) => row.id === selectedId) : undefined;
-  const [queuedCount] = await db.select({ count: sql<number>`count(*)::int` }).from(leads).where(sql`${leads.emailStatus} <> 'sent'`);
+  const [queuedCount] = await db.select({ count: sql<number>`count(*)` }).from(leads).where(sql`${leads.emailStatus} <> 'sent'`);
 
   const base = (overrides: Record<string, string | undefined>) => {
     const next = new URLSearchParams();

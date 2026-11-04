@@ -2,14 +2,14 @@
 
 Custom-tailored medical billing and revenue cycle management website, admin console and form pipeline.
 
-- **Stack:** Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL · Framer Motion
+- **Stack:** Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Drizzle ORM · SQLite (better-sqlite3) · Framer Motion
 - **Website:** home, services (16), who we serve (5 + index), specialties (30 + index), process, results,
   about, resources (6 guides), FAQ, contact, schedule a consultation, HIPAA, privacy, terms
-- **Admin console:** `/admin` — submissions, email outbox, subscribers, ROI estimates, CSV exports
-- **Forms:** consultation wizard, contact, newsletter, ROI calculator — all four are stored in
-  SQLite (the primary store) and mirrored to Postgres when it is configured. Consultation and
-  contact submissions send two Resend emails server-side: an owner notification (Reply-To set to
-  the visitor) and a visitor confirmation.
+- **Admin console:** `/admin` — dashboard, SQLite inbox, submissions, email outbox, subscribers, ROI
+  estimates, CSV exports
+- **Forms:** consultation wizard, contact, newsletter, ROI calculator — all four write to SQLite.
+  Consultation and contact submissions send two Resend emails server-side: an owner notification
+  (Reply-To set to the visitor) and a visitor confirmation.
 
 ## Quick start
 
@@ -19,11 +19,17 @@ cp .env.example .env      # optional — the site runs without any env vars
 npm run dev               # http://localhost:3000
 ```
 
-Database (optional — enables the Postgres-backed CRM, outbox and content tables; the SQLite inbox works without it):
+The database is one embedded SQLite file. There is no external database to start
+and no migration CLI — the file and its tables are created automatically on
+first run:
+
+- Default path `./data/app.db`; override with `SQLITE_PATH`.
+- Schema changes run at startup as `PRAGMA user_version` migrations.
+- Content (specialties, articles, FAQs) can be seeded from the built-in content;
+  this is optional because the site falls back to it when the tables are empty:
 
 ```bash
-npx drizzle-kit push
-node --experimental-strip-types scripts/seed.mjs
+npm run seed
 ```
 
 Production:
@@ -36,18 +42,30 @@ npm run start          # honours the PORT environment variable
 Images use `next/image`; `res.cloudinary.com` is allow-listed in
 `next.config.ts`, and `sharp` is installed so optimisation works on any Node host.
 
-### Embedded SQLite inbox
+### Storage and admin
 
-Consultation and contact submissions are stored in a single local file,
-`./data/app.db`, created automatically on first run (plain SQL, no ORM):
+Every form submission is stored in the embedded SQLite file and read back from
+it by the admin console:
 
-- `POST /api/submissions` — validates, enforces length limits, parameterized insert
+- `POST /api/submissions` — validates, enforces length limits, parameterized insert, then
+  queues the owner notification and visitor confirmation
 - `GET  /api/submissions` — admin-only listing
-- `/admin/inbox` — newest-first list with search, view, delete and CSV export
+- `POST /api/leads` and `POST /api/contact` — CRM copies of the submission written by the forms
+  after the primary save
+- `POST /api/subscribe` (newsletter) and `POST /api/roi` (ROI calculator)
+- `/admin` — dashboard; `/admin/inbox` — submissions with search, view, delete and CSV export
+- `/admin/submissions` — CRM leads and contact messages with status pipeline and CSV export
+- `/admin/outbox` — email delivery: retry queued messages and send a test email
+- `/admin/subscribers` and `/admin/estimates` — marketing list and ROI estimates
 - `/admin/settings` — change the admin password (scrypt hash stored in SQLite)
 
-Requires a writable, persistent directory. On read-only serverless hosts the
-endpoint responds with a clear message and the rest of the site keeps working.
+Content pages (specialties, insights, FAQs) read the seeded SQLite rows and fall
+back to the built-in content in `src/lib/site.ts` when the database is empty or
+unavailable.
+
+SQLite data requires a writable, persistent directory. On read-only hosts the
+admin pages show a setup notice, form endpoints return an explicit error, and the
+public site keeps rendering from built-in content.
 
 ### Email notifications
 
@@ -62,14 +80,9 @@ endpoint responds with a clear message and the rest of the site keeps working.
 - The browser never calls Resend and never sees `RESEND_API_KEY`. Newsletter and ROI calculator
   submissions notify the owner but do not send a visitor confirmation.
 - Configure `RESEND_API_KEY` and `MAIL_FROM` (see `.env.example`); the sender domain must be
-  verified for that key in Resend.
-
-Database schema:
-
-```bash
-npm run db:push        # drizzle-kit push (reads DATABASE_URL)
-npm run db:seed        # node --experimental-strip-types scripts/seed.mjs
-```
+  verified for that key in Resend. `SMTP_*` is an optional fallback (tried when Resend is
+  unset or delivery fails), and the admin **Email delivery** page keeps the SQLite outbox and
+  lets you retry.
 
 This is a full-stack app — do not add `output: 'export'`.
 
@@ -84,13 +97,13 @@ takes precedence over both environment variables).
 ADMIN_PASSWORD=<long random passphrase>          # required for admin sign-in (no default)
 ADMIN_SESSION_SECRET=<64 hex chars>              # required in production for stable sessions
 NEXT_PUBLIC_SITE_URL=https://your-domain.com     # required for correct SEO
-SQLITE_PATH=/var/data/app.db                     # persistent, writable volume
-DATABASE_URL=postgresql://…?sslmode=require      # optional (CRM/content)
-DATABASE_SSL_INSECURE=0                          # optional: 1 disables Postgres TLS cert verification (private CA only)
-TRUST_PROXY=1                                    # optional: 1 = one trusted reverse proxy (default); 0 only if directly exposed
+SQLITE_PATH=/var/data/app.db                     # persistent, writable volume — never /tmp or public/
 RESEND_API_KEY=re_…                              # server-only; required for email delivery
 MAIL_FROM="Knight Medical Billing <website@knightmedicalbilling.com>"   # domain must be verified in Resend
 ADMIN_EMAIL=admin@knightmedicalbilling.com       # optional owner recipient (this is the default)
+TRUST_PROXY=1                                    # optional: 1 = one trusted reverse proxy (default); 0 only if directly exposed
+# Optional SMTP fallback (tried when Resend is unset or fails):
+# SMTP_HOST=… SMTP_PORT=587 SMTP_USER=… SMTP_PASS=…
 ```
 
 Generate a session secret:
@@ -109,7 +122,7 @@ Check deployment readiness at any time:
 curl -s https://your-domain.com/api/health | jq
 ```
 
-Full hosting instructions, email setup and troubleshooting: **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+Full hosting instructions, backup/restore and troubleshooting: **[DEPLOYMENT.md](./DEPLOYMENT.md)**
 Data storage, email behaviour and the admin security model: **[DATA-AND-EMAIL.md](./DATA-AND-EMAIL.md)**
 
 Motion system and interaction rules: **[MOTION-SYSTEM.md](./MOTION-SYSTEM.md)**

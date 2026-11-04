@@ -1,10 +1,10 @@
 import "server-only";
 import { after } from "next/server";
 import { eq } from "drizzle-orm";
-import { db, isDatabaseConfigured } from "@/db";
-import { contactMessages, leads, roiEstimates, subscribers } from "@/db/schema";
+import { db } from "@/db";
+import { contactMessages, leads } from "@/db/schema";
 import { sendOwnerNotification, sendVisitorConfirmation, type MailPayload } from "./email";
-import { setSubmissionEmailStatus } from "./sqlite";
+import { setRoiEstimateEmailStatus, setSubscriberEmailStatusByEmail, setSubmissionEmailStatus } from "./sqlite";
 
 type NotifyTarget = { type: "lead" | "contact" | "subscriber" | "roi"; id?: number; email?: string };
 
@@ -69,19 +69,20 @@ export function queueOwnerNotification(payload: MailPayload, target: NotifyTarge
       const result = await sendOwnerNotification(payload);
       const status = result.status === "sent" ? "sent" : "queued";
       const sentAt = result.status === "sent" ? new Date() : null;
-      if (!isDatabaseConfigured()) return;
 
+      // Every outcome is recorded in SQLite (the only store); a failed write
+      // here only loses the status flag, never the submitted record.
       if (target.type === "lead" && target.id) {
         await db.update(leads).set({ emailStatus: status, emailSentAt: sentAt, emailError: result.error ?? null }).where(eq(leads.id, target.id));
       }
       if (target.type === "contact" && target.id) {
         await db.update(contactMessages).set({ emailStatus: status, emailSentAt: sentAt, emailError: result.error ?? null }).where(eq(contactMessages.id, target.id));
       }
-      if (target.type === "roi" && target.id && result.status === "sent") {
-        await db.update(roiEstimates).set({ emailStatus: "sent" }).where(eq(roiEstimates.id, target.id));
+      if (target.type === "roi" && target.id) {
+        setRoiEstimateEmailStatus(target.id, result.status === "sent" ? "sent" : "failed");
       }
-      if (target.type === "subscriber" && target.email && result.status === "sent") {
-        await db.update(subscribers).set({ emailStatus: "sent" }).where(eq(subscribers.email, target.email));
+      if (target.type === "subscriber" && target.email) {
+        setSubscriberEmailStatusByEmail(target.email, result.status === "sent" ? "sent" : "failed");
       }
     } catch (error) {
       console.error("owner notification failed", error);

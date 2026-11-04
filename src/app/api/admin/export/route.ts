@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
-import { contactMessages, emailOutbox, leads, roiEstimates, subscribers } from "@/db/schema";
+import { contactMessages, emailOutbox, leads } from "@/db/schema";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { isSqliteAvailable, listRoiEstimates, listSubscribers } from "@/lib/sqlite";
+import { listRoiEstimates, listSubscribers } from "@/lib/sqlite";
 
 export const dynamic = "force-dynamic";
 
@@ -52,28 +52,17 @@ export async function GET(request: Request) {
     csv = toCsv(["Received", "Name", "Email", "Phone", "Topic", "Message", "Status", "Owner email"], rows.map((row) => [row.createdAt.toISOString(), row.name, row.email, row.phone, row.topic, row.message, row.status, row.emailStatus]));
     filename = "knight-contact-messages.csv";
   } else if (type === "subscribers") {
-    // SQLite is the primary store for newsletter opt-ins; Postgres is an
-    // optional mirror, so export the same rows the admin page displays.
-    if (isSqliteAvailable()) {
-      const rows = listSubscribers();
-      csv = toCsv(["Joined", "Email"], rows.map((row) => [sqliteTimestamp(row.created_at), row.email]));
-    } else {
-      const rows = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
-      csv = toCsv(["Joined", "Email"], rows.map((row) => [row.createdAt.toISOString(), row.email]));
-    }
+    // SQLite is the single store for newsletter opt-ins.
+    const rows = listSubscribers();
+    csv = toCsv(["Joined", "Email"], rows.map((row) => [sqliteTimestamp(row.created_at), row.email]));
     filename = "knight-subscribers.csv";
   } else if (type === "estimates") {
-    // SQLite is the primary store for ROI estimates; Postgres is optional.
-    if (isSqliteAvailable()) {
-      const rows = listRoiEstimates();
-      csv = toCsv(
-        ["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"],
-        rows.map((row) => [sqliteTimestamp(row.created_at), row.email, row.monthly_collections, row.denial_rate, row.days_in_ar, row.estimated_annual_uplift]),
-      );
-    } else {
-      const rows = await db.select().from(roiEstimates).orderBy(desc(roiEstimates.createdAt));
-      csv = toCsv(["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"], rows.map((row) => [row.createdAt.toISOString(), row.email, row.monthlyCollections, row.denialRate, row.daysInAr, row.estimatedAnnualUplift]));
-    }
+    // SQLite is the single store for ROI estimates.
+    const rows = listRoiEstimates();
+    csv = toCsv(
+      ["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"],
+      rows.map((row) => [sqliteTimestamp(row.created_at), row.email, row.monthly_collections, row.denial_rate, row.days_in_ar, row.estimated_annual_uplift]),
+    );
     filename = "knight-roi-estimates.csv";
   } else if (type === "outbox") {
     const rows = await db.select().from(emailOutbox).orderBy(desc(emailOutbox.createdAt));

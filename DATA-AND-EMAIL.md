@@ -5,65 +5,85 @@ silently and the deployment can be operated confidently.
 
 ---
 
-## 1. Two stores, explicit responsibilities
+## 1. One store, every responsibility
+
+The application has a **single embedded SQLite database** at `SQLITE_PATH`
+(default `./data/app.db`). There is no external database, no connection string,
+no mirror and no fallback store.
 
 | Store | File / service | Holds | Required? |
 | --- | --- | --- | --- |
-| **SQLite** | `SQLITE_PATH` (default `./data/app.db`) | Website form submissions (consultation + contact), newsletter subscribers and ROI estimates — the **source of truth** for `/admin/inbox`, `/admin/subscribers` and `/admin/estimates` | **Yes** for form capture |
-| **PostgreSQL** | `DATABASE_URL` | Optional **mirror** of enquiries, subscribers and ROI estimates, plus the email outbox and the Drizzle-managed content tables (specialties, articles, FAQ) | Optional |
+| **SQLite** | `SQLITE_PATH` (default `./data/app.db`) | Every website submission (consultation, contact, newsletter, ROI estimate), the CRM rows (`leads`, `contact_messages`), `settings` (admin password), `email_outbox`, `admin_audit`, and the editable content tables (`testimonials`, `specialties`, `case_studies`, `articles`, `faqs`) | **Yes** — there is nothing else |
 
-**Why two?** SQLite gives a zero-configuration, no-cloud store for enquiries,
-opt-ins and estimates. Postgres gives a networked mirror for the CRM view,
-marketing list and content that can be edited without a deploy.
+The file is opened with `better-sqlite3` (WAL mode, `busy_timeout = 5000`).
+Tables are created and upgraded automatically at startup through
+`PRAGMA user_version` migrations — there is no separate migration command.
 
-**Neither silently replaces the other:**
+- `submissions`, `settings`, `subscribers` and `roi_estimates` are written with
+  parameterized plain SQL helpers in `src/lib/sqlite.ts`.
+- `leads`, `contact_messages`, `email_outbox`, `admin_audit`, `testimonials`,
+  `specialties`, `case_studies`, `articles` and `faqs` are queried through the
+  Drizzle query builder on the **same** connection (`src/db/index.ts`).
 
-- Postgres missing → the site renders from built-in content; SQLite still stores
-  enquiries, subscribers and estimates, and the admin pages read SQLite, so
-  nothing is lost or hidden.
-- SQLite unavailable → `POST /api/submissions` returns **503 with an explicit
-  message**; the browser then falls back to `/api/leads` (Postgres) so the lead
-  is still captured. `POST /api/subscribe` and `POST /api/roi` return **503**
-  too, unless Postgres accepted the write. Nothing reports success unless a
-  store accepted the write.
+**What happens when SQLite cannot be opened** (read-only host, bad
+`SQLITE_PATH`):
 
-A Postgres mirror failure is logged and never fails the request — the SQLite row
-is already the durable copy.
+- Public pages still render, using the built-in content from `src/lib/site.ts`
+  when the content tables cannot be read.
+- `POST /api/submissions` returns **503 with an explicit message**; the
+  consultation and contact forms surface that error instead of pretending to save.
+- `POST /api/subscribe` and `POST /api/roi` return **503** as well.
+- The CRM calls (`POST /api/leads`, `POST /api/contact`) also fail; the form only
+  reports success after the primary SQLite write is accepted.
+- Admin pages render a **Local database unavailable** notice explaining what to
+  fix (`StorageNotice`).
 
 There is **no SQLite → temp-directory fallback** and **no in-memory fallback**.
-A failure is always reported.
+A failure is always reported; nothing reports success unless the SQLite write
+was accepted.
+
+For backup and restore, see **DEPLOYMENT.md §4**.
 
 ---
 
 ## 2. SQLite persistence requirements
 
-- The directory must **exist or be creatable** and be **writable** by the server process.
+- The directory must **exist or be creatable** and be **writable** by the app
+  process. The file is created automatically on first use.
 - It must **persist across restarts and redeploys**. Ephemeral container
   filesystems lose the file on every deploy.
+- Keep it **out of `public/`** (or any static-served directory) and out of the
+  build/release bundle — those are replaced on deploy and may be publicly served.
 
 Working examples:
 
 ```bash
-SQLITE_PATH=/var/data/app.db        # Render / Railway persistent disk
+SQLITE_PATH=/var/data/app.db        # HostNext / Render / Railway persistent disk
 SQLITE_PATH=/mnt/volume/app.db      # Docker / Fly.io volume
 SQLITE_PATH=/data/app.db            # Kubernetes PVC
 ```
 
 Not viable: a read-only image layer, `/tmp` on a serverless platform, `/proc`,
-or any path inside the deployment bundle that is replaced on release.
+a network share, or any path inside the deployment bundle that is replaced on
+release.
 
-**Backups:** copy `app.db` (ideally with `sqlite3 app.db ".backup backup.db"` or
-while the process is stopped, since WAL mode uses `-wal`/`-shm` companions).
+Because SQLite uses WAL mode, the file has `-wal`/`-shm` companions while the
+app runs. For a safe online backup use
+`sqlite3 "${SQLITE_PATH:-./data/app.db}" ".backup …"`; if you copy files
+manually, stop the process first and copy all three. Details and the restore
+procedure are in **DEPLOYMENT.md §4**.
 
 **Startup diagnostics:** `GET /api/health` returns
-`stores.sqlite.{available,path,driver,error}`. If `available` is `false`, the
-`error` field states exactly what to fix.
+`stores.sqlite.{role,available,path,driver,error}`. If `available` is `false`,
+the `error` field states exactly what to fix. The same response reports the
+active email channel, configuration issues and whether built-in content is
+being used as a fallback.
 
 ---
 
 ## 3. Email delivery
 
-### 3a. Resend (server-side) — the only delivery path
+### 3a. Resend (server-side) — the primary path
 
 `POST /api/submissions` sends **two** emails through the Resend API for every
 consultation or contact submission:
@@ -74,27 +94,31 @@ consultation or contact submission:
 | **Visitor confirmation** | the address in the form's email field | a receipt of what they submitted, the submission date, and response expectations |
 
 - `RESEND_API_KEY` is read only by server code. The browser never calls Resend
-  and never receives the credential.
+  and never receives the credential; it only posts the form to the app's API.
 - `MAIL_FROM` must be an address on a domain **verified for that key** in Resend.
   An unverified/unauthorized domain fails with `403 not authorized to send
   emails from <domain>`.
 - Delivery runs after the response is flushed (`after()`), so visitors never wait.
-- A mail failure never loses the enquiry: the submission is already in SQLite,
-  `email_status` becomes `failed`, and the error is logged.
+- A delivery failure never loses the enquiry: the submission is already in
+  SQLite; an owner-notification failure sets `email_status` to `failed` and is
+  logged.
 - **Duplicate guard:** the same email + message within 10 minutes returns the
   existing submission and does **not** send a second pair of emails.
 - Newsletter (`/api/subscribe`) and ROI (`/api/roi`) submissions notify the owner
   but do not send a visitor confirmation.
+- Owner notifications are recorded in the SQLite `email_outbox` (`status`,
+  `provider`, `attempts`, `last_error`). The admin **Email delivery** page shows
+  delivery status and lets you retry queued messages or send a test email.
 
-### 3b. Optional SMTP fallback
+### 3b. SMTP fallback and no-channel behaviour
 
 When `RESEND_API_KEY` is unset, SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
-`SMTP_PASS`) is used with the same two-email behaviour. With neither configured,
-submissions are still stored but nothing is delivered, and `/api/health` reports
-the missing channel.
-
-The admin **Email delivery** page shows delivery status per submission and queues
-owner notifications in the Postgres outbox when `DATABASE_URL` is configured.
+`SMTP_PASS`) is used with the same two-email behaviour; SMTP is also tried when
+a Resend delivery fails. With neither configured, submissions are still stored
+in SQLite and the owner notification is written to the outbox as **queued**
+(the visitor confirmation is skipped and logged). Queued messages can be
+retried after a channel is configured. `GET /api/health` reports the missing
+channel.
 
 ---
 
@@ -106,11 +130,11 @@ owner notifications in the Postgres outbox when `DATABASE_URL` is configured.
 | No password configured | Sign-in is **disabled** in **every** environment (fail closed); in production `/api/health` reports a blocking error. |
 | Session | HMAC-SHA256 signed token, 8-hour expiry, `HttpOnly`, `SameSite=Lax`, `Secure` in production. |
 | Session secret | Set `ADMIN_SESSION_SECRET` in production. Without it a random per-process key is generated once: cookies cannot be forged, but previously issued sessions end on restart and are not shared between instances. |
-| Brute force | 5 failed attempts per 15 min per IP, then blocked; attempts audit-logged. |
+| Brute force | 5 failed attempts per 15 min per IP, then blocked; attempts audit-logged (the `admin_audit` table lives in SQLite). |
 | Route protection | `src/proxy.ts` (Node.js runtime) **and** a server-side session check inside every admin page and admin API route. |
 | CSRF | All state-changing public APIs verify `Origin` against `Host`; cross-origin writes get **403**. Server Actions use Next.js built-in origin checks. |
 | Rate limiting | Public form endpoints: 5 requests / 10 min per IP (ROI: 10). Exceeding returns **429** with `Retry-After`. |
-| Duplicate submissions | Same email + identical message within 10 minutes returns the **existing** row and does not re-send email. |
+| Duplicate submissions | Same email + identical message within 10 minutes returns the **existing** row and does not send a second pair of emails. |
 | Indexing | `/admin*` and `/api/admin*` send `X-Robots-Tag: noindex` (other `/api/*` responses do not), and `/admin` and `/api` paths are disallowed in `robots.txt`. |
 | Output escaping | React escapes all rendered values. No `dangerouslySetInnerHTML` on user input. |
 

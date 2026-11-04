@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "knight-medical-billing",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -7,10 +7,9 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:push": "drizzle-kit push",
-    "db:seed": "node --experimental-strip-types scripts/seed.mjs",
     "seed": "node --experimental-strip-types scripts/seed.mjs",
-    "db:generate": "drizzle-kit generate",
+    "db:seed": "node --experimental-strip-types scripts/seed.mjs",
+    "db:import-postgres": "node --experimental-strip-types scripts/migrate-from-postgres.mjs",
     "test:browser": "node tests/browser.test.mjs",
     "test:interactions": "node tests/interactions.test.mjs",
     "test:breakpoints": "node tests/breakpoints.test.mjs",
@@ -28,7 +27,6 @@
     "lucide-react": "^1.63.0",
     "next": "16.4.5",
     "nodemailer": "^10.2.1",
-    "pg": "8.20.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "server-only": "^0.0.1",
@@ -37,10 +35,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.17",
     "@types/node": "22.19.15",
-    "@types/pg": "8.18.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "playwright": "^1.64.1",

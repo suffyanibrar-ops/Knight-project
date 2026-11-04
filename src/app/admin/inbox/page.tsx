@@ -4,6 +4,7 @@ import { Database, Download, Inbox, Mail, Search, Trash2 } from "lucide-react";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { countSubmissions, isSqliteAvailable, listSubmissions, sqliteStatus } from "@/lib/sqlite";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
+import { StorageNotice } from "@/components/admin/storage-notice";
 import { deleteInboxSubmissionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -37,20 +38,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         }
       />
 
-      {!isSqliteAvailable() && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-amber-700">Storage unavailable</p>
-          <h2 className="mt-1.5 text-lg font-extrabold tracking-tight text-ink-950">The local database could not be opened</h2>
-          <p className="mt-1.5 max-w-xl text-[0.82rem] leading-relaxed text-amber-900/80">
-            {status.error ?? "The data directory is not writable."}
-          </p>
-          <p className="mt-2 text-[0.78rem] leading-relaxed text-amber-900/70">
-            SQLite needs a writable, persistent filesystem (a VPS, Docker volume, Render/Railway disk, or a Node server).
-            On read-only serverless platforms, set <code className="rounded bg-surface px-1.5 py-0.5 font-bold">SQLITE_PATH</code> to a mounted
-            volume, or use the PostgreSQL-backed pages instead.
-          </p>
-        </div>
-      )}
+      {!isSqliteAvailable() && <StorageNotice />}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total submissions" value={total} tone="brand" />

@@ -1,6 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
+import { SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -18,6 +19,8 @@ import Database from "better-sqlite3";
 
 export type SqliteRunResult = { lastInsertRowid: number; changes: number };
 
+type RawDatabase = Database.Database;
+
 type Driver = {
   exec: (sql: string) => void;
   run: (sql: string, params: unknown[]) => SqliteRunResult;
@@ -25,7 +28,7 @@ type Driver = {
   get: <T>(sql: string, params: unknown[]) => T | undefined;
 };
 
-type DriverState = { driver: Driver | null; path: string; error: string | null; kind: string | null };
+type DriverState = { driver: Driver | null; raw: RawDatabase | null; path: string; error: string | null; kind: string | null };
 
 const globalForSqlite = globalThis as typeof globalThis & { __knightSqlite?: DriverState };
 
@@ -87,50 +90,7 @@ function ensureDirectory(file: string) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS submissions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  practice TEXT,
-  specialty TEXT,
-  practice_size TEXT,
-  providers TEXT,
-  interests TEXT,
-  message TEXT,
-  source TEXT NOT NULL DEFAULT 'website',
-  email_status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_submissions_created_at ON submissions (created_at DESC);
 
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS subscribers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT NOT NULL UNIQUE,
-  email_status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_subscribers_created_at ON subscribers (created_at DESC);
-
-CREATE TABLE IF NOT EXISTS roi_estimates (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT,
-  monthly_collections INTEGER NOT NULL,
-  denial_rate INTEGER NOT NULL,
-  days_in_ar INTEGER NOT NULL,
-  estimated_annual_uplift INTEGER NOT NULL,
-  email_status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_roi_estimates_created_at ON roi_estimates (created_at DESC);
-`;
 
 function wrapBetterSqlite3(instance: unknown): Driver {
   const db = instance as {
@@ -152,21 +112,55 @@ function wrapBetterSqlite3(instance: unknown): Driver {
   };
 }
 
+/**
+ * Schema migrations, applied in order and tracked with `PRAGMA user_version`.
+ * Every statement is idempotent (`CREATE ... IF NOT EXISTS`), so an existing
+ * database is upgraded in place without losing rows. Add a new entry (and bump
+ * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
+ */
+const SCHEMA_VERSION = 1;
+const MIGRATIONS: { version: number; statements: string }[] = [{ version: SCHEMA_VERSION, statements: SCHEMA }];
+
+function migrate(driver: Driver, raw: RawDatabase) {
+  const current = Number(raw.pragma("user_version", { simple: true }) ?? 0);
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= current) continue;
+    driver.exec("BEGIN");
+    try {
+      driver.exec(migration.statements);
+      raw.pragma(`user_version = ${migration.version}`);
+      driver.exec("COMMIT");
+    } catch (error) {
+      try {
+        driver.exec("ROLLBACK");
+      } catch {
+        /* transaction already gone */
+      }
+      throw error;
+    }
+  }
+}
+
 function open(): DriverState {
   const file = sqlitePath();
 
-  const attempt = (kind: string, factory: () => Driver): DriverState | null => {
+  const attempt = (kind: string, create: () => RawDatabase): DriverState | null => {
     try {
       ensureDirectory(file);
-      const driver = factory();
-      // WAL improves concurrent reads; ignore failures on unusual filesystems.
+      const raw = create();
+      const driver = wrapBetterSqlite3(raw);
+      // WAL: readers never block the writer. Ignore failures on unusual filesystems.
       try {
         driver.exec("PRAGMA journal_mode = WAL;");
       } catch {
         /* non-fatal */
       }
-      driver.exec(SCHEMA);
-      return { driver, path: file, error: null, kind };
+      // Wait up to 5s for a competing writer instead of failing with SQLITE_BUSY.
+      driver.exec("PRAGMA busy_timeout = 5000;");
+      driver.exec("PRAGMA foreign_keys = ON;");
+      driver.exec("PRAGMA synchronous = NORMAL;");
+      migrate(driver, raw);
+      return { driver, raw, path: file, error: null, kind };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`[sqlite] ${kind} unavailable: ${message}`);
@@ -174,21 +168,17 @@ function open(): DriverState {
     }
   };
 
-  // 1. better-sqlite3 (bundled native module, prebuilt for common platforms)
-  try {
-    const state = attempt("better-sqlite3", () => wrapBetterSqlite3(new Database(file)));
-    if (state) return state;
-  } catch {
-    /* fall through to the Node built-in driver */
-  }
+  const opened = attempt("better-sqlite3", () => new Database(file));
+  if (opened) return opened;
 
   return {
     driver: null,
+    raw: null,
     path: file,
     error:
       `SQLite could not open "${file}". The directory must exist and be writable by the server process. ` +
       "Set SQLITE_PATH to a persistent volume (for example /var/data/app.db) and redeploy. " +
-      "Submissions are NOT being stored until this is resolved.",
+      "Form submissions are NOT being stored until this is resolved.",
     kind: null,
   };
 }
@@ -205,6 +195,15 @@ function state(): DriverState {
 
 export function isSqliteAvailable(): boolean {
   return state().driver !== null;
+}
+
+/**
+ * The single better-sqlite3 connection, shared with the Drizzle query builder so
+ * the whole app uses one handle (one WAL writer, one busy-timeout policy).
+ * Returns null when SQLite could not be opened; callers degrade or report it.
+ */
+export function sqliteHandle(): RawDatabase | null {
+  return state().raw;
 }
 
 /**
@@ -444,6 +443,17 @@ export function setSubscriberEmailStatus(id: number, status: "pending" | "sent" 
   if (!current.driver) return;
   try {
     current.driver.run("UPDATE subscribers SET email_status = ? WHERE id = ?", [status, id]);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/** Records delivery outcome for an opt-in identified by its address. */
+export function setSubscriberEmailStatusByEmail(email: string, status: "pending" | "sent" | "failed"): void {
+  const current = state();
+  if (!current.driver) return;
+  try {
+    current.driver.run("UPDATE subscribers SET email_status = ? WHERE email = ?", [status, email.toLowerCase()]);
   } catch {
     /* non-fatal */
   }

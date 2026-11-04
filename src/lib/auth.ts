@@ -2,7 +2,6 @@ import "server-only";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "@/db";
-import { isDatabaseConfigured } from "@/db";
 import { adminAudit } from "@/db/schema";
 import { expectedPasswordDigest, FALLBACK_ADMIN_PEPPER, sessionSecret } from "./admin-session";
 import { getStoredPasswordHash, verifyPasswordHash } from "./admin-password";
@@ -138,7 +137,8 @@ export function clearFailures(key: string) {
 }
 
 export async function logAdminAction(action: string, detail: string | null, ip: string | null) {
-  if (!isDatabaseConfigured()) return;
+  // Audit rows live in the embedded SQLite database, which is present whenever
+  // the admin console itself works.
   try {
     await db.insert(adminAudit).values({ action: action.slice(0, 80), detail: detail?.slice(0, 2000) ?? null, ip: ip?.slice(0, 80) ?? null });
   } catch {

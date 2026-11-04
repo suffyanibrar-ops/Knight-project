@@ -1,160 +1,151 @@
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const leads = pgTable("leads", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 160 }).notNull(),
-  email: varchar("email", { length: 200 }).notNull(),
-  phone: varchar("phone", { length: 40 }),
-  practice: varchar("practice", { length: 200 }),
-  specialty: varchar("specialty", { length: 120 }),
-  practiceSize: varchar("practice_size", { length: 80 }),
-  monthlyCollections: varchar("monthly_collections", { length: 80 }),
-  interests: jsonb("interests").$type<string[]>().default([]).notNull(),
+/**
+ * Drizzle schema for the embedded SQLite database.
+ *
+ * The physical tables are created and migrated by `src/lib/sqlite.ts`
+ * (parameterized DDL + `PRAGMA user_version` migrations), and everything runs
+ * on one better-sqlite3 file. This file only gives those tables types for
+ * query building; it is not a second source of truth for the DDL.
+ *
+ * Conventions:
+ * - timestamps are integer epoch milliseconds (`timestamp_ms` → Date objects)
+ * - booleans are integers (0/1) exposed as boolean
+ * - arrays/objects are JSON text
+ * - tables also maintained by plain SQL helpers (submissions, settings,
+ *   subscribers, roi_estimates) are intentionally NOT declared here
+ */
+
+export const leads = sqliteTable("leads", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  practice: text("practice"),
+  specialty: text("specialty"),
+  practiceSize: text("practice_size"),
+  monthlyCollections: text("monthly_collections"),
+  interests: text("interests", { mode: "json" }).$type<string[]>().notNull().default([]),
   message: text("message"),
-  source: varchar("source", { length: 120 }).default("website").notNull(),
-  status: varchar("status", { length: 40 }).default("new").notNull(),
-  emailStatus: varchar("email_status", { length: 30 }).default("pending").notNull(),
+  source: text("source").notNull().default("website"),
+  status: text("status").notNull().default("new"),
+  emailStatus: text("email_status").notNull().default("pending"),
   emailError: text("email_error"),
-  emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  emailSentAt: integer("email_sent_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
 
-export const contactMessages = pgTable("contact_messages", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 160 }).notNull(),
-  email: varchar("email", { length: 200 }).notNull(),
-  phone: varchar("phone", { length: 40 }),
-  topic: varchar("topic", { length: 120 }),
+export const contactMessages = sqliteTable("contact_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  topic: text("topic"),
   message: text("message").notNull(),
-  status: varchar("status", { length: 40 }).default("new").notNull(),
-  emailStatus: varchar("email_status", { length: 30 }).default("pending").notNull(),
+  status: text("status").notNull().default("new"),
+  emailStatus: text("email_status").notNull().default("pending"),
   emailError: text("email_error"),
-  emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  emailSentAt: integer("email_sent_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
 
-export const subscribers = pgTable(
-  "subscribers",
-  {
-    id: serial("id").primaryKey(),
-    email: varchar("email", { length: 200 }).notNull(),
-    emailStatus: varchar("email_status", { length: 30 }).default("pending").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [uniqueIndex("subscribers_email_unique").on(table.email)],
-);
-
-export const roiEstimates = pgTable("roi_estimates", {
-  id: serial("id").primaryKey(),
-  email: varchar("email", { length: 200 }),
-  monthlyCollections: integer("monthly_collections").notNull(),
-  denialRate: integer("denial_rate").notNull(),
-  daysInAr: integer("days_in_ar").notNull(),
-  estimatedAnnualUplift: integer("estimated_annual_uplift").notNull(),
-  emailStatus: varchar("email_status", { length: 30 }).default("pending").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+export const emailOutbox = sqliteTable("email_outbox", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kind: text("kind").notNull(),
+  toEmail: text("to_email").notNull(),
+  replyTo: text("reply_to"),
+  subject: text("subject").notNull(),
+  textBody: text("text_body").notNull(),
+  htmlBody: text("html_body"),
+  status: text("status").notNull().default("pending"),
+  provider: text("provider"),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  relatedType: text("related_type"),
+  relatedId: integer("related_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  sentAt: integer("sent_at", { mode: "timestamp_ms" }),
 });
 
-export const testimonials = pgTable("testimonials", {
-  id: serial("id").primaryKey(),
+export const adminAudit = sqliteTable("admin_audit", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  action: text("action").notNull(),
+  detail: text("detail"),
+  ip: text("ip"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const testimonials = sqliteTable("testimonials", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   quote: text("quote").notNull(),
-  name: varchar("name", { length: 160 }).notNull(),
-  role: varchar("role", { length: 160 }),
-  org: varchar("org", { length: 200 }),
-  specialty: varchar("specialty", { length: 120 }),
-  image: varchar("image", { length: 300 }),
-  rating: integer("rating").default(5).notNull(),
-  sortOrder: integer("sort_order").default(0).notNull(),
-  published: boolean("published").default(true).notNull(),
+  name: text("name").notNull(),
+  role: text("role"),
+  org: text("org"),
+  specialty: text("specialty"),
+  image: text("image"),
+  rating: integer("rating").notNull().default(5),
+  sortOrder: integer("sort_order").notNull().default(0),
+  published: integer("published", { mode: "boolean" }).notNull().default(true),
 });
 
-export const specialtiesTable = pgTable("specialties", {
-  id: serial("id").primaryKey(),
-  slug: varchar("slug", { length: 120 }).notNull().unique(),
-  name: varchar("name", { length: 120 }).notNull(),
-  groupName: varchar("group_name", { length: 80 }).notNull(),
-  icon: varchar("icon", { length: 60 }).notNull().default("Stethoscope"),
+export const specialtiesTable = sqliteTable("specialties", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  groupName: text("group_name").notNull(),
+  icon: text("icon").notNull().default("Stethoscope"),
   blurb: text("blurb").notNull(),
-  focus: jsonb("focus").$type<string[]>().default([]).notNull(),
-  metricValue: varchar("metric_value", { length: 40 }).notNull().default("25%"),
-  metricLabel: varchar("metric_label", { length: 80 }).notNull().default("A/R reduction"),
-  sortOrder: integer("sort_order").default(0).notNull(),
+  focus: text("focus", { mode: "json" }).$type<string[]>().notNull().default([]),
+  metricValue: text("metric_value").notNull().default("25%"),
+  metricLabel: text("metric_label").notNull().default("A/R reduction"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
-export const caseStudiesTable = pgTable("case_studies", {
-  id: serial("id").primaryKey(),
-  slug: varchar("slug", { length: 140 }).notNull().unique(),
-  title: varchar("title", { length: 240 }).notNull(),
-  client: varchar("client", { length: 200 }).notNull(),
-  specialty: varchar("specialty", { length: 120 }).notNull(),
-  image: varchar("image", { length: 300 }).notNull(),
+export const caseStudiesTable = sqliteTable("case_studies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  client: text("client").notNull(),
+  specialty: text("specialty").notNull(),
+  image: text("image").notNull(),
   summary: text("summary").notNull(),
-  metrics: jsonb("metrics").$type<{ value: string; label: string }[]>().default([]).notNull(),
+  metrics: text("metrics", { mode: "json" }).$type<{ value: string; label: string }[]>().notNull().default([]),
   challenge: text("challenge").notNull(),
-  approach: jsonb("approach").$type<string[]>().default([]).notNull(),
+  approach: text("approach", { mode: "json" }).$type<string[]>().notNull().default([]),
   result: text("result").notNull(),
   quoteText: text("quote_text").notNull(),
-  quoteAuthor: varchar("quote_author", { length: 200 }).notNull(),
-  duration: varchar("duration", { length: 120 }).notNull(),
-  published: boolean("published").default(true).notNull(),
+  quoteAuthor: text("quote_author").notNull(),
+  duration: text("duration").notNull(),
+  published: integer("published", { mode: "boolean" }).notNull().default(true),
 });
 
-export const articlesTable = pgTable("articles", {
-  id: serial("id").primaryKey(),
-  slug: varchar("slug", { length: 160 }).notNull().unique(),
-  title: varchar("title", { length: 240 }).notNull(),
-  category: varchar("category", { length: 80 }).notNull(),
+export const articlesTable = sqliteTable("articles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  category: text("category").notNull(),
   excerpt: text("excerpt").notNull(),
-  image: varchar("image", { length: 300 }).notNull(),
-  readTime: varchar("read_time", { length: 40 }).notNull(),
-  publishedAt: varchar("published_at", { length: 40 }).notNull(),
-  author: varchar("author", { length: 160 }).notNull(),
-  body: jsonb("body").$type<{ heading?: string; paragraphs: string[]; list?: string[] }[]>().default([]).notNull(),
-  published: boolean("published").default(true).notNull(),
+  image: text("image").notNull(),
+  readTime: text("read_time").notNull(),
+  publishedAt: text("published_at").notNull(),
+  author: text("author").notNull(),
+  body: text("body", { mode: "json" }).$type<{ heading?: string; paragraphs: string[]; list?: string[] }[]>().notNull().default([]),
+  published: integer("published", { mode: "boolean" }).notNull().default(true),
 });
 
-export const faqsTable = pgTable("faqs", {
-  id: serial("id").primaryKey(),
+export const faqsTable = sqliteTable("faqs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
-  category: varchar("category", { length: 80 }).default("general").notNull(),
-  sortOrder: integer("sort_order").default(0).notNull(),
+  category: text("category").notNull().default("general"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
 export type Lead = typeof leads.$inferSelect;
-export type Subscriber = typeof subscribers.$inferSelect;
+export type ContactMessageRow = typeof contactMessages.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type SpecialtyRow = typeof specialtiesTable.$inferSelect;
 export type CaseStudyRow = typeof caseStudiesTable.$inferSelect;
 export type ArticleRow = typeof articlesTable.$inferSelect;
 export type FaqRow = typeof faqsTable.$inferSelect;
-
-export const emailOutbox = pgTable("email_outbox", {
-  id: serial("id").primaryKey(),
-  kind: varchar("kind", { length: 60 }).notNull(),
-  toEmail: varchar("to_email", { length: 200 }).notNull(),
-  replyTo: varchar("reply_to", { length: 200 }),
-  subject: varchar("subject", { length: 300 }).notNull(),
-  textBody: text("text_body").notNull(),
-  htmlBody: text("html_body"),
-  status: varchar("status", { length: 30 }).default("pending").notNull(),
-  provider: varchar("provider", { length: 40 }),
-  attempts: integer("attempts").default(0).notNull(),
-  lastError: text("last_error"),
-  relatedType: varchar("related_type", { length: 40 }),
-  relatedId: integer("related_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  sentAt: timestamp("sent_at", { withTimezone: true }),
-});
-
-export const adminAudit = pgTable("admin_audit", {
-  id: serial("id").primaryKey(),
-  action: varchar("action", { length: 80 }).notNull(),
-  detail: text("detail"),
-  ip: varchar("ip", { length: 80 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
 export type EmailOutboxRow = typeof emailOutbox.$inferSelect;
-export type ContactMessageRow = typeof contactMessages.$inferSelect;
-export type RoiEstimateRow = typeof roiEstimates.$inferSelect;

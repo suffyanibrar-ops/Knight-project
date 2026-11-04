@@ -1,23 +1,19 @@
 import "server-only";
+import { isSqliteAvailable, sqliteStatus } from "./sqlite";
 
 /**
  * Central production configuration + startup validation.
  *
- * The application deliberately supports TWO independent stores, and the split
- * is explicit:
+ * The application uses a SINGLE embedded store:
  *
- *   SQLITE  (./data/app.db)  — primary store for website form submissions
- *                              (consultation + contact). Source of truth for the
- *                              /admin/inbox pages.
- *   POSTGRES (DATABASE_URL)  — optional CRM mirror + marketing list + email
- *                              outbox + Drizzle-managed content (specialties,
- *                              articles, FAQs). Enables /admin/submissions,
- *                              /admin/outbox, /admin/subscribers, /admin/estimates.
+ *   SQLITE (SQLITE_PATH, default ./data/app.db) — website form submissions,
+ *   subscribers, ROI estimates, CRM leads/contact messages, the email outbox,
+ *   admin audit log and the editable content tables. There is no external
+ *   database service and no DATABASE_URL.
  *
- * Neither store silently replaces the other. When Postgres is absent, the
- * SQLite inbox still works and the Postgres pages show a setup notice. When
- * SQLite is unavailable, the submission API returns an explicit error (and the
- * client falls back to the Postgres route) rather than pretending to save.
+ * When the SQLite file cannot be opened (read-only host, bad path), the site
+ * still renders from built-in content and the form APIs report an explicit
+ * error instead of pretending to save.
  */
 
 export const isProduction = process.env.NODE_ENV === "production";
@@ -40,10 +36,6 @@ export function siteUrl(): string {
 
 export function adminEmail(): string {
   return process.env.ADMIN_EMAIL?.trim() || "admin@knightmedicalbilling.com";
-}
-
-export function isPostgresConfigured(): boolean {
-  return has("DATABASE_URL");
 }
 
 /** True when a server-side email channel (Resend or SMTP) is configured. */
@@ -105,12 +97,15 @@ export function configIssues(): ConfigIssue[] {
     }
   }
 
-  // --- Database -------------------------------------------------------------
-  if (!isPostgresConfigured()) {
+  // --- Local database -------------------------------------------------------
+  if (!isSqliteAvailable()) {
+    const status = sqliteStatus();
     issues.push({
-      key: "DATABASE_URL",
-      severity: "warning",
-      message: "Postgres is not configured. Website enquiries are still stored in SQLite; the Postgres admin pages stay disabled.",
+      key: "SQLITE_PATH",
+      severity: "error",
+      message:
+        `SQLite is not available at "${status.path}". Set SQLITE_PATH to a writable, persistent directory (for example /var/data/app.db). ` +
+        (status.error ?? "Form submissions and admin data cannot be stored until this is fixed."),
     });
   }
 
@@ -132,13 +127,19 @@ export function hasBlockingConfigIssues(): boolean {
 
 /** Compact status object for /api/health and admin diagnostics. */
 export function configStatus() {
+  const sqlite = sqliteStatus();
   return {
     environment: process.env.NODE_ENV ?? "development",
     siteUrl: siteUrl(),
     adminEmail: adminEmail(),
     stores: {
-      sqlite: { role: "primary form storage", path: process.env.SQLITE_PATH || "./data/app.db" },
-      postgres: { role: "CRM mirror, content, outbox", configured: isPostgresConfigured() },
+      sqlite: {
+        role: "primary and only store (forms, CRM, outbox, audit, content)",
+        available: sqlite.available,
+        driver: sqlite.driver,
+        path: sqlite.path,
+        error: sqlite.error,
+      },
     },
     email: {
       serverChannel: isServerEmailConfigured() ? (has("RESEND_API_KEY") ? "resend" : "smtp") : "not-configured",

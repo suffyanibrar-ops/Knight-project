@@ -7,15 +7,15 @@ import { emailChannelStatus, OWNER_EMAIL } from "@/lib/email";
 import { retryAllQueuedAction, retryEmailAction, sendTestEmailAction } from "../actions";
 
 import { redirect } from "next/navigation";
-import { isDatabaseConfigured } from "@/db";
+import { isSqliteAvailable } from "@/lib/sqlite";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { PostgresNotice } from "@/components/admin/postgres-notice";
+import { StorageNotice } from "@/components/admin/storage-notice";
 
 export const dynamic = "force-dynamic";
 
 export default async function OutboxPage() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  if (!isDatabaseConfigured()) return <PostgresNotice />;
+  if (!isSqliteAvailable()) return <StorageNotice />;
   const rows = await db.select().from(emailOutbox).orderBy(desc(emailOutbox.createdAt)).limit(100);
   const sent = rows.filter((row) => row.status === "sent").length;
   const queued = rows.filter((row) => row.status !== "sent").length;

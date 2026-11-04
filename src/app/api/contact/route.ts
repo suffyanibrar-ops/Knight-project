@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { db, isDatabaseConfigured } from "@/db";
+import { db } from "@/db";
 import { contactMessages } from "@/db/schema";
 import { buildContactEmail, buildVisitorConfirmationEmail } from "@/lib/email";
 import { queueSubmissionEmails } from "@/lib/notify";
 import { findRecentDuplicate, isSqliteAvailable } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
-import { isPostgresConfigured } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +19,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Too many messages. Please try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
   }
 
-  if (!isPostgresConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "Message storage is not configured on this deployment. Please email admin@knightmedicalbilling.com." },
-      { status: 503 },
-    );
-  }
-
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const name = String(body.name ?? "").trim();
@@ -37,23 +29,26 @@ export async function POST(request: Request) {
     if (!emailPattern.test(email)) return NextResponse.json({ ok: false, error: "Please share a valid email." }, { status: 400 });
     if (message.length < 5) return NextResponse.json({ ok: false, error: "Tell us a little about what you need." }, { status: 400 });
 
-    const row = isDatabaseConfigured()
-      ? (await db
-      .insert(contactMessages)
-      .values({
-        name: name.slice(0, 160),
-        email: email.slice(0, 200),
-        phone: String(body.phone ?? "").trim().slice(0, 40) || null,
-        topic: String(body.topic ?? "General").slice(0, 120),
-        message: message.slice(0, 5000),
-      })
-      .returning({ id: contactMessages.id }))[0]
-      : undefined;
+    // Single embedded store: the CRM message lives in SQLite alongside the
+    // submission row written by POST /api/submissions. No external database.
+    const row = (
+      await db
+        .insert(contactMessages)
+        .values({
+          name: name.slice(0, 160),
+          email: email.slice(0, 200),
+          phone: String(body.phone ?? "").trim().slice(0, 40) || null,
+          topic: String(body.topic ?? "General").slice(0, 120),
+          message: message.slice(0, 5000),
+          status: "new",
+          emailStatus: "pending",
+        })
+        .returning({ id: contactMessages.id })
+    )[0];
 
     // Email delivery for a website message is owned by POST /api/submissions
-    // (the route the contact form calls first). This route is the Postgres
-    // mirror and the fallback when SQLite is unavailable, so only send when the
-    // primary route did not already handle this message.
+    // (the route the contact form calls first). This route records the CRM
+    // message, so only send when the primary route did not already handle it.
     const alreadyEmailed = isSqliteAvailable() && findRecentDuplicate(email, message, 5) !== null;
 
     if (!alreadyEmailed) {

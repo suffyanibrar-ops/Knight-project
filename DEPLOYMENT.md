@@ -1,11 +1,12 @@
 # Deployment guide — Knight Medical Billing
 
 A **full-stack Next.js 16 (App Router)** application with route handlers, server actions, middleware
-(`proxy.ts`), Drizzle ORM and PostgreSQL. It is **not** a static site and must not be exported
-statically — the admin console, form APIs and database require a server runtime.
+(`proxy.ts`), Drizzle ORM and **one embedded SQLite database**. It is **not** a static site and must
+not be exported statically — the admin console, form APIs and SQLite file all require a server
+runtime with a writable disk.
 
-Any Node.js 22 host works: Vercel, Render, Railway, Fly.io, Google Cloud Run, Google AI Studio,
-Northflank, a Docker container or a VPS. No host-specific files or attributes are required.
+Any Node.js 22 host works: a VPS, a container, HostNext, Render, Railway, Fly.io, Google Cloud Run
+or Google AI Studio — provided the host gives the app a writable **persistent** disk (see §6).
 
 ---
 
@@ -19,77 +20,160 @@ npm run start        # honours PORT; binds 0.0.0.0 by default
 
 `npm run dev` starts the development server on `http://localhost:3000`.
 
-Environment variables (all documented in `.env.example`):
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | For admin/forms/DB | Hosted Postgres connection string (`?sslmode=require` in production) |
-| `DATABASE_SSL_INSECURE` | Optional | `1` disables Postgres TLS certificate verification — only for a private/self-signed CA; it weakens MITM protection |
-| `TRUST_PROXY` | Optional | Default `1` = one trusted reverse proxy (last `X-Forwarded-For` hop is used for limits/audit). `0` = directly exposed, header ignored |
-| `NEXT_PUBLIC_SITE_URL` | Recommended | Absolute site URL for canonical tags, sitemap, Open Graph, emails |
-| `ADMIN_EMAIL` | Optional | Owner inbox for notifications (default `admin@knightmedicalbilling.com`) |
-| `ADMIN_PASSWORD` | For admin sign-in | Password for `/admin`; with no password from this var, a panel change or `ADMIN_PASSWORD_HASH`, sign-in is disabled (fail closed) |
-| `ADMIN_PASSWORD_HASH` | Optional | Legacy peppered digest (`sha256(ADMIN_SESSION_SECRET + password)`), used only after a panel password and `ADMIN_PASSWORD`; requires the same `ADMIN_SESSION_SECRET` used to derive it |
-| `ADMIN_SESSION_SECRET` | Recommended in production | Signs admin session cookies; without it production uses a random per-process key (sessions reset on restart, not shared between instances) |
-| `RESEND_API_KEY` | For email delivery | Server-side Resend key. Never exposed to the browser; without it no email is sent |
-| `MAIL_FROM` | For email delivery | Sender identity; the domain must be verified for that key (default `Knight Medical Billing <website@knightmedicalbilling.com>`) |
-| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | Optional | SMTP fallback, used only when `RESEND_API_KEY` is unset |
-
 `.env` is git-ignored; only `.env.example` is committed. Never commit credentials.
 
 ---
 
-## 2. Embedded SQLite (forms, subscribers and estimates)
+## 2. Environment variables
 
-`./data/app.db` is created automatically. Plain SQL via `better-sqlite3`
-(declared in `serverExternalPackages`). Tables: `submissions`, `subscribers`,
-`roi_estimates`, `settings`.
-
-This is the **primary store** for every website form: consultation and contact
-submissions, newsletter opt-ins and ROI calculator estimates are written here
-first, and the admin pages read them from here. Postgres mirrors the data when
-it is configured but is never required to capture it.
-
-- Needs a **writable, persistent directory**. Use a VPS, Docker volume, or a
-  platform disk (Render/Railway/Fly). On ephemeral serverless filesystems the
-  submission endpoint returns a clear message instead of failing silently.
-- Override the location with `SQLITE_PATH=/mnt/volume/app.db`.
-- There is **no fallback to a temporary directory**: an unwritable path is
-  reported (HTTP 503 + `/api/health`) instead of losing submissions.
-- Full details: **[DATA-AND-EMAIL.md](./DATA-AND-EMAIL.md)**
-- Back up by copying `data/app.db` (plus `-wal`/`-shm` while running).
-
-API: `POST /api/submissions` (public, validated — stores the submission and
-queues the owner notification + visitor confirmation) · `GET /api/submissions`
-(admin) · `GET /api/admin/inbox-export` (admin CSV). Other public form
-endpoints: `POST /api/subscribe` (newsletter) and `POST /api/roi` (ROI
-calculator).
-
-## 3. Database (PostgreSQL, optional)
-
-The connection string is read from `process.env.DATABASE_URL` in both places:
-
-- `src/db/index.ts` — Drizzle client (lazy pool, TLS with certificate verification by default; `DATABASE_SSL_INSECURE=1` opts out for private/self-signed CAs)
-- `drizzle.config.ts` — Drizzle Kit (throws a clear error if the variable is missing)
-
-No credentials are hardcoded. The embedded SQLite inbox in §2 is a separate
-local store, not a Postgres driver or a fallback for Postgres.
-
-```bash
-npm run db:push      # npx drizzle-kit push — apply src/db/schema.ts
-npm run db:seed      # node --experimental-strip-types scripts/seed.mjs
-npm run db:generate  # optional: emit SQL migrations
-```
-
-Run both commands once against your production database after the first deploy.
-
-**Resilience:** if `DATABASE_URL` is missing, public pages still render from built-in content and
-`/api/health` reports `stores.postgres.status: "not-configured"`. Admin pages show setup
-instructions. Nothing crashes at import time.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `SQLITE_PATH` | Required in production | Path to the SQLite file. Defaults to `./data/app.db`; in production use an absolute path on a persistent volume, e.g. `/var/data/app.db` |
+| `ADMIN_PASSWORD` | For admin sign-in | Password for `/admin`; with no password from this var, a panel change or `ADMIN_PASSWORD_HASH`, sign-in is disabled (fail closed) |
+| `ADMIN_PASSWORD_HASH` | Optional | Legacy peppered digest (`sha256(ADMIN_SESSION_SECRET + password)`), used only after a panel password and `ADMIN_PASSWORD`; requires the same `ADMIN_SESSION_SECRET` used to derive it |
+| `ADMIN_SESSION_SECRET` | Required in production | Signs admin session cookies; without it production uses a random per-process key (sessions reset on restart, not shared between instances) |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Absolute site URL for canonical tags, sitemap, Open Graph, emails |
+| `RESEND_API_KEY` | For email delivery | Server-side Resend key. Never exposed to the browser; without it no email is sent |
+| `MAIL_FROM` | For email delivery | Sender identity; the domain must be verified for that key (default `Knight Medical Billing <website@knightmedicalbilling.com>`) |
+| `ADMIN_EMAIL` | Optional | Owner inbox for notifications (default `admin@knightmedicalbilling.com`) |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | Optional | SMTP fallback, tried when `RESEND_API_KEY` is unset or a Resend delivery fails |
+| `TRUST_PROXY` | Optional | Default `1` = one trusted reverse proxy (last `X-Forwarded-For` hop is used for limits/audit). `0` = directly exposed, header ignored |
+| `IMAGES_UNOPTIMIZED` | Optional | `1` serves original images when the host cannot run the `sharp` optimiser |
 
 ---
 
-## 4. Images
+## 3. Embedded SQLite — the only store
+
+The database is a single file, opened with `better-sqlite3`. There is no external
+database, no connection string and no migration CLI.
+
+- `SQLITE_PATH` is resolved from the project root when relative; absolute paths are recommended
+  in production. The file, directories and tables are created automatically on first use.
+- Schema changes are applied at startup as `PRAGMA user_version` migrations; existing rows are
+  preserved.
+- Runtime pragmas: `journal_mode = WAL`, `busy_timeout = 5000`, `foreign_keys = ON`,
+  `synchronous = NORMAL`.
+- Tables: `submissions`, `settings`, `subscribers`, `roi_estimates` (plain-SQL helpers) and
+  `leads`, `contact_messages`, `email_outbox`, `admin_audit`, `testimonials`, `specialties`,
+  `case_studies`, `articles`, `faqs` (Drizzle query builder on the same file).
+
+API: `POST /api/submissions` (public, validated) · `GET /api/submissions` (admin) ·
+`POST /api/leads` and `POST /api/contact` (CRM copies written by the forms) ·
+`POST /api/subscribe` (newsletter) · `POST /api/roi` (ROI calculator) · `GET /api/health` ·
+`GET /api/admin/inbox-export` (admin CSV) · `GET /api/admin/export?type=…` (admin CSV:
+`leads`, `contacts`, `subscribers`, `estimates`, `outbox`).
+
+**It must be a writable, persistent directory.** On ephemeral filesystems (serverless
+functions, a fresh container on every request) the file is lost on each deploy, the admin
+pages show a storage notice and the form APIs return an explicit error. There is no
+fallback to a temporary directory.
+
+**Do not put the database under `public/` or any static-served directory** — that can make the
+file downloadable, and those directories are replaced on deploy. Not viable: a read-only image
+layer, `/tmp`, `/proc`, a network share, or a path inside the build output.
+
+**Content seeding (optional):** `npm run seed` upserts specialties, articles and FAQs from
+`src/lib/site.ts` into SQLite. Public pages fall back to that same built-in content when the
+tables are empty, so seeding is safe to run at any time and can be skipped.
+
+**Health:** `GET /api/health` returns `ok: true` only when the SQLite file opens and answers a
+query. It reports `stores.sqlite.{role,available,path,driver,error}`, the email channel status,
+config issues, `fallbackContent`, environment, site URL and a timestamp.
+
+---
+
+## 4. Backup and restore
+
+The SQLite file is the whole database — every submission, admin record and content
+row. Back it up on a regular schedule and treat the backup as sensitive: it contains
+form submissions and contact details.
+
+**Safe online backup (WAL-safe, no downtime):**
+
+```bash
+mkdir -p /var/backups/knight
+sqlite3 "${SQLITE_PATH:-./data/app.db}" ".backup '/var/backups/knight/app-$(date +%F-%H%M).db'"
+```
+
+If the `sqlite3` CLI is not installed, stop the app process and copy the file together with its
+WAL companions — copying `app.db` alone while the app is running can miss committed pages:
+
+```bash
+cp app.db app.db-wal app.db-shm /var/backups/knight/
+```
+
+Keep backups off the host (object storage or another volume) and test a restore before you rely
+on it.
+
+**Restore:**
+
+1. Stop the app process.
+2. Copy the backup over `SQLITE_PATH`.
+3. Remove any stale `app.db-wal` / `app.db-shm` files from the target directory.
+4. `chown` the file and directory to the user that runs the app.
+5. Start the app and verify `GET /api/health` reports `stores.sqlite.available: true`; check the
+   admin pages for expected row counts.
+
+**Routine:** back up before every deploy and keep at least one pre-migration copy so a failed
+import or upgrade can be rolled back by restoring the previous file.
+
+---
+
+## 5. One-time import from an old PostgreSQL deployment
+
+If this site previously ran on PostgreSQL, its data is imported once. The import
+script is dependency-free (it reads the CSV files — no database driver) and
+idempotent, so existing SQLite rows are preserved.
+
+1. Export the 11 tables to CSV on the old Postgres host (the old connection URL is used only
+   for this export):
+
+   ```bash
+   mkdir -p pg-dump
+   for t in leads contact_messages subscribers roi_estimates email_outbox \
+            admin_audit testimonials specialties case_studies articles faqs; do
+     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+       -c "\copy $t TO 'pg-dump/$t.csv' CSV HEADER"
+   done
+   ```
+
+2. Import into the SQLite file selected by `SQLITE_PATH`. The script creates the file, its
+   directory and the full schema if they do not exist yet, so the app does not have to have
+   booted first:
+
+   ```bash
+   npm run db:import-postgres -- pg-dump
+   ```
+
+3. Verify row counts in the admin console. Re-running the import is safe: it skips existing
+   rows and logs any row it could not map. After verification the old connection string is no
+   longer needed — the application only ever reads SQLite.
+
+---
+
+## 6. HostNext / Node hosting notes
+
+- Run the app as a **Node 22** service (`.nvmrc` is `22`): `npm install`, `npm run build`,
+  `npm run start`. The platform's `PORT` is honoured automatically.
+- Attach a **persistent disk** (volume) and set `SQLITE_PATH` to a file on it
+  (e.g. `/var/data/app.db`). The directory must be writable by the service user and survive
+  redeploys. If the volume is not mounted, the app still opens a fresh file inside the deployment
+  directory — data is silently lost on the next release. Verify `stores.sqlite.path` in
+  `GET /api/health` points at the volume after the first deploy.
+- `better-sqlite3` is a **native module**. It ships prebuilt binaries for common Node ABIs and
+  platforms; use a supported Node 22 x64/arm64 build. If `npm install` compiles from source or
+  the app reports a `NODE_MODULE_VERSION` mismatch, run `npm rebuild better-sqlite3` using the
+  same Node executable that runs the app.
+- Do **not** deploy to a read-only/serverless filesystem (static hosting, Vercel serverless,
+  Netlify functions, Cloudflare Workers). These have no durable local disk; use HostNext, a VPS,
+  a container with a volume, or Cloud Run with a mounted volume.
+- Run **one app instance** per SQLite file. WAL allows concurrent readers, but writes are
+  serialised; do not point multiple replicas at the same file over NFS or a network share.
+- Keep the database outside `public/` and back up the volume (§4).
+
+---
+
+## 7. Images
 
 `next/image` is used throughout. Local assets live in `public/images`. External images are
 allow-listed in `next.config.ts`:
@@ -103,7 +187,7 @@ image-optimization service (Vercel, Netlify) use it automatically.
 
 ---
 
-## 5. Admin console
+## 8. Admin console
 
 - URL: `/admin` → redirects to `/admin/login`
 - Password resolution: (1) password changed in **Settings** (scrypt hash in SQLite),
@@ -114,13 +198,13 @@ image-optimization service (Vercel, Netlify) use it automatically.
   admin page. `ADMIN_SESSION_SECRET` should be set in production; without it a random
   per-process key is generated, so cookies cannot be forged, but sessions reset on restart and
   are not shared between multiple instances.
-- Brute-force protection: 5 attempts / 15 minutes per IP, all attempts audit-logged
-- Pages: overview, submissions (status pipeline, search, CSV export), email outbox (retry + test
-  email), subscribers, ROI estimates
+- Brute-force protection: 5 attempts / 15 minutes per IP, all attempts audit-logged.
+- Pages: overview, SQLite inbox, submissions (status pipeline, search, CSV export), email
+  outbox (retry + test email), subscribers, ROI estimates, settings.
 
 ---
 
-## 6. Email notifications
+## 9. Email notifications
 
 **Resend (server-side):** every consultation and contact submission sends two
 emails from `POST /api/submissions`:
@@ -142,16 +226,17 @@ logged, and the enquiry is never lost.
 The same email + message within 10 minutes is treated as a duplicate: the existing
 submission is returned and no second pair of emails is sent. Newsletter and ROI
 submissions notify the owner but do not send a visitor confirmation. Configure
-`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` instead to use SMTP when
-`RESEND_API_KEY` is unset.
+`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` instead to fall back to SMTP when
+`RESEND_API_KEY` is unset or Resend delivery fails.
 
-Configure a channel, then use **Admin → Email delivery → Send test email** to confirm, and
-**Retry queued** to deliver anything captured earlier. With no channel configured and
-`DATABASE_URL` set, messages remain queued in the admin panel — nothing is lost.
+Owner notifications are recorded in the SQLite `email_outbox`; configure a channel, then
+use **Admin → Email delivery → Send test email** to confirm, and **Retry queued**
+to deliver anything captured earlier. With no channel configured, messages remain
+queued in the admin panel — nothing is lost.
 
 ---
 
-## 7. Google AI Studio / Cloud Run preview
+## 10. Google AI Studio / Cloud Run preview
 
 `next.config.ts` allow-lists the AI Studio dev host in `allowedDevOrigins`, which resolves
 cross-origin dev warnings:
@@ -160,30 +245,55 @@ cross-origin dev warnings:
 allowedDevOrigins: ['ais-dev-vdquyz2ozg4bjeiy4hgdx6-797145459235.asia-southeast1.run.app']
 ```
 
-If your preview hostname changes, add the new hostname to that array. Expose the port reported by the
-platform (Cloud Run sets `PORT`; `npm run start` reads it automatically).
+If your preview hostname changes, add the new hostname to that array. Expose the port reported by
+the platform (Cloud Run sets `PORT`; `npm run start` reads it automatically). These previews often
+have no persistent disk — expect the storage notice and deploy production on a host with a volume.
 
 ---
 
-## 8. Troubleshooting
+## 11. Health and monitoring
+
+`GET /api/health` is the single deployment check:
+
+```bash
+curl -s https://your-domain.com/api/health | jq
+```
+
+- `ok` — `true` only when the SQLite file opens and answers a query.
+- `stores.sqlite` — `{ role, available, path, driver, error }`; `error` states what to fix.
+- `email` — which server-side channel (if any) is active.
+- `config.blockingErrors` / `config.issues` — admin password, session secret, site URL, SQLite
+  path and email-channel problems.
+- `fallbackContent` — `true` when the site is serving built-in content because SQLite is
+  unavailable.
+
+---
+
+## 12. Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| Build error `DATABASE_URL is not set` | Only Drizzle CLI commands need it. Set `DATABASE_URL`, or skip DB commands for a content-only preview. |
-| `relation "leads" does not exist` | Run `npm run db:push` against the deployed database. |
-| Cloudinary image fails to load | Confirm the hostname is present in `images.remotePatterns`. |
-| Cross-origin dev warning in AI Studio | Add the exact preview origin to `allowedDevOrigins`. |
-| Admin shows "connect a database" | `DATABASE_URL` is missing in that environment. |
-| Emails queued, never sent | No channel configured — add `RESEND_API_KEY` or SMTP and retry. |
-| Blank preview | The server process is not running. Check `/api/health` and the platform port. |
+| Admin shows "Local database unavailable" / health `stores.sqlite.available: false` | Set `SQLITE_PATH` to a writable, persistent directory; check the directory exists and is owned by the app user |
+| Data disappears after a deploy | The filesystem is ephemeral. Use a persistent volume and set `SQLITE_PATH` to it |
+| `SQLITE_BUSY` / "database is locked" | Keep one app process per file; use a local disk (not NFS); WAL + the 5 s busy timeout should cover normal traffic |
+| `NODE_MODULE_VERSION` / "was compiled against a different Node.js version" | Run `npm rebuild better-sqlite3` with the Node 22 binary that runs the app |
+| Emails queued, never sent | No channel configured — add `RESEND_API_KEY` + `MAIL_FROM` (or SMTP) and retry from Email delivery |
+| Resend `403 not authorized to send emails from <domain>` | Verify `MAIL_FROM`'s domain for that API key, or use a root domain the key can send from |
+| Imported rows missing after migration | Check the CSV exports from the old database exist and have headers; the import logs skipped rows. Re-run it — it is idempotent |
+| Cloudinary image fails to load | Confirm the hostname is present in `images.remotePatterns` |
+| Cross-origin dev warning in AI Studio | Add the exact preview origin to `allowedDevOrigins` |
+| Blank preview | The server process is not running. Check `/api/health` and the platform port |
 
 ---
 
-## 9. Pre-launch checklist
+## 13. Pre-launch checklist
 
-- [ ] `DATABASE_URL` set and `npm run db:push && npm run db:seed` executed
+- [ ] `SQLITE_PATH` set to a writable, persistent volume — not `/tmp` and not inside `public/`
+- [ ] Backup procedure tested (§4); backup schedule in place
+- [ ] Optional: `npm run seed` executed (or accept the built-in content fallback)
 - [ ] `NEXT_PUBLIC_SITE_URL` set to the real domain
 - [ ] `ADMIN_PASSWORD` set (or a password saved from the panel); `ADMIN_SESSION_SECRET` randomised
-- [ ] Email channel configured and test email received
+- [ ] `RESEND_API_KEY` + `MAIL_FROM` configured (domain verified) and test email received
 - [ ] `/api/health` monitored; `/admin` blocked from indexing (already configured)
+- [ ] If migrating: old-database CSV import completed and verified (§5)
 - [ ] `npm audit --omit=dev` reviewed on your release cadence

@@ -3,9 +3,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
-import { db, isDatabaseConfigured } from "@/db";
-import { contactMessages, emailOutbox, leads, subscribers } from "@/db/schema";
+import { desc, eq, ne } from "drizzle-orm";
+import { db } from "@/db";
+import { contactMessages, emailOutbox, leads } from "@/db/schema";
 import {
   ADMIN_COOKIE,
   clearFailures,
@@ -21,7 +21,6 @@ import {
 import { OWNER_EMAIL, retryOutboxItem, sendOwnerNotification } from "@/lib/email";
 import { clientKeyFromHeaders } from "@/lib/rate-limit";
 import { deleteSubscriber, isSqliteAvailable } from "@/lib/sqlite";
-import { desc, ne } from "drizzle-orm";
 
 export type LoginState = { error?: string; lockedSeconds?: number };
 
@@ -96,12 +95,8 @@ export async function deleteSubmissionAction(formData: FormData) {
   if (type === "lead") await db.delete(leads).where(eq(leads.id, id));
   if (type === "contact") await db.delete(contactMessages).where(eq(contactMessages.id, id));
   if (type === "subscriber") {
-    // SQLite is the primary store for newsletter opt-ins and Postgres is only
-    // an optional mirror, so delete there first. If SQLite is unavailable — or
-    // holds no row with this id (data that predates it) — fall back to the
-    // Postgres copy when one is configured.
-    const deletedFromSqlite = isSqliteAvailable() && deleteSubscriber(id);
-    if (!deletedFromSqlite && isDatabaseConfigured()) await db.delete(subscribers).where(eq(subscribers.id, id));
+    // Newsletter opt-ins are stored only in the embedded SQLite file.
+    if (isSqliteAvailable()) deleteSubscriber(id);
   }
   await logAdminAction("submission.delete", `${type} #${id}`, null);
   revalidatePath("/admin");
