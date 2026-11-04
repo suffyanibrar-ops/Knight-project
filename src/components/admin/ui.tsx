@@ -56,7 +56,14 @@ export function EmptyState({ title, description }: { title: string; description:
 
 export function formatDate(value: Date | string | null | undefined) {
   if (!value) return "—";
-  const date = typeof value === "string" ? new Date(value) : value;
+  // SQLite stores datetime('now') as UTC text ("YYYY-MM-DD HH:MM:SS"). A bare
+  // value like that would be parsed as LOCAL time by Date, shifting the shown
+  // time by the viewer's offset, so mark it explicitly as UTC first.
+  const text = typeof value === "string" ? value.trim() : "";
+  const normalised = typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text)
+    ? `${text.replace(" ", "T")}Z`
+    : value;
+  const date = typeof normalised === "string" ? new Date(normalised) : normalised;
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }

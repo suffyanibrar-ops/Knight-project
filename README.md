@@ -6,9 +6,9 @@ Custom-tailored medical billing and revenue cycle management website, admin cons
 - **Website:** home, services (16), who we serve (5 + index), specialties (30 + index), process, results,
   about, resources (6 guides), FAQ, contact, schedule a consultation, HIPAA, privacy, terms
 - **Admin console:** `/admin` — submissions, email outbox, subscribers, ROI estimates, CSV exports
-- **Forms:** consultation wizard, contact, newsletter, ROI calculator — consultation/contact are stored
-  in SQLite (mirrored to Postgres when configured); newsletter/ROI are stored in Postgres when
-  configured. Owner email: Web3Forms (consultation/contact) plus optional server-side channels
+- **Forms:** consultation wizard, contact, newsletter, ROI calculator — all four are stored in
+  SQLite (the primary store) and mirrored to Postgres when it is configured. Owner email:
+  Web3Forms (consultation/contact) plus optional server-side channels
 
 ## Quick start
 

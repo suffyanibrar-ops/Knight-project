@@ -38,10 +38,16 @@ Environment variables (all documented in `.env.example`):
 
 ---
 
-## 2. Embedded SQLite (consultation inbox)
+## 2. Embedded SQLite (forms, subscribers and estimates)
 
 `./data/app.db` is created automatically. Plain SQL via `better-sqlite3`
-(declared in `serverExternalPackages`). Tables: `submissions`, `settings`.
+(declared in `serverExternalPackages`). Tables: `submissions`, `subscribers`,
+`roi_estimates`, `settings`.
+
+This is the **primary store** for every website form: consultation and contact
+submissions, newsletter opt-ins and ROI calculator estimates are written here
+first, and the admin pages read them from here. Postgres mirrors the data when
+it is configured but is never required to capture it.
 
 - Needs a **writable, persistent directory**. Use a VPS, Docker volume, or a
   platform disk (Render/Railway/Fly). On ephemeral serverless filesystems the
@@ -123,13 +129,13 @@ Web3Forms blocks server-IP requests by design, so this must run in the browser
 the inbox shows `failed`.
 
 **Server-side channels (optional):** when `DATABASE_URL` is configured,
-consultation and contact submissions are also mirrored to Postgres (best-effort,
-after the SQLite save) and each owner notification is written to `email_outbox`,
-then delivered to `ADMIN_EMAIL` through the first configured channel
-(Resend → SMTP → optional FormSubmit relay). Delivery runs after the response is
-flushed, so visitors never wait. Without `DATABASE_URL` there is no outbox or
-Postgres storage: newsletter/ROI submissions are not stored and queued-message
-retry is unavailable (a configured channel still sends directly).
+consultation, contact, newsletter and ROI submissions are also mirrored to
+Postgres (best-effort, after the SQLite save) and each owner notification is
+written to `email_outbox`, then delivered to `ADMIN_EMAIL` through the first
+configured channel (Resend → SMTP → optional FormSubmit relay). Delivery runs
+after the response is flushed, so visitors never wait. Without `DATABASE_URL`
+there is no outbox and queued-message retry is unavailable, but every submission
+is still stored durably in SQLite and appears in the admin console.
 
 Configure a channel, then use **Admin → Email delivery → Send test email** to confirm, and
 **Retry queued** to deliver anything captured earlier. With no channel configured and

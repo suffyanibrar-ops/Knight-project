@@ -110,6 +110,26 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS subscribers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  email_status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_subscribers_created_at ON subscribers (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS roi_estimates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT,
+  monthly_collections INTEGER NOT NULL,
+  denial_rate INTEGER NOT NULL,
+  days_in_ar INTEGER NOT NULL,
+  estimated_annual_uplift INTEGER NOT NULL,
+  email_status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_roi_estimates_created_at ON roi_estimates (created_at DESC);
 `;
 
 function wrapBetterSqlite3(instance: unknown): Driver {
@@ -185,6 +205,20 @@ function state(): DriverState {
 
 export function isSqliteAvailable(): boolean {
   return state().driver !== null;
+}
+
+/**
+ * Parse a SQLite datetime value. `datetime('now')` stores UTC text as
+ * "YYYY-MM-DD HH:MM:SS", which `new Date()` would otherwise interpret as local
+ * time — shifting every displayed timestamp by the server's UTC offset.
+ * Returns null for empty or unparsable values so callers can render a dash.
+ */
+export function parseSqliteDate(value: string | null | undefined): Date | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const isoish = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text) ? `${text.replace(" ", "T")}Z` : text;
+  const date = new Date(isoish);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function sqliteStatus() {
@@ -333,6 +367,170 @@ export function setSubmissionEmailStatus(id: number, status: "pending" | "sent" 
   if (!current.driver) return;
   try {
     current.driver.run("UPDATE submissions SET email_status = ? WHERE id = ?", [status, id]);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Newsletter subscribers (primary store; Postgres is an optional mirror) */
+/* ------------------------------------------------------------------ */
+
+export type SubscriberRow = {
+  id: number;
+  email: string;
+  email_status: string;
+  created_at: string;
+};
+
+/**
+ * Store a newsletter opt-in. Idempotent: subscribing the same address twice
+ * returns the existing row instead of failing on the UNIQUE constraint.
+ */
+export function insertSubscriber(input: { email: string }): { ok: boolean; id?: number; duplicate?: boolean; error?: string } {
+  const current = state();
+  if (!current.driver) return { ok: false, error: current.error ?? "SQLite unavailable" };
+
+  try {
+    const existing = current.driver.get<{ id: number }>("SELECT id FROM subscribers WHERE email = ?", [input.email]);
+    if (existing) return { ok: true, id: Number(existing.id), duplicate: true };
+    const result = current.driver.run("INSERT INTO subscribers (email) VALUES (?)", [input.email]);
+    return { ok: true, id: result.lastInsertRowid };
+  } catch (error) {
+    console.error("[sqlite] subscriber insert failed", error);
+    return { ok: false, error: "Could not save subscriber." };
+  }
+}
+
+export function listSubscribers(options: { limit?: number } = {}): SubscriberRow[] {
+  const current = state();
+  if (!current.driver) return [];
+  const limit = Math.min(Math.max(options.limit ?? 500, 1), 1000);
+  try {
+    return current.driver.all<SubscriberRow>(
+      "SELECT * FROM subscribers ORDER BY datetime(created_at) DESC, id DESC LIMIT ?",
+      [limit],
+    );
+  } catch (error) {
+    console.error("[sqlite] subscriber list failed", error);
+    return [];
+  }
+}
+
+export function countSubscribers(): number {
+  const current = state();
+  if (!current.driver) return 0;
+  try {
+    const row = current.driver.get<{ total: number }>("SELECT COUNT(*) AS total FROM subscribers", []);
+    return Number(row?.total ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+export function deleteSubscriber(id: number): boolean {
+  const current = state();
+  if (!current.driver) return false;
+  try {
+    return current.driver.run("DELETE FROM subscribers WHERE id = ?", [id]).changes > 0;
+  } catch (error) {
+    console.error("[sqlite] subscriber delete failed", error);
+    return false;
+  }
+}
+
+export function setSubscriberEmailStatus(id: number, status: "pending" | "sent" | "failed"): void {
+  const current = state();
+  if (!current.driver) return;
+  try {
+    current.driver.run("UPDATE subscribers SET email_status = ? WHERE id = ?", [status, id]);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* ROI estimates (primary store; Postgres is an optional mirror)      */
+/* ------------------------------------------------------------------ */
+
+export type RoiEstimateRow = {
+  id: number;
+  email: string | null;
+  monthly_collections: number;
+  denial_rate: number;
+  days_in_ar: number;
+  estimated_annual_uplift: number;
+  email_status: string;
+  created_at: string;
+};
+
+export type RoiEstimateInput = {
+  email: string | null;
+  monthlyCollections: number;
+  denialRate: number;
+  daysInAr: number;
+  estimatedAnnualUplift: number;
+};
+
+export function insertRoiEstimate(input: RoiEstimateInput): { ok: boolean; id?: number; error?: string } {
+  const current = state();
+  if (!current.driver) return { ok: false, error: current.error ?? "SQLite unavailable" };
+
+  try {
+    const result = current.driver.run(
+      `INSERT INTO roi_estimates (email, monthly_collections, denial_rate, days_in_ar, estimated_annual_uplift)
+       VALUES (?, ?, ?, ?, ?)`,
+      [input.email, input.monthlyCollections, input.denialRate, input.daysInAr, input.estimatedAnnualUplift],
+    );
+    return { ok: true, id: result.lastInsertRowid };
+  } catch (error) {
+    console.error("[sqlite] roi insert failed", error);
+    return { ok: false, error: "Could not save estimate." };
+  }
+}
+
+export function listRoiEstimates(options: { limit?: number } = {}): RoiEstimateRow[] {
+  const current = state();
+  if (!current.driver) return [];
+  const limit = Math.min(Math.max(options.limit ?? 500, 1), 1000);
+  try {
+    return current.driver.all<RoiEstimateRow>(
+      "SELECT * FROM roi_estimates ORDER BY datetime(created_at) DESC, id DESC LIMIT ?",
+      [limit],
+    );
+  } catch (error) {
+    console.error("[sqlite] roi list failed", error);
+    return [];
+  }
+}
+
+export function countRoiEstimates(): number {
+  const current = state();
+  if (!current.driver) return 0;
+  try {
+    const row = current.driver.get<{ total: number }>("SELECT COUNT(*) AS total FROM roi_estimates", []);
+    return Number(row?.total ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+export function deleteRoiEstimate(id: number): boolean {
+  const current = state();
+  if (!current.driver) return false;
+  try {
+    return current.driver.run("DELETE FROM roi_estimates WHERE id = ?", [id]).changes > 0;
+  } catch (error) {
+    console.error("[sqlite] roi delete failed", error);
+    return false;
+  }
+}
+
+export function setRoiEstimateEmailStatus(id: number, status: "pending" | "sent" | "failed"): void {
+  const current = state();
+  if (!current.driver) return;
+  try {
+    current.driver.run("UPDATE roi_estimates SET email_status = ? WHERE id = ?", [status, id]);
   } catch {
     /* non-fatal */
   }

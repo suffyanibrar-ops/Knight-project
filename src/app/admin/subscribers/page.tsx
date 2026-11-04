@@ -2,6 +2,7 @@ import { Download, Trash2 } from "lucide-react";
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { subscribers } from "@/db/schema";
+import { isSqliteAvailable, listSubscribers, parseSqliteDate } from "@/lib/sqlite";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
 import { deleteSubmissionAction } from "../actions";
 
@@ -12,10 +13,36 @@ import { PostgresNotice } from "@/components/admin/postgres-notice";
 
 export const dynamic = "force-dynamic";
 
+/** The shape this page renders, whichever store answered the query. */
+type SubscriberRecord = {
+  id: number;
+  email: string;
+  emailStatus: string;
+  createdAt: Date | null;
+};
+
+/**
+ * SQLite is the primary store for newsletter opt-ins; Postgres is an optional
+ * mirror. Returns null when neither store is configured so the page can show
+ * the setup notice.
+ */
+async function loadSubscribers(): Promise<SubscriberRecord[] | null> {
+  if (isSqliteAvailable()) {
+    return listSubscribers().map((row) => ({
+      id: row.id,
+      email: row.email,
+      emailStatus: row.email_status,
+      createdAt: parseSqliteDate(row.created_at),
+    }));
+  }
+  if (!isDatabaseConfigured()) return null;
+  return db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+}
+
 export default async function SubscribersPage() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  if (!isDatabaseConfigured()) return <PostgresNotice />;
-  const rows = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+  const rows = await loadSubscribers();
+  if (!rows) return <PostgresNotice />;
 
   return (
     <div className="space-y-5">

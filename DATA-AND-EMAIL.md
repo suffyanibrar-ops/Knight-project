@@ -9,20 +9,26 @@ silently and the deployment can be operated confidently.
 
 | Store | File / service | Holds | Required? |
 | --- | --- | --- | --- |
-| **SQLite** | `SQLITE_PATH` (default `./data/app.db`) | Website form submissions (consultation + contact) — the **source of truth** for `/admin/inbox` | **Yes** for form capture |
-| **PostgreSQL** | `DATABASE_URL` | CRM mirror of enquiries, newsletter subscribers, ROI estimates, email outbox, and the Drizzle-managed content tables (specialties, articles, FAQ) | Optional |
+| **SQLite** | `SQLITE_PATH` (default `./data/app.db`) | Website form submissions (consultation + contact), newsletter subscribers and ROI estimates — the **source of truth** for `/admin/inbox`, `/admin/subscribers` and `/admin/estimates` | **Yes** for form capture |
+| **PostgreSQL** | `DATABASE_URL` | Optional **mirror** of enquiries, subscribers and ROI estimates, plus the email outbox and the Drizzle-managed content tables (specialties, articles, FAQ) | Optional |
 
-**Why two?** SQLite gives a zero-configuration, no-cloud store for enquiries.
-Postgres gives a networked store for the CRM view, marketing list and content
-that can be edited without a deploy.
+**Why two?** SQLite gives a zero-configuration, no-cloud store for enquiries,
+opt-ins and estimates. Postgres gives a networked mirror for the CRM view,
+marketing list and content that can be edited without a deploy.
 
 **Neither silently replaces the other:**
 
 - Postgres missing → the site renders from built-in content; SQLite still stores
-  enquiries; Postgres-backed admin pages show a setup notice.
+  enquiries, subscribers and estimates, and the admin pages read SQLite, so
+  nothing is lost or hidden.
 - SQLite unavailable → `POST /api/submissions` returns **503 with an explicit
   message**; the browser then falls back to `/api/leads` (Postgres) so the lead
-  is still captured. Nothing reports success unless a store accepted the write.
+  is still captured. `POST /api/subscribe` and `POST /api/roi` return **503**
+  too, unless Postgres accepted the write. Nothing reports success unless a
+  store accepted the write.
+
+A Postgres mirror failure is logged and never fails the request — the SQLite row
+is already the durable copy.
 
 There is **no SQLite → temp-directory fallback** and **no in-memory fallback**.
 A failure is always reported.

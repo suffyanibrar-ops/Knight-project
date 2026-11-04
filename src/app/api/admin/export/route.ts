@@ -3,6 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { contactMessages, emailOutbox, leads, roiEstimates, subscribers } from "@/db/schema";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { isSqliteAvailable, listRoiEstimates, listSubscribers } from "@/lib/sqlite";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,19 @@ function cell(value: unknown) {
   const text = value === null || value === undefined ? "" : String(value);
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safe.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+}
+
+/**
+ * SQLite stores datetimes as UTC text ("YYYY-MM-DD HH:MM:SS"). Normalise to an
+ * ISO-8601 string for the CSV, treating a bare value as UTC. An unparsable
+ * value is exported verbatim rather than crashing the whole export.
+ */
+function sqliteTimestamp(value: string | null | undefined) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const isoish = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text) ? `${text.replace(" ", "T")}Z` : text;
+  const parsed = new Date(isoish);
+  return Number.isNaN(parsed.getTime()) ? text : parsed.toISOString();
 }
 
 function toCsv(headers: string[], rows: unknown[][]) {
@@ -38,12 +52,28 @@ export async function GET(request: Request) {
     csv = toCsv(["Received", "Name", "Email", "Phone", "Topic", "Message", "Status", "Owner email"], rows.map((row) => [row.createdAt.toISOString(), row.name, row.email, row.phone, row.topic, row.message, row.status, row.emailStatus]));
     filename = "knight-contact-messages.csv";
   } else if (type === "subscribers") {
-    const rows = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
-    csv = toCsv(["Joined", "Email"], rows.map((row) => [row.createdAt.toISOString(), row.email]));
+    // SQLite is the primary store for newsletter opt-ins; Postgres is an
+    // optional mirror, so export the same rows the admin page displays.
+    if (isSqliteAvailable()) {
+      const rows = listSubscribers();
+      csv = toCsv(["Joined", "Email"], rows.map((row) => [sqliteTimestamp(row.created_at), row.email]));
+    } else {
+      const rows = await db.select().from(subscribers).orderBy(desc(subscribers.createdAt));
+      csv = toCsv(["Joined", "Email"], rows.map((row) => [row.createdAt.toISOString(), row.email]));
+    }
     filename = "knight-subscribers.csv";
   } else if (type === "estimates") {
-    const rows = await db.select().from(roiEstimates).orderBy(desc(roiEstimates.createdAt));
-    csv = toCsv(["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"], rows.map((row) => [row.createdAt.toISOString(), row.email, row.monthlyCollections, row.denialRate, row.daysInAr, row.estimatedAnnualUplift]));
+    // SQLite is the primary store for ROI estimates; Postgres is optional.
+    if (isSqliteAvailable()) {
+      const rows = listRoiEstimates();
+      csv = toCsv(
+        ["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"],
+        rows.map((row) => [sqliteTimestamp(row.created_at), row.email, row.monthly_collections, row.denial_rate, row.days_in_ar, row.estimated_annual_uplift]),
+      );
+    } else {
+      const rows = await db.select().from(roiEstimates).orderBy(desc(roiEstimates.createdAt));
+      csv = toCsv(["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"], rows.map((row) => [row.createdAt.toISOString(), row.email, row.monthlyCollections, row.denialRate, row.daysInAr, row.estimatedAnnualUplift]));
+    }
     filename = "knight-roi-estimates.csv";
   } else if (type === "outbox") {
     const rows = await db.select().from(emailOutbox).orderBy(desc(emailOutbox.createdAt));
