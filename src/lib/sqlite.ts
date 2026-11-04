@@ -118,11 +118,21 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
   { version: 2, statements: "ALTER TABLE email_outbox ADD COLUMN provider_message_id TEXT;" },
+  // v3: recipient suppression list fed by bounce/complaint events. Sending to a
+  // known-bad address is what damages sender reputation, so it is blocked.
+  {
+    version: 3,
+    statements: `CREATE TABLE IF NOT EXISTS email_suppressions (
+      email TEXT PRIMARY KEY,
+      reason TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );`,
+  },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {
@@ -400,6 +410,52 @@ export function updateOutboxByProviderMessageId(
   } catch (error) {
     console.error("[sqlite] outbox status update failed", error);
     return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Email suppression list (bounces and complaints)                     */
+/* ------------------------------------------------------------------ */
+
+/** True when this address bounced or complained and must not be emailed again. */
+export function isEmailSuppressed(email: string): boolean {
+  const current = state();
+  if (!current.driver || !email) return false;
+  try {
+    return current.driver.get<{ email: string }>("SELECT email FROM email_suppressions WHERE email = ?", [email.trim().toLowerCase()]) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/** Records a hard bounce or spam complaint so future sends to it are skipped. */
+export function addEmailSuppression(email: string, reason: string): boolean {
+  const current = state();
+  if (!current.driver || !email) return false;
+  try {
+    current.driver.run(
+      `INSERT INTO email_suppressions (email, reason) VALUES (?, ?)
+       ON CONFLICT(email) DO UPDATE SET reason = excluded.reason`,
+      [email.trim().toLowerCase(), reason.slice(0, 300)],
+    );
+    return true;
+  } catch (error) {
+    console.error("[sqlite] suppression write failed", error);
+    return false;
+  }
+}
+
+/** Looks up the outbox row a provider message id belongs to. */
+export function getOutboxByProviderMessageId(messageId: string): { id: number; to_email: string; kind: string } | undefined {
+  const current = state();
+  if (!current.driver || !messageId) return undefined;
+  try {
+    return current.driver.get<{ id: number; to_email: string; kind: string }>(
+      "SELECT id, to_email, kind FROM email_outbox WHERE provider_message_id = ? LIMIT 1",
+      [messageId],
+    );
+  } catch {
+    return undefined;
   }
 }
 

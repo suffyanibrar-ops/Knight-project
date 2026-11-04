@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { updateOutboxByProviderMessageId } from "@/lib/sqlite";
+import { addEmailSuppression, getOutboxByProviderMessageId, updateOutboxByProviderMessageId } from "@/lib/sqlite";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -108,6 +108,17 @@ export async function POST(request: Request) {
 
   const detail = event.data?.bounced?.message ?? event.data?.bounce?.message ?? event.data?.error ?? null;
   const updated = updateOutboxByProviderMessageId(messageId, status, detail);
+
+  // A hard bounce or a spam complaint means this address must not be emailed
+  // again: repeat sends to it are what erode sender reputation.
+  if (status === "bounced" || status === "complained") {
+    const row = getOutboxByProviderMessageId(messageId);
+    if (row?.to_email) {
+      addEmailSuppression(row.to_email, status === "complained" ? "spam complaint" : (detail ?? "hard bounce"));
+      console.info(`[resend-webhook] suppressed ${row.to_email} (${status})`);
+    }
+  }
+
   console.info(`[resend-webhook] ${type} ${messageId} -> outbox ${updated ? "updated" : "not found"}`);
   return NextResponse.json({ ok: true, handled: type, updated });
 }

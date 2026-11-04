@@ -2,6 +2,7 @@ import "server-only";
 import { db, isSqliteAvailable } from "@/db";
 import { emailOutbox } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { isEmailSuppressed } from "./sqlite";
 
 export const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? "admin@knightmedicalbilling.com";
 /**
@@ -253,6 +254,8 @@ export function buildVisitorConfirmationEmail(
       "",
       "If anything above is incorrect, reply to this email and let us know.",
       "",
+      "You are receiving this email because you submitted a consultation request on knightmedicalbilling.com. If you did not submit it, please ignore this message.",
+      "",
       BUSINESS_CONTACT,
     ].join("\n"),
     html: shell(
@@ -299,6 +302,8 @@ async function viaResend(payload: MailPayload): Promise<DeliveryResult> {
           "X-Entity-Ref-ID": `${payload.kind}-${Date.now()}`,
           "X-Auto-Response-Suppress": "All",
           "Auto-Submitted": "auto-generated",
+          // Gmail complaint attribution (Postmaster Tools): campaign:customer:type:sender
+          "Feedback-ID": `website-transactional:knightmedicalbilling:${payload.kind}:resend`,
         },
       }),
     }),
@@ -375,6 +380,8 @@ export function emailChannelStatus() {
 
 export async function sendOwnerNotification(payload: MailPayload): Promise<DeliveryResult & { outboxId?: number }> {
   let outboxId: number | undefined;
+  const recipient = payload.to ?? OWNER_EMAIL;
+  const suppressed = isEmailSuppressed(recipient);
   const persist = isSqliteAvailable();
   if (persist) try {
     const [row] = await db
@@ -386,7 +393,7 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
         subject: cleanHeader(payload.subject) ?? "Website notification",
         textBody: payload.text,
         htmlBody: payload.html,
-        status: "pending",
+        status: suppressed ? "suppressed" : "pending",
         relatedType: payload.relatedType ?? null,
         relatedId: payload.relatedId ?? null,
       })
@@ -394,6 +401,11 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
     outboxId = row?.id;
   } catch (error) {
     console.error("outbox insert failed", error);
+  }
+
+  if (suppressed) {
+    console.warn(`[email] skipped ${payload.kind}: recipient ${recipient} is on the bounce/complaint suppression list`);
+    return { status: "failed", error: "Recipient suppressed after a bounce or complaint", outboxId };
   }
 
   // Only attempt network delivery when a channel is actually configured.
@@ -453,6 +465,8 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
  */
 export async function sendVisitorConfirmation(payload: MailPayload): Promise<DeliveryResult> {
   const message: MailPayload = { ...payload, replyTo: payload.replyTo ?? OWNER_EMAIL };
+  const recipient = message.to ?? OWNER_EMAIL;
+  const suppressed = isEmailSuppressed(recipient);
 
   // Visitor confirmations are logged in the same outbox as owner mail, under a
   // distinct kind, so delivery, bounces and complaints are traceable for both
@@ -469,7 +483,7 @@ export async function sendVisitorConfirmation(payload: MailPayload): Promise<Del
           subject: cleanHeader(message.subject) ?? "Confirmation",
           textBody: message.text,
           htmlBody: message.html,
-          status: "pending",
+          status: suppressed ? "suppressed" : "pending",
           relatedType: payload.relatedType ?? null,
           relatedId: payload.relatedId ?? null,
         })
@@ -478,6 +492,11 @@ export async function sendVisitorConfirmation(payload: MailPayload): Promise<Del
     } catch (error) {
       console.error("visitor outbox insert failed", error);
     }
+  }
+
+  if (suppressed) {
+    console.warn(`[email] skipped visitor confirmation: ${recipient} is on the bounce/complaint suppression list`);
+    return { status: "failed", error: "Recipient suppressed after a bounce or complaint", outboxId };
   }
 
   const providers: ((p: MailPayload) => Promise<DeliveryResult>)[] = [];
