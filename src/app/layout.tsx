@@ -4,12 +4,9 @@ import "@fontsource/instrument-serif/400-italic.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { ChatWidget, ScrollProgress } from "@/components/site-chrome";
 import { ToastProvider } from "@/components/motion/toast";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { site } from "@/lib/site";
 import { organizationSchema, websiteSchema, SITE_URL } from "@/lib/seo";
 import { JsonLd } from "@/components/structured-data";
@@ -102,22 +99,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-screen bg-surface text-ink-900 antialiased">
         <ThemeProvider>
-        <MotionProvider>
-        <ToastProvider>
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-night-soft focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-white"
-        >
-          Skip to content
-        </a>
-        <ScrollProgress />
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter />
-        </ToastProvider>
-        </MotionProvider>
+          <MotionProvider>
+            <ToastProvider>
+              {/* Site chrome (header/footer/chat) lives in the (site) layout so the
+                  admin console renders without it. */}
+              {children}
+            </ToastProvider>
+          </MotionProvider>
         </ThemeProvider>
-        <ChatWidget />
         <JsonLd data={[jsonLd, organizationSchema(), websiteSchema()]} />
       </body>
     </html>

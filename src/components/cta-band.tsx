@@ -15,7 +15,7 @@ export function CtaBand({
   return (
     <section className="relative overflow-hidden bg-night py-16 text-white sm:py-20">
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[url('/images/section-consultation.jpg')] bg-cover bg-center opacity-[0.32]" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_85%_15%,rgba(124,215,242,0.22),transparent_55%),radial-gradient(90%_90%_at_10%_90%,rgba(94,194,122,0.16),transparent_60%)]" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
       </div>
       <div className="dot-grid absolute inset-0 opacity-[0.1]" />

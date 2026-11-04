@@ -2,19 +2,23 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Inbox, LayoutDashboard, Mail, Menu, MessageSquare, PieChart, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { ChevronDown, Inbox, LayoutDashboard, Menu, PieChart, Settings, ShieldCheck, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Owner-facing modules only. The raw form inbox IS the complete enquiry record,
+ * so the duplicate "Submissions" CRM view was removed. Email delivery stays as
+ * a deep-linked diagnostics page (dashboard surfaces failures) rather than a
+ * primary module, because the owner does not manage it day to day.
+ */
 const links = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
-  { label: "Inbox (SQLite)", href: "/admin/inbox", icon: Inbox },
-  { label: "Submissions", href: "/admin/submissions", icon: MessageSquare },
-  { label: "Email delivery", href: "/admin/outbox", icon: Mail },
+  { label: "Enquiries", href: "/admin/inbox", icon: Inbox },
   { label: "Subscribers", href: "/admin/subscribers", icon: Users },
-  { label: "Estimates", href: "/admin/estimates", icon: PieChart },
+  { label: "ROI estimates", href: "/admin/estimates", icon: PieChart },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

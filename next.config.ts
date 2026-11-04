@@ -55,6 +55,12 @@ const nextConfig: NextConfig = {
     // Escape hatch for hosts that cannot run the sharp optimiser: set
     // IMAGES_UNOPTIMIZED=1 to serve the original files unchanged.
     unoptimized: process.env.IMAGES_UNOPTIMIZED === "1",
+    // Brand illustrations in /public/images/visuals are our own static SVGs.
+    // next/image rejects SVG by default because remote SVG can carry script;
+    // these are first-party files, and the sandboxed CSP below neutralises any
+    // script/network capability if one were ever replaced maliciously.
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     formats: ["image/avif", "image/webp"],
     deviceSizes: [360, 420, 640, 768, 1024, 1280, 1536, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
