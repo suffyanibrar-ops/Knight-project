@@ -3,10 +3,12 @@
 Custom-tailored medical billing and revenue cycle management website, admin console and form pipeline.
 
 - **Stack:** Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL · Framer Motion
-- **Website:** home, services (10), who we serve (5 + index), specialties (30 + index), process, results,
+- **Website:** home, services (16), who we serve (5 + index), specialties (30 + index), process, results,
   about, resources (6 guides), FAQ, contact, schedule a consultation, HIPAA, privacy, terms
 - **Admin console:** `/admin` — submissions, email outbox, subscribers, ROI estimates, CSV exports
-- **Forms:** consultation wizard, contact, newsletter, ROI calculator — stored in Postgres and emailed to the owner
+- **Forms:** consultation wizard, contact, newsletter, ROI calculator — consultation/contact are stored
+  in SQLite (mirrored to Postgres when configured); newsletter/ROI are stored in Postgres when
+  configured. Owner email: Web3Forms (consultation/contact) plus optional server-side channels
 
 ## Quick start
 
@@ -16,7 +18,7 @@ cp .env.example .env      # optional — the site runs without any env vars
 npm run dev               # http://localhost:3000
 ```
 
-Database (optional, enables admin storage):
+Database (optional — enables the Postgres-backed CRM, outbox and content tables; the SQLite inbox works without it):
 
 ```bash
 npx drizzle-kit push
@@ -48,9 +50,10 @@ endpoint responds with a clear message and the rest of the site keeps working.
 
 ### Email notifications
 
-- **Web3Forms** (client-side, access key in `src/lib/web3forms.ts`) sends every
-  form submission to the owner inbox. Failures are logged silently; the SQLite
-  save remains the source of truth and the admin shows delivery status.
+- **Web3Forms** (client-side, access key in `src/lib/web3forms.ts`) sends consultation and
+  contact submissions to the owner inbox; newsletter and ROI calculator submissions do not use
+  it. Failures are logged silently; the stored submission remains the source of truth and the
+  admin shows delivery status.
 - **Optional server-side channels** (`/api/leads`, `/api/contact`, …) use Resend
   or SMTP when configured, with an outbox in Postgres.
 
@@ -63,16 +66,21 @@ npm run db:seed        # node --experimental-strip-types scripts/seed.mjs
 
 This is a full-stack app — do not add `output: 'export'`.
 
-Admin password: `Medical#213` (digest stored server-side; override with `ADMIN_PASSWORD_HASH`).
+Admin password: there is **no built-in default**. Admin sign-in stays **disabled** until
+`ADMIN_PASSWORD` (or a legacy `ADMIN_PASSWORD_HASH` with a matching `ADMIN_SESSION_SECRET`) is
+set; once signed in, change it at `/admin/settings` (scrypt hash stored in SQLite, which then
+takes precedence over both environment variables).
 
 ## Before you deploy — required environment
 
 ```bash
-ADMIN_PASSWORD=<long random passphrase>          # required in production
-ADMIN_SESSION_SECRET=<64 hex chars>              # required in production
+ADMIN_PASSWORD=<long random passphrase>          # required for admin sign-in (no default)
+ADMIN_SESSION_SECRET=<64 hex chars>              # required in production for stable sessions
 NEXT_PUBLIC_SITE_URL=https://your-domain.com     # required for correct SEO
 SQLITE_PATH=/var/data/app.db                     # persistent, writable volume
 DATABASE_URL=postgresql://…?sslmode=require      # optional (CRM/content)
+DATABASE_SSL_INSECURE=0                          # optional: 1 disables Postgres TLS cert verification (private CA only)
+TRUST_PROXY=1                                    # optional: 1 = one trusted reverse proxy (default); 0 only if directly exposed
 RESEND_API_KEY=… | SMTP_HOST=…                   # optional (server-side email)
 ```
 
@@ -81,6 +89,10 @@ Generate a session secret:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+Set `ADMIN_SESSION_SECRET` on every instance: without it, production generates a random
+per-process signing key, so forged admin cookies are impossible but sessions reset on restart
+and are not shared between instances.
 
 Check deployment readiness at any time:
 

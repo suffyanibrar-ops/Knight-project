@@ -6,7 +6,7 @@ import { isDatabaseConfigured } from "@/db";
 import { adminAudit } from "@/db/schema";
 import { expectedPasswordDigest, FALLBACK_ADMIN_PEPPER, sessionSecret } from "./admin-session";
 import { getStoredPasswordHash, verifyPasswordHash } from "./admin-password";
-import { hasConfiguredAdminPassword, isProduction } from "./config";
+import { hasConfiguredAdminPassword } from "./config";
 
 export const ADMIN_COOKIE = "kmb_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
@@ -20,10 +20,10 @@ export { sessionSecret };
  *   1. A password changed from the admin panel (scrypt hash in SQLite)
  *   2. ADMIN_PASSWORD (constant-time comparison)
  *   3. ADMIN_PASSWORD_HASH (peppered SHA-256 digest)
- *   4. Development-only built-in default — DISABLED in production
  *
- * In production, if no password has been configured at all, verification always
- * fails: sign-in is closed rather than falling back to a publicly known default.
+ * There is no built-in/default password. If none of the three sources is
+ * configured, verification always fails: sign-in is disabled in every
+ * environment (fail closed) rather than falling back to a public default.
  */
 export function verifyAdminPassword(candidate: string): boolean {
   if (!candidate) return false;
@@ -40,14 +40,16 @@ export function verifyAdminPassword(candidate: string): boolean {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
-  // Production with no configured password: refuse every attempt.
-  if (isProduction && !hasConfiguredAdminPassword()) {
-    console.error("[auth] Sign-in blocked: ADMIN_PASSWORD is not configured in production.");
-    return false;
-  }
-
   // 3. Legacy peppered digest (ADMIN_PASSWORD_HASH).
   const expected = expectedPasswordDigest();
+  if (!expected) {
+    // No panel password, no ADMIN_PASSWORD and no ADMIN_PASSWORD_HASH:
+    // sign-in is disabled in every environment — there is no default password.
+    console.error(
+      "[auth] Sign-in blocked: no admin password is configured. Set ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH), or change it from the admin panel.",
+    );
+    return false;
+  }
 
   if (expected.startsWith(`${FALLBACK_ADMIN_PEPPER}:plain:`)) {
     const plain = expected.slice(`${FALLBACK_ADMIN_PEPPER}:plain:`.length);

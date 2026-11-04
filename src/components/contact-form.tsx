@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { useState } from "react";
-import { reportNotificationStatus, sendWeb3FormsNotification } from "@/lib/web3forms";
+import { sendWeb3FormsNotification } from "@/lib/web3forms";
 import { useToast } from "@/components/motion/toast";
 import { cn } from "./ui";
 
@@ -28,7 +28,7 @@ export function ContactForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, specialty: form.topic, source: "contact-form" }),
       });
-      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; error?: string } | null;
+      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; token?: string; error?: string } | null;
 
       if (!response.ok || !saved?.ok) {
         const backup = await fetch("/api/contact", {
@@ -50,7 +50,17 @@ export function ContactForm() {
           source: "contact-form",
         },
         `New contact message — ${form.name || "Website visitor"}`,
-      ).then((result) => reportNotificationStatus(saved?.id, result.ok));
+      ).then((result) => {
+        // Report the notification outcome with the id-bound capability token
+        // POST /api/submissions issued for this submission.
+        if (!saved?.id || !saved.token) return;
+        void fetch("/api/submissions/email-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: saved.id, token: saved.token, ok: result.ok }),
+          keepalive: true,
+        }).catch(() => undefined);
+      });
 
       // 3. Existing contact pipeline (Postgres + owner notification). Best effort.
       void fetch("/api/contact", {

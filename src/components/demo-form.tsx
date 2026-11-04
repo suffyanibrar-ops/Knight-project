@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, CalendarCheck, Check, CheckCircle2, Loader2, Pho
 import Link from "next/link";
 import { useState } from "react";
 import { collectionBands, services, site, specialties } from "@/lib/site";
-import { reportNotificationStatus, sendWeb3FormsNotification } from "@/lib/web3forms";
+import { sendWeb3FormsNotification } from "@/lib/web3forms";
 import { useToast } from "./motion/toast";
 import { cn } from "./ui";
 
@@ -74,7 +74,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; error?: string } | null;
+      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; token?: string; error?: string } | null;
 
       if (!response.ok || !saved?.ok) {
         // Local SQLite may be unavailable on read-only hosting. Fall back to the
@@ -103,7 +103,17 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
           source,
         },
         `New consultation request — ${form.name || "Website visitor"}`,
-      ).then((result) => reportNotificationStatus(saved?.id, result.ok));
+      ).then((result) => {
+        // Report the notification outcome with the id-bound capability token
+        // POST /api/submissions issued for this submission.
+        if (!saved?.id || !saved.token) return;
+        void fetch("/api/submissions/email-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: saved.id, token: saved.token, ok: result.ok }),
+          keepalive: true,
+        }).catch(() => undefined);
+      });
 
       // 3. Existing CRM/email pipeline (Postgres + owner notification). Best effort.
       void fetch("/api/leads", {

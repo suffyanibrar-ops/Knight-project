@@ -8,7 +8,7 @@ import { getSetting, setSetting } from "./sqlite";
  * Resolution order (first match wins):
  *   1. A hash changed from the admin panel — stored in SQLite (`settings` table)
  *   2. The ADMIN_PASSWORD environment variable
- *   3. The legacy digest (ADMIN_PASSWORD_HASH env or the built-in default)
+ *   3. The legacy digest (ADMIN_PASSWORD_HASH env; there is no built-in default)
  *
  * Hashes use scrypt with a per-password random salt. No plaintext password is
  * ever written to disk, logged, or shipped to the browser.

@@ -47,18 +47,3 @@ export async function sendWeb3FormsNotification(
     return { ok: false, error: "Network error" };
   }
 }
-
-/** Tells the server whether the owner email was accepted. Never throws. */
-export async function reportNotificationStatus(id: number | undefined, ok: boolean): Promise<void> {
-  if (!id) return;
-  try {
-    await fetch("/api/submissions/email-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ok }),
-      keepalive: true,
-    });
-  } catch {
-    /* ignore */
-  }
-}

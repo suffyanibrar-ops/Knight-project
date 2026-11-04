@@ -14,6 +14,7 @@ export default async function AdminSettingsPage() {
   const managed = isPasswordManagedInPanel();
   const status = sqliteStatus();
   const envManaged = Boolean(process.env.ADMIN_PASSWORD);
+  const hashManaged = Boolean(process.env.ADMIN_PASSWORD_HASH);
 
   return (
     <div className="space-y-5">
@@ -50,7 +51,7 @@ export default async function AdminSettingsPage() {
               </li>
               <li className="flex gap-2">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mint-600" />
-                Current source: {managed ? "set from this panel" : envManaged ? "ADMIN_PASSWORD environment variable" : "built-in default digest"}.
+                Current source: {managed ? "set from this panel" : envManaged ? "ADMIN_PASSWORD environment variable" : hashManaged ? "ADMIN_PASSWORD_HASH environment variable" : "not configured"}.
               </li>
               <li className="flex gap-2">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mint-600" />
@@ -62,7 +63,7 @@ export default async function AdminSettingsPage() {
               </li>
             </ul>
             <p className="mt-3 rounded-xl bg-mist-50 px-3 py-2.5 text-[0.72rem] leading-relaxed text-ink-600/70">
-              A password changed here overrides <code className="rounded bg-surface px-1 py-0.5">ADMIN_PASSWORD</code> and the built-in default.
+              A password changed here overrides <code className="rounded bg-surface px-1 py-0.5">ADMIN_PASSWORD</code> and <code className="rounded bg-surface px-1 py-0.5">ADMIN_PASSWORD_HASH</code>.
               To reset everything, delete the <code className="rounded bg-surface px-1 py-0.5">admin_password</code> row in the local database.
             </p>
           </section>

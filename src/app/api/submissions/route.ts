@@ -1,4 +1,6 @@
+import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
+import { sessionSecret } from "@/lib/admin-session";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { findRecentDuplicate, insertSubmission, isSqliteAvailable, listSubmissions, sqliteStatus } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
@@ -13,6 +15,23 @@ export const runtime = "nodejs";
  * POST  — validate → insert with a parameterized statement
  * GET   — admin-only listing (used by the admin panel / CSV export)
  */
+
+/**
+ * Capability token for the public email-status callback
+ * (src/app/api/submissions/email-status/route.ts).
+ *
+ * The callback runs in the visitor's browser, so it cannot require an admin
+ * session — but without proof of possession it would let anyone rewrite the
+ * email status of an arbitrary submission id. The token is an HMAC bound to
+ * exactly one submission id and domain-separated from admin session tokens, so
+ * it is useless for any other id (or for signing in). Keep the domain string
+ * in sync with the verifier in the callback route.
+ */
+const EMAIL_STATUS_TOKEN_DOMAIN = "submission-email-status.v1";
+
+function emailStatusToken(id: number): string {
+  return createHmac("sha256", sessionSecret()).update(`${EMAIL_STATUS_TOKEN_DOMAIN}:${id}`).digest("hex");
+}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -96,7 +115,7 @@ export async function POST(request: Request) {
   const duplicate = findRecentDuplicate(email, message || null);
   if (duplicate) {
     return NextResponse.json(
-      { ok: true, id: duplicate.id, duplicate: true, message: "We already received this request. Our team will be in touch." },
+      { ok: true, id: duplicate.id, token: emailStatusToken(duplicate.id), duplicate: true, message: "We already received this request. Our team will be in touch." },
       { status: 200 },
     );
   }
@@ -114,11 +133,11 @@ export async function POST(request: Request) {
     source,
   });
 
-  if (!result.ok) {
+  if (!result.ok || result.id === undefined) {
     return NextResponse.json({ ok: false, error: result.error ?? "Could not save your submission." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, id: result.id, message: "Your submission was saved." }, { status: 201 });
+  return NextResponse.json({ ok: true, id: result.id, token: emailStatusToken(result.id), message: "Your submission was saved." }, { status: 201 });
 }
 
 export async function GET(request: Request) {

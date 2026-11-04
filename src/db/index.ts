@@ -33,7 +33,18 @@ function getPool(): Pool {
       allowExitOnIdle: true,
       // Managed Postgres providers (Neon, Supabase, RDS, Cloud SQL…) require TLS; local dev does not.
       // Enable TLS unless the connection string targets a local socket / disables SSL.
-      ssl: /localhost|127\.0\.0\.1|sslmode=disable/.test(process.env.DATABASE_URL ?? "") ? undefined : { rejectUnauthorized: false },
+      //
+      // Certificates are VERIFIED by default, so a DNS/MITM hijack cannot capture
+      // the database credentials or patient data. Only a host whose certificate
+      // chain Node cannot verify (for example a private/self-signed CA) should
+      // ever opt out, and only through this explicitly named variable:
+      //   DATABASE_SSL_INSECURE=1
+      // Setting it disables MITM protection — never enable it on a public network.
+      ssl: /localhost|127\.0\.0\.1|sslmode=disable/.test(process.env.DATABASE_URL ?? "")
+        ? undefined
+        : process.env.DATABASE_SSL_INSECURE === "1"
+          ? { rejectUnauthorized: false }
+          : { rejectUnauthorized: true },
     });
     globalForDb.__knightPgPool.on("error", (error) => {
       console.error("Postgres pool error", error.message);

@@ -11,6 +11,7 @@ import {
   clearFailures,
   createSessionToken,
   isAdminAuthenticated,
+  isAdminLoginConfigured,
   logAdminAction,
   rateLimit,
   recordFailure,
@@ -18,21 +19,24 @@ import {
   verifyAdminPassword,
 } from "@/lib/auth";
 import { OWNER_EMAIL, retryOutboxItem, sendOwnerNotification } from "@/lib/email";
-import { hasConfiguredAdminPassword, isProduction } from "@/lib/config";
+import { clientKeyFromHeaders } from "@/lib/rate-limit";
 import { desc, ne } from "drizzle-orm";
 
 export type LoginState = { error?: string; lockedSeconds?: number };
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const requestHeaders = await headers();
-  const ip = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // Same trust model as the public API routes: the last X-Forwarded-For hop is
+  // set by the trusted reverse proxy, earlier entries are client-supplied.
+  const ip = clientKeyFromHeaders(requestHeaders);
   const password = String(formData.get("password") ?? "");
   const nextPath = String(formData.get("next") ?? "/admin");
 
-  // Explicit setup error when no password exists at all.
-  if (isProduction && !hasConfiguredAdminPassword()) {
-    await logAdminAction("login.blocked", "ADMIN_PASSWORD not configured in production", ip);
-    return { error: "Admin sign-in is not available yet: ADMIN_PASSWORD is not configured on the server. Contact the site owner." };
+  // Explicit setup error when no password exists at all. Sign-in fails closed in
+  // every environment (there is no built-in default), so this is not prod-only.
+  if (!isAdminLoginConfigured()) {
+    await logAdminAction("login.blocked", "no admin password configured", ip);
+    return { error: "Admin sign-in is not available yet: no admin password is configured on the server. Set ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH), or change it from the admin panel. Contact the site owner." };
   }
 
   const limit = rateLimit(ip);
@@ -58,7 +62,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
 
 export async function logoutAction() {
   const store = await cookies();
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const ip = clientKeyFromHeaders(await headers());
   store.delete(ADMIN_COOKIE);
   await logAdminAction("logout", null, ip);
   redirect("/admin/login");

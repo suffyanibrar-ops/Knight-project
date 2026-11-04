@@ -66,6 +66,11 @@ while the process is stopped, since WAL mode uses `-wal`/`-shm` companions).
   requires the browser. It cannot be used to read your inbox.
 - Failures are logged to the browser console and recorded on the submission row
   (`email_status = failed`) — the enquiry is **never** lost because email failed.
+- The outcome is reported back by `POST /api/submissions/email-status`. That
+  callback requires the id-bound HMAC token returned by `POST /api/submissions`
+  (the forms submit it automatically), so one visitor cannot alter another
+  submission's status; there is no visitor-visible change and no admin session is
+  needed.
 - **Verified:** sending works from the browser. It cannot be tested from a
   server environment (provider policy), so confirm once from the live site.
 
@@ -79,12 +84,9 @@ RESEND_API_KEY=...          # + MAIL_FROM with a verified sending domain
 SMTP_HOST=... SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
 ```
 
-When neither is present, `sendOwnerNotification` writes the message to the
-Postgres `email_outbox` table with `status = queued` and logs:
-
-```
-[email] SETUP REQUIRED — no server-side email channel is configured...
-```
+When neither is present, `sendOwnerNotification` (with `DATABASE_URL` configured)
+writes the message to the Postgres `email_outbox` table with `status = queued` and
+records a setup notice on the row; nothing is delivered.
 
 The admin **Email delivery** page surfaces the same hint and lets you retry
 queued messages after configuring a channel. **No email has been claimed as
@@ -96,16 +98,16 @@ delivered** — only Web3Forms (browser-side) is active.
 
 | Control | Implementation |
 | --- | --- |
-| Password source | `ADMIN_PASSWORD` env → scrypt hash changed in `/admin/settings` → `ADMIN_PASSWORD_HASH`. **No usable default in production.** |
-| Production without a password | Sign-in is **disabled**; login returns a setup error; `/api/health` reports a blocking error. |
+| Password source | Password changed in `/admin/settings` (scrypt hash) → `ADMIN_PASSWORD` env → `ADMIN_PASSWORD_HASH` (legacy peppered digest). **There is no built-in/default password.** |
+| No password configured | Sign-in is **disabled** in **every** environment (fail closed); in production `/api/health` reports a blocking error. |
 | Session | HMAC-SHA256 signed token, 8-hour expiry, `HttpOnly`, `SameSite=Lax`, `Secure` in production. |
-| Session secret | `ADMIN_SESSION_SECRET` required in production. Without it, the shared development pepper is never used to sign real sessions, so previously issued tokens are invalidated. |
+| Session secret | Set `ADMIN_SESSION_SECRET` in production. Without it a random per-process key is generated once: cookies cannot be forged, but previously issued sessions end on restart and are not shared between instances. |
 | Brute force | 5 failed attempts per 15 min per IP, then blocked; attempts audit-logged. |
-| Route protection | `src/proxy.ts` (edge) **and** a server-side session check inside every admin page and admin API route. |
+| Route protection | `src/proxy.ts` (Node.js runtime) **and** a server-side session check inside every admin page and admin API route. |
 | CSRF | All state-changing public APIs verify `Origin` against `Host`; cross-origin writes get **403**. Server Actions use Next.js built-in origin checks. |
 | Rate limiting | Public form endpoints: 5 requests / 10 min per IP (ROI: 10). Exceeding returns **429** with `Retry-After`. |
 | Duplicate submissions | Same email + identical message within 10 minutes returns the **existing** row and does not re-send email. |
-| Indexing | `/admin*` and `/api*` send `X-Robots-Tag: noindex` and are disallowed in `robots.txt`. |
+| Indexing | `/admin*` and `/api/admin*` send `X-Robots-Tag: noindex` (other `/api/*` responses do not), and `/admin` and `/api` paths are disallowed in `robots.txt`. |
 | Output escaping | React escapes all rendered values. No `dangerouslySetInnerHTML` on user input. |
 
 ---
@@ -118,7 +120,8 @@ delivered** — only Web3Forms (browser-side) is active.
    scrypt and a random salt) and confirm.
 
 The change is stored in SQLite (`settings` table) and takes effect immediately.
-To revert to `ADMIN_PASSWORD`, delete the `admin_password` row:
+To revert to the environment password, delete the `admin_password` row — the
+resolution order then falls back to `ADMIN_PASSWORD`, then `ADMIN_PASSWORD_HASH`:
 
 ```sql
 DELETE FROM settings WHERE key = 'admin_password';

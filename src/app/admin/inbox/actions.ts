@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { isAdminAuthenticated, logAdminAction, rateLimit, recordFailure } from "@/lib/auth";
+import { clientKeyFromHeaders } from "@/lib/rate-limit";
 import { saveAdminPassword, verifyPasswordHash, getStoredPasswordHash } from "@/lib/admin-password";
 import { deleteSubmission } from "@/lib/sqlite";
 
@@ -35,7 +36,9 @@ export async function changeAdminPasswordAction(_prev: PasswordState, formData: 
   if (!(await isAdminAuthenticated())) return { error: "Your session expired. Please sign in again." };
 
   const requestHeaders = await headers();
-  const ip = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // Same trust model as loginAction: the last X-Forwarded-For hop is set by the
+  // trusted reverse proxy, earlier entries are client-supplied.
+  const ip = clientKeyFromHeaders(requestHeaders);
   if (!rateLimit(`password:${ip}`).allowed) {
     return { error: "Too many attempts. Please wait a few minutes and try again." };
   }

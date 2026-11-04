@@ -68,9 +68,8 @@ export function configIssues(): ConfigIssue[] {
     issues.push({
       key: "ADMIN_PASSWORD",
       severity: isProduction ? "error" : "warning",
-      message: isProduction
-        ? "ADMIN_PASSWORD is not set. Admin sign-in is DISABLED in production until a password is configured."
-        : "ADMIN_PASSWORD is not set. A development-only default is in use — set ADMIN_PASSWORD before deploying.",
+      message:
+        "ADMIN_PASSWORD is not set. Set ADMIN_PASSWORD or ADMIN_PASSWORD_HASH, or make sure a password was saved from the admin panel — otherwise admin sign-in is DISABLED.",
     });
   } else if (has("ADMIN_PASSWORD") && (process.env.ADMIN_PASSWORD ?? "").length < 12) {
     issues.push({ key: "ADMIN_PASSWORD", severity: "warning", message: "ADMIN_PASSWORD is shorter than 12 characters. Use a longer passphrase." });
@@ -81,7 +80,9 @@ export function configIssues(): ConfigIssue[] {
     issues.push({
       key: "ADMIN_SESSION_SECRET",
       severity: isProduction ? "error" : "warning",
-      message: "ADMIN_SESSION_SECRET is not set. Sessions are signed with a shared development secret; set a long random value in production.",
+      message: isProduction
+        ? "ADMIN_SESSION_SECRET is not set. Sessions use a random per-process key: cookies cannot be forged, but sessions reset when the process restarts and are not shared between instances."
+        : "ADMIN_SESSION_SECRET is not set. Sessions use a development fallback signing key; set a long random value before deploying.",
     });
   } else if ((process.env.ADMIN_SESSION_SECRET ?? "").length < 32) {
     issues.push({ key: "ADMIN_SESSION_SECRET", severity: "warning", message: "ADMIN_SESSION_SECRET should be at least 32 characters." });
