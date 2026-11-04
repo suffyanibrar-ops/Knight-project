@@ -2,7 +2,6 @@
 
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { useState } from "react";
-import { sendWeb3FormsNotification } from "@/lib/web3forms";
 import { useToast } from "@/components/motion/toast";
 import { cn } from "./ui";
 
@@ -28,7 +27,7 @@ export function ContactForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, specialty: form.topic, source: "contact-form" }),
       });
-      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; token?: string; error?: string } | null;
+      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; error?: string } | null;
 
       if (!response.ok || !saved?.ok) {
         const backup = await fetch("/api/contact", {
@@ -39,30 +38,12 @@ export function ContactForm() {
         if (!backup?.ok) throw new Error(saved?.error ?? "We could not save your message. Please try again or email admin@knightmedicalbilling.com.");
       }
 
-      // 2. Email the owner through Web3Forms (best effort, never blocks success).
-      void sendWeb3FormsNotification(
-        {
-          name: form.name,
-          email: form.email,
-          phone: form.phone || "Not provided",
-          topic: form.topic,
-          message: form.message,
-          source: "contact-form",
-        },
-        `New contact message — ${form.name || "Website visitor"}`,
-      ).then((result) => {
-        // Report the notification outcome with the id-bound capability token
-        // POST /api/submissions issued for this submission.
-        if (!saved?.id || !saved.token) return;
-        void fetch("/api/submissions/email-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: saved.id, token: saved.token, ok: result.ok }),
-          keepalive: true,
-        }).catch(() => undefined);
-      });
+      // 2. Email delivery (owner notification + visitor confirmation) is queued
+      //    server-side by POST /api/submissions through Resend. The browser
+      //    never touches an email provider or an API credential.
 
-      // 3. Existing contact pipeline (Postgres + owner notification). Best effort.
+      // 3. Existing contact mirror (Postgres). Best effort — the server skips
+      //    its own email for this message because /api/submissions already sent it.
       void fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

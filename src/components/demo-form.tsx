@@ -5,7 +5,6 @@ import { ArrowLeft, ArrowRight, CalendarCheck, Check, CheckCircle2, Loader2, Pho
 import Link from "next/link";
 import { useState } from "react";
 import { collectionBands, services, site, specialties } from "@/lib/site";
-import { sendWeb3FormsNotification } from "@/lib/web3forms";
 import { useToast } from "./motion/toast";
 import { cn } from "./ui";
 
@@ -74,7 +73,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; token?: string; error?: string } | null;
+      const saved = (await response.json().catch(() => null)) as { ok?: boolean; id?: number; error?: string } | null;
 
       if (!response.ok || !saved?.ok) {
         // Local SQLite may be unavailable on read-only hosting. Fall back to the
@@ -88,34 +87,12 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
         if (!backup?.ok) throw new Error(saved?.error ?? "We could not save your request. Please try again or call (812) 994-0046.");
       }
 
-      // 2. Email the owner through Web3Forms. Failures are logged, never shown.
-      void sendWeb3FormsNotification(
-        {
-          name: form.name,
-          email: form.email,
-          phone: form.phone || "Not provided",
-          facility: form.practice || "Not provided",
-          facility_type: form.practiceSize || "Not provided",
-          specialty: form.specialty || "Not provided",
-          providers: form.monthlyCollections || "Not provided",
-          interested_in: form.interests.join(", ") || "Not specified",
-          message: form.message || "No additional notes",
-          source,
-        },
-        `New consultation request — ${form.name || "Website visitor"}`,
-      ).then((result) => {
-        // Report the notification outcome with the id-bound capability token
-        // POST /api/submissions issued for this submission.
-        if (!saved?.id || !saved.token) return;
-        void fetch("/api/submissions/email-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: saved.id, token: saved.token, ok: result.ok }),
-          keepalive: true,
-        }).catch(() => undefined);
-      });
+      // 2. Email delivery (owner notification + visitor confirmation) is queued
+      //    server-side by POST /api/submissions through Resend. The browser
+      //    never touches an email provider or an API credential.
 
-      // 3. Existing CRM/email pipeline (Postgres + owner notification). Best effort.
+      // 3. Existing CRM mirror (Postgres). Best effort — the server skips its
+      //    own email for this enquiry because /api/submissions already sent it.
       void fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

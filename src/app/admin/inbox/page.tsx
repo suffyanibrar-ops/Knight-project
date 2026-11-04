@@ -55,7 +55,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total submissions" value={total} tone="brand" />
         <StatCard label="Showing" value={rows.length} hint={query ? `Matching “${query}”` : "Newest 200"} />
-        <StatCard label="Owner emailed" value={emailSent} hint="Accepted by Web3Forms" tone="good" />
+        <StatCard label="Owner emailed" value={emailSent} hint="Delivered by Resend" tone="good" />
         <StatCard label="Storage" value={status.available ? "SQLite" : "Offline"} hint={status.driver ?? "No driver"} tone={status.available ? "good" : "warn"} />
       </div>
 

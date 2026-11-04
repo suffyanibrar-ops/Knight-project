@@ -119,7 +119,7 @@ export function configIssues(): ConfigIssue[] {
     issues.push({
       key: "RESEND_API_KEY / SMTP_HOST",
       severity: "warning",
-      message: "No server-side email channel is configured. Owner notifications are queued in the outbox, not delivered. Web3Forms (client-side) is independent.",
+      message: "No server-side email channel is configured. Owner notifications and visitor confirmations cannot be delivered; submissions are still stored and the failure is logged.",
     });
   }
 
@@ -141,8 +141,9 @@ export function configStatus() {
       postgres: { role: "CRM mirror, content, outbox", configured: isPostgresConfigured() },
     },
     email: {
-      web3forms: "client-side (public access key)",
       serverChannel: isServerEmailConfigured() ? (has("RESEND_API_KEY") ? "resend" : "smtp") : "not-configured",
+      ownerNotifications: true,
+      visitorConfirmations: true,
     },
     adminPasswordConfigured: hasConfiguredAdminPassword(),
     issues: configIssues(),

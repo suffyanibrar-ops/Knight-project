@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db";
 import { leads } from "@/db/schema";
-import { buildConsultationEmail } from "@/lib/email";
-import { queueOwnerNotification } from "@/lib/notify";
+import { buildConsultationEmail, buildVisitorConfirmationEmail } from "@/lib/email";
+import { queueSubmissionEmails } from "@/lib/notify";
+import { findRecentDuplicate, isSqliteAvailable } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
 import { isPostgresConfigured } from "@/lib/config";
@@ -54,9 +55,44 @@ export async function POST(request: Request) {
       .returning({ id: leads.id }))[0]
       : undefined;
 
-    // Notify the owner inbox. The outbox retains the message either way.
-    const mail = buildConsultationEmail({ name, email, phone: String(body.phone ?? "") || null, practice: String(body.practice ?? "") || null, specialty: String(body.specialty ?? "") || null, practiceSize: String(body.practiceSize ?? "") || null, monthlyCollections: String(body.monthlyCollections ?? "") || null, interests, message: String(body.message ?? "") || null, source: String(body.source ?? "schedule-form") });
-    queueOwnerNotification({ kind: "consultation", ...mail, replyTo: email, relatedType: "lead", relatedId: lead?.id }, { type: "lead", id: lead?.id });
+    // Email delivery for a website enquiry is owned by POST /api/submissions.
+    // This route runs immediately after it as a Postgres mirror — or as the
+    // fallback when SQLite is unavailable. Send only when the primary route did
+    // not already handle this same enquiry, so the owner never gets two copies.
+    const messageText = String(body.message ?? "").trim();
+    const alreadyEmailed = isSqliteAvailable() && findRecentDuplicate(email, messageText || null, 5) !== null;
+
+    if (!alreadyEmailed) {
+      const submittedAt = new Date();
+      const details = {
+        name,
+        email,
+        phone: String(body.phone ?? "") || null,
+        practice: String(body.practice ?? "") || null,
+        specialty: String(body.specialty ?? "") || null,
+        practiceSize: String(body.practiceSize ?? "") || null,
+        monthlyCollections: String(body.monthlyCollections ?? "") || null,
+        interests,
+        message: messageText || null,
+        source: String(body.source ?? "schedule-form"),
+        submittedAt,
+      };
+      queueSubmissionEmails({
+        kind: "consultation",
+        owner: {
+          kind: "consultation",
+          ...buildConsultationEmail(details),
+          replyTo: email,
+          relatedType: "lead",
+          relatedId: lead?.id,
+        },
+        visitor: {
+          kind: "consultation",
+          ...buildVisitorConfirmationEmail("consultation", details),
+          to: email,
+        },
+      });
+    }
 
     return NextResponse.json({
       ok: true,

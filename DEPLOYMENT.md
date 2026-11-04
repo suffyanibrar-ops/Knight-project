@@ -31,8 +31,9 @@ Environment variables (all documented in `.env.example`):
 | `ADMIN_PASSWORD` | For admin sign-in | Password for `/admin`; with no password from this var, a panel change or `ADMIN_PASSWORD_HASH`, sign-in is disabled (fail closed) |
 | `ADMIN_PASSWORD_HASH` | Optional | Legacy peppered digest (`sha256(ADMIN_SESSION_SECRET + password)`), used only after a panel password and `ADMIN_PASSWORD`; requires the same `ADMIN_SESSION_SECRET` used to derive it |
 | `ADMIN_SESSION_SECRET` | Recommended in production | Signs admin session cookies; without it production uses a random per-process key (sessions reset on restart, not shared between instances) |
-| `RESEND_API_KEY` + `MAIL_FROM` | Optional | Email channel #1 |
-| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | Optional | Email channel #2 |
+| `RESEND_API_KEY` | For email delivery | Server-side Resend key. Never exposed to the browser; without it no email is sent |
+| `MAIL_FROM` | For email delivery | Sender identity; the domain must be verified for that key (default `Knight Medical Billing <website@knightmedicalbilling.com>`) |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | Optional | SMTP fallback, used only when `RESEND_API_KEY` is unset |
 
 `.env` is git-ignored; only `.env.example` is committed. Never commit credentials.
 
@@ -58,9 +59,9 @@ it is configured but is never required to capture it.
 - Full details: **[DATA-AND-EMAIL.md](./DATA-AND-EMAIL.md)**
 - Back up by copying `data/app.db` (plus `-wal`/`-shm` while running).
 
-API: `POST /api/submissions` (public, validated) · `GET /api/submissions`
-(admin) · `POST /api/submissions/email-status` (token-gated callback from the
-forms) · `GET /api/admin/inbox-export` (admin CSV). Other public form
+API: `POST /api/submissions` (public, validated — stores the submission and
+queues the owner notification + visitor confirmation) · `GET /api/submissions`
+(admin) · `GET /api/admin/inbox-export` (admin CSV). Other public form
 endpoints: `POST /api/subscribe` (newsletter) and `POST /api/roi` (ROI
 calculator).
 
@@ -121,21 +122,28 @@ image-optimization service (Vercel, Netlify) use it automatically.
 
 ## 6. Email notifications
 
-**Web3Forms (client-side):** the consultation and contact forms post to
-`https://api.web3forms.com/submit` with the public access key in
-`src/lib/web3forms.ts`; newsletter and ROI calculator submissions do not use it.
-Web3Forms blocks server-IP requests by design, so this must run in the browser
-(it does). If the provider rejects a request, the submission is still saved and
-the inbox shows `failed`.
+**Resend (server-side):** every consultation and contact submission sends two
+emails from `POST /api/submissions`:
 
-**Server-side channels (optional):** when `DATABASE_URL` is configured,
-consultation, contact, newsletter and ROI submissions are also mirrored to
-Postgres (best-effort, after the SQLite save) and each owner notification is
-written to `email_outbox`, then delivered to `ADMIN_EMAIL` through the first
-configured channel (Resend → SMTP → optional FormSubmit relay). Delivery runs
-after the response is flushed, so visitors never wait. Without `DATABASE_URL`
-there is no outbox and queued-message retry is unavailable, but every submission
-is still stored durably in SQLite and appears in the admin console.
+- an **owner notification** to `ADMIN_EMAIL` with **Reply-To** set to the
+  visitor's address, containing every submitted field plus the submission time;
+- a **visitor confirmation** to the address the visitor entered.
+
+The API key is server-only: the browser never calls Resend and never receives
+`RESEND_API_KEY`.
+
+Set `RESEND_API_KEY` and `MAIL_FROM` in the host's environment. `MAIL_FROM` must
+be an address on a domain **verified for that key** at
+https://resend.com/domains — an unverified/unauthorized domain fails with
+`403 not authorized to send emails from <domain>`. Delivery runs after the
+response is flushed; a failure is written to the submission's `email_status` and
+logged, and the enquiry is never lost.
+
+The same email + message within 10 minutes is treated as a duplicate: the existing
+submission is returned and no second pair of emails is sent. Newsletter and ROI
+submissions notify the owner but do not send a visitor confirmation. Configure
+`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` instead to use SMTP when
+`RESEND_API_KEY` is unset.
 
 Configure a channel, then use **Admin → Email delivery → Send test email** to confirm, and
 **Retry queued** to deliver anything captured earlier. With no channel configured and

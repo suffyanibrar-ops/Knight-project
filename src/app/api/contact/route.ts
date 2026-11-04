@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db";
 import { contactMessages } from "@/db/schema";
-import { buildContactEmail } from "@/lib/email";
-import { queueOwnerNotification } from "@/lib/notify";
+import { buildContactEmail, buildVisitorConfirmationEmail } from "@/lib/email";
+import { queueSubmissionEmails } from "@/lib/notify";
+import { findRecentDuplicate, isSqliteAvailable } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
 import { isPostgresConfigured } from "@/lib/config";
@@ -49,16 +50,38 @@ export async function POST(request: Request) {
       .returning({ id: contactMessages.id }))[0]
       : undefined;
 
-    queueOwnerNotification(
-      {
+    // Email delivery for a website message is owned by POST /api/submissions
+    // (the route the contact form calls first). This route is the Postgres
+    // mirror and the fallback when SQLite is unavailable, so only send when the
+    // primary route did not already handle this message.
+    const alreadyEmailed = isSqliteAvailable() && findRecentDuplicate(email, message, 5) !== null;
+
+    if (!alreadyEmailed) {
+      const submittedAt = new Date();
+      const details = {
+        name,
+        email,
+        phone: String(body.phone ?? "") || null,
+        topic: String(body.topic ?? "") || null,
+        message,
+        submittedAt,
+      };
+      queueSubmissionEmails({
         kind: "contact",
-        ...buildContactEmail({ name, email, phone: String(body.phone ?? "") || null, topic: String(body.topic ?? "") || null, message }),
-        replyTo: email,
-        relatedType: "contact",
-        relatedId: row?.id,
-      },
-      { type: "contact", id: row?.id },
-    );
+        owner: {
+          kind: "contact",
+          ...buildContactEmail(details),
+          replyTo: email,
+          relatedType: "contact",
+          relatedId: row?.id,
+        },
+        visitor: {
+          kind: "contact",
+          ...buildVisitorConfirmationEmail("contact", details),
+          to: email,
+        },
+      });
+    }
 
     return NextResponse.json({ ok: true, message: "Message received. We reply within one business hour, Monday–Friday." });
   } catch (error) {

@@ -7,8 +7,9 @@ Custom-tailored medical billing and revenue cycle management website, admin cons
   about, resources (6 guides), FAQ, contact, schedule a consultation, HIPAA, privacy, terms
 - **Admin console:** `/admin` — submissions, email outbox, subscribers, ROI estimates, CSV exports
 - **Forms:** consultation wizard, contact, newsletter, ROI calculator — all four are stored in
-  SQLite (the primary store) and mirrored to Postgres when it is configured. Owner email:
-  Web3Forms (consultation/contact) plus optional server-side channels
+  SQLite (the primary store) and mirrored to Postgres when it is configured. Consultation and
+  contact submissions send two Resend emails server-side: an owner notification (Reply-To set to
+  the visitor) and a visitor confirmation.
 
 ## Quick start
 
@@ -50,12 +51,18 @@ endpoint responds with a clear message and the rest of the site keeps working.
 
 ### Email notifications
 
-- **Web3Forms** (client-side, access key in `src/lib/web3forms.ts`) sends consultation and
-  contact submissions to the owner inbox; newsletter and ROI calculator submissions do not use
-  it. Failures are logged silently; the stored submission remains the source of truth and the
-  admin shows delivery status.
-- **Optional server-side channels** (`/api/leads`, `/api/contact`, …) use Resend
-  or SMTP when configured, with an outbox in Postgres.
+- **Resend (server-side).** `POST /api/submissions` sends two emails for every consultation or
+  contact submission: an **owner notification** to `ADMIN_EMAIL` (default
+  `admin@knightmedicalbilling.com`) with the visitor's email set as **Reply-To**, and a
+  **visitor confirmation** to the address the visitor typed. Both include the submitted details
+  and the submission time.
+- Delivery is queued after the response, so visitors never wait. A mail failure is logged and
+  recorded on the submission (`email_status`), and never loses the enquiry or reports a false
+  success.
+- The browser never calls Resend and never sees `RESEND_API_KEY`. Newsletter and ROI calculator
+  submissions notify the owner but do not send a visitor confirmation.
+- Configure `RESEND_API_KEY` and `MAIL_FROM` (see `.env.example`); the sender domain must be
+  verified for that key in Resend.
 
 Database schema:
 
@@ -81,7 +88,9 @@ SQLITE_PATH=/var/data/app.db                     # persistent, writable volume
 DATABASE_URL=postgresql://…?sslmode=require      # optional (CRM/content)
 DATABASE_SSL_INSECURE=0                          # optional: 1 disables Postgres TLS cert verification (private CA only)
 TRUST_PROXY=1                                    # optional: 1 = one trusted reverse proxy (default); 0 only if directly exposed
-RESEND_API_KEY=… | SMTP_HOST=…                   # optional (server-side email)
+RESEND_API_KEY=re_…                              # server-only; required for email delivery
+MAIL_FROM="Knight Medical Billing <website@knightmedicalbilling.com>"   # domain must be verified in Resend
+ADMIN_EMAIL=admin@knightmedicalbilling.com       # optional owner recipient (this is the default)
 ```
 
 Generate a session secret:

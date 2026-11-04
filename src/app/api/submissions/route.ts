@@ -1,7 +1,7 @@
-import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
-import { sessionSecret } from "@/lib/admin-session";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { buildConsultationEmail, buildContactEmail, buildVisitorConfirmationEmail } from "@/lib/email";
+import { queueSubmissionEmails } from "@/lib/notify";
 import { findRecentDuplicate, insertSubmission, isSqliteAvailable, listSubmissions, sqliteStatus } from "@/lib/sqlite";
 import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
@@ -12,26 +12,10 @@ export const runtime = "nodejs";
 /**
  * Embedded SQLite submissions endpoint (plain SQL, no ORM).
  *
- * POST  — validate → insert with a parameterized statement
+ * POST  — validate → insert with a parameterized statement → queue the owner
+ *         notification and the visitor confirmation (both sent through Resend)
  * GET   — admin-only listing (used by the admin panel / CSV export)
  */
-
-/**
- * Capability token for the public email-status callback
- * (src/app/api/submissions/email-status/route.ts).
- *
- * The callback runs in the visitor's browser, so it cannot require an admin
- * session — but without proof of possession it would let anyone rewrite the
- * email status of an arbitrary submission id. The token is an HMAC bound to
- * exactly one submission id and domain-separated from admin session tokens, so
- * it is useless for any other id (or for signing in). Keep the domain string
- * in sync with the verifier in the callback route.
- */
-const EMAIL_STATUS_TOKEN_DOMAIN = "submission-email-status.v1";
-
-function emailStatusToken(id: number): string {
-  return createHmac("sha256", sessionSecret()).update(`${EMAIL_STATUS_TOKEN_DOMAIN}:${id}`).digest("hex");
-}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -114,8 +98,10 @@ export async function POST(request: Request) {
   // 3. Duplicate protection — same email + same message within 10 minutes.
   const duplicate = findRecentDuplicate(email, message || null);
   if (duplicate) {
+    // Duplicate guard: the original submission already queued its emails, so a
+    // retry/double-click must not send a second pair.
     return NextResponse.json(
-      { ok: true, id: duplicate.id, token: emailStatusToken(duplicate.id), duplicate: true, message: "We already received this request. Our team will be in touch." },
+      { ok: true, id: duplicate.id, duplicate: true, message: "We already received this request. Our team will be in touch." },
       { status: 200 },
     );
   }
@@ -137,7 +123,65 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: result.error ?? "Could not save your submission." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, id: result.id, token: emailStatusToken(result.id), message: "Your submission was saved." }, { status: 201 });
+  // Both emails are queued after the response is flushed, so the visitor never
+  // waits on Resend. The row is already committed: a mail failure cannot lose
+  // the enquiry, it is recorded on the submission and logged for the operator.
+  const submittedAt = new Date();
+  const isContact = source === "contact-form";
+  const topic = specialty || "General enquiry";
+
+  const ownerMail = isContact
+    ? buildContactEmail({ name, email, phone: phone || null, topic, message: message || "(no message provided)", submittedAt })
+    : buildConsultationEmail({
+        name,
+        email,
+        phone: phone || null,
+        practice: practice || null,
+        specialty: specialty || null,
+        practiceSize: practiceSize || null,
+        monthlyCollections: providers || null,
+        interests,
+        message: message || null,
+        source,
+        submittedAt,
+      });
+
+  const visitorMail = buildVisitorConfirmationEmail(isContact ? "contact" : "consultation", {
+    name,
+    email,
+    phone: phone || null,
+    practice: practice || null,
+    specialty: specialty || null,
+    practiceSize: practiceSize || null,
+    monthlyCollections: providers || null,
+    interests,
+    topic,
+    message: message || null,
+    submittedAt,
+  });
+
+  queueSubmissionEmails({
+    kind: isContact ? "contact" : "consultation",
+    submissionId: result.id,
+    owner: {
+      kind: isContact ? "contact" : "consultation",
+      ...ownerMail,
+      to: undefined,
+      replyTo: email,
+      relatedType: isContact ? "contact" : "lead",
+      relatedId: result.id,
+    },
+    visitor: {
+      kind: isContact ? "contact" : "consultation",
+      ...visitorMail,
+      to: email,
+    },
+  });
+
+  return NextResponse.json(
+    { ok: true, id: result.id, message: "Your submission was saved. A confirmation email is on its way." },
+    { status: 201 },
+  );
 }
 
 export async function GET(request: Request) {

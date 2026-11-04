@@ -63,40 +63,38 @@ while the process is stopped, since WAL mode uses `-wal`/`-shm` companions).
 
 ## 3. Email delivery
 
-### 3a. Web3Forms (browser-side) — enabled, no configuration needed
+### 3a. Resend (server-side) — the only delivery path
 
-`src/lib/web3forms.ts` posts directly from the visitor's browser to
-`https://api.web3forms.com/submit` with the form-scoped access key.
+`POST /api/submissions` sends **two** emails through the Resend API for every
+consultation or contact submission:
 
-- The access key is **public by design**; Web3Forms rejects server-IP calls and
-  requires the browser. It cannot be used to read your inbox.
-- Failures are logged to the browser console and recorded on the submission row
-  (`email_status = failed`) — the enquiry is **never** lost because email failed.
-- The outcome is reported back by `POST /api/submissions/email-status`. That
-  callback requires the id-bound HMAC token returned by `POST /api/submissions`
-  (the forms submit it automatically), so one visitor cannot alter another
-  submission's status; there is no visitor-visible change and no admin session is
-  needed.
-- **Verified:** sending works from the browser. It cannot be tested from a
-  server environment (provider policy), so confirm once from the live site.
+| Email | Recipient | Contents |
+| --- | --- | --- |
+| **Owner notification** | `ADMIN_EMAIL` (default `admin@knightmedicalbilling.com`) | every field the visitor submitted (name, email, phone, practice, specialty, facility type, providers, interests, message, source) plus the submission date; **Reply-To** is the visitor's email, so replying reaches them directly |
+| **Visitor confirmation** | the address in the form's email field | a receipt of what they submitted, the submission date, and response expectations |
 
-### 3b. Server-side channel — optional, not configured yet
+- `RESEND_API_KEY` is read only by server code. The browser never calls Resend
+  and never receives the credential.
+- `MAIL_FROM` must be an address on a domain **verified for that key** in Resend.
+  An unverified/unauthorized domain fails with `403 not authorized to send
+  emails from <domain>`.
+- Delivery runs after the response is flushed (`after()`), so visitors never wait.
+- A mail failure never loses the enquiry: the submission is already in SQLite,
+  `email_status` becomes `failed`, and the error is logged.
+- **Duplicate guard:** the same email + message within 10 minutes returns the
+  existing submission and does **not** send a second pair of emails.
+- Newsletter (`/api/subscribe`) and ROI (`/api/roi`) submissions notify the owner
+  but do not send a visitor confirmation.
 
-Configure **one** of:
+### 3b. Optional SMTP fallback
 
-```bash
-RESEND_API_KEY=...          # + MAIL_FROM with a verified sending domain
-# or
-SMTP_HOST=... SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
-```
+When `RESEND_API_KEY` is unset, SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+`SMTP_PASS`) is used with the same two-email behaviour. With neither configured,
+submissions are still stored but nothing is delivered, and `/api/health` reports
+the missing channel.
 
-When neither is present, `sendOwnerNotification` (with `DATABASE_URL` configured)
-writes the message to the Postgres `email_outbox` table with `status = queued` and
-records a setup notice on the row; nothing is delivered.
-
-The admin **Email delivery** page surfaces the same hint and lets you retry
-queued messages after configuring a channel. **No email has been claimed as
-delivered** — only Web3Forms (browser-side) is active.
+The admin **Email delivery** page shows delivery status per submission and queues
+owner notifications in the Postgres outbox when `DATABASE_URL` is configured.
 
 ---
 
