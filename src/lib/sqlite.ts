@@ -118,8 +118,12 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 1;
-const MIGRATIONS: { version: number; statements: string }[] = [{ version: SCHEMA_VERSION, statements: SCHEMA }];
+const SCHEMA_VERSION = 2;
+const MIGRATIONS: { version: number; statements: string }[] = [
+  { version: 1, statements: SCHEMA },
+  // v2: store the provider's message id so delivery webhooks can update a row.
+  { version: 2, statements: "ALTER TABLE email_outbox ADD COLUMN provider_message_id TEXT;" },
+];
 
 function migrate(driver: Driver, raw: RawDatabase) {
   const current = Number(raw.pragma("user_version", { simple: true }) ?? 0);
@@ -368,6 +372,34 @@ export function setSubmissionEmailStatus(id: number, status: "pending" | "sent" 
     current.driver.run("UPDATE submissions SET email_status = ? WHERE id = ?", [status, id]);
   } catch {
     /* non-fatal */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Email outbox delivery status (updated by the Resend webhook)        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Applies a delivery event to the outbox row created when the message was
+ * sent. Provider message ids are unique per send, so this is safe to call for
+ * duplicate webhook deliveries (Resend retries): the update is idempotent.
+ */
+export function updateOutboxByProviderMessageId(
+  messageId: string,
+  status: "delivered" | "bounced" | "complained" | "failed",
+  lastError?: string | null,
+): boolean {
+  const current = state();
+  if (!current.driver || !messageId) return false;
+  try {
+    const result = current.driver.run(
+      "UPDATE email_outbox SET status = ?, last_error = COALESCE(?, last_error) WHERE provider_message_id = ?",
+      [status, lastError ?? null, messageId],
+    );
+    return result.changes > 0;
+  } catch (error) {
+    console.error("[sqlite] outbox status update failed", error);
+    return false;
   }
 }
 

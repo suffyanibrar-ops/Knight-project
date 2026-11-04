@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const practice = text(body.practice ?? body.facility, LIMITS.practice);
   const specialty = text(body.specialty, LIMITS.specialty);
   const practiceSize = text(body.practiceSize ?? body.facilityType, LIMITS.practiceSize);
-  const providers = text(body.providers ?? body.providerCount ?? body.monthlyCollections, LIMITS.providers);
+  const providers = text(body.providers ?? body.providerCount, LIMITS.providers);
   const message = text(body.message, LIMITS.message);
   const source = text(body.source, LIMITS.source) || "schedule-form";
 
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
         practice: practice || null,
         specialty: specialty || null,
         practiceSize: practiceSize || null,
-        monthlyCollections: providers || null,
+        providers: providers || null,
         interests,
         message: message || null,
         source,
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     practice: practice || null,
     specialty: specialty || null,
     practiceSize: practiceSize || null,
-    monthlyCollections: providers || null,
+    providers: providers || null,
     interests,
     topic,
     message: message || null,
@@ -175,11 +175,13 @@ export async function POST(request: Request) {
       kind: isContact ? "contact" : "consultation",
       ...visitorMail,
       to: email,
+      relatedType: isContact ? "contact" : "lead",
+      relatedId: result.id,
     },
   });
 
   return NextResponse.json(
-    { ok: true, id: result.id, message: "Your submission was saved. A confirmation email is on its way." },
+    { ok: true, id: result.id, message: "Your request was saved. Our team will be in touch during business hours." },
     { status: 201 },
   );
 }

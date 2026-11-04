@@ -29,7 +29,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
     practice: "",
     specialty: "",
     practiceSize: "",
-    monthlyCollections: "",
+    providers: "",
     message: "",
     interests: [] as string[],
   });
@@ -204,7 +204,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
                 </label>
                 <label className="block">
                   <span className="text-[0.78rem] font-bold text-ink-800">Providers</span>
-                  <select value={form.monthlyCollections} onChange={(event) => update("monthlyCollections", event.target.value)} className={fieldClass}>
+                  <select value={form.providers} onChange={(event) => update("providers", event.target.value)} className={fieldClass}>
                     <option value="">Select count</option>
                     {providerCounts.map((count) => (
                       <option key={count} value={count}>{count}</option>

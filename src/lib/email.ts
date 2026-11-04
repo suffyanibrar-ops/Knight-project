@@ -18,6 +18,12 @@ export const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? "admin@knightmedicalbillin
 const MAIL_FROM = process.env.MAIL_FROM ?? "Knight Medical Billing <website@knightmedicalbilling.com>";
 const ADMIN_APP_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com") + "/admin";
 
+/**
+ * Legitimate business contact details shown in transactional email footers.
+ * Real information in a footer is a trust signal; promotional copy is not.
+ */
+export const BUSINESS_CONTACT = "Knight Medical Billing · 585 Grove St Ste 145, Herndon, VA 20170-4790 · (812) 994-0046 · admin@knightmedicalbilling.com";
+
 export type MailKind = "consultation" | "contact" | "subscriber" | "roi" | "test";
 
 export type MailPayload = {
@@ -31,7 +37,7 @@ export type MailPayload = {
   to?: string;
 };
 
-type DeliveryResult = { status: "sent" | "failed" | "queued"; provider?: string; error?: string };
+type DeliveryResult = { status: "sent" | "failed" | "queued"; provider?: string; error?: string; messageId?: string; outboxId?: number };
 
 /** Strips CR/LF and control characters so user input cannot inject mail headers. */
 function cleanHeader(value: string | undefined | null) {
@@ -89,7 +95,7 @@ function shell(
   const cta = options.cta === null
     ? ""
     : `<tr><td style="padding:0 24px 24px"><a href="${escapeHtml(options.cta?.href ?? ADMIN_APP_URL)}" style="display:inline-block;background:#0e83ab;color:#fff;font:700 13px/1 Helvetica,Arial,sans-serif;padding:12px 18px;border-radius:999px;text-decoration:none">${escapeHtml(options.cta?.label ?? "Open admin panel")}</a></td></tr>`;
-  return `<!doctype html><html><body style="margin:0;background:#f5fafc;padding:24px">
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>${escapeHtml(title)}</title></head><body style="margin:0;background:#f5fafc;padding:24px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e1ebf1;border-radius:16px;overflow:hidden">
     <tr><td style="background:#071f2f;padding:20px 24px"><div style="font:800 18px/1 Helvetica,Arial,sans-serif;color:#fff">Knight Medical Billing</div><div style="margin-top:6px;font:600 11px/1 Helvetica,Arial,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#7cd7f2">${escapeHtml(eyebrow)}</div></td></tr>
     <tr><td style="padding:22px 24px 6px"><h1 style="margin:0;font:800 21px/1.3 Helvetica,Arial,sans-serif;color:#071f2f">${escapeHtml(title)}</h1></td></tr>
@@ -102,26 +108,35 @@ function shell(
 
 export function buildConsultationEmail(lead: {
   name: string; email: string; phone?: string | null; practice?: string | null; specialty?: string | null;
-  practiceSize?: string | null; monthlyCollections?: string | null; interests?: string[] | null; message?: string | null; source?: string;
+  practiceSize?: string | null; providers?: string | null; interests?: string[] | null; message?: string | null; source?: string;
   submittedAt?: Date;
 }) {
   const rows = [
     { label: "Name", value: lead.name },
     { label: "Email", value: lead.email },
     { label: "Phone", value: lead.phone ?? "" },
-    { label: "Facility", value: lead.practice ?? "" },
+    { label: "Practice / facility", value: lead.practice ?? "" },
     { label: "Facility type", value: lead.practiceSize ?? "" },
     { label: "Specialty", value: lead.specialty ?? "" },
-    { label: "Providers", value: lead.monthlyCollections ?? "" },
+    { label: "Provider count", value: lead.providers ?? "" },
     { label: "Interested in", value: (lead.interests ?? []).join(", ") },
     { label: "Message", value: lead.message ?? "" },
     { label: "Source", value: lead.source ?? "website" },
     { label: "Submitted", value: formatSubmissionDate(lead.submittedAt ?? new Date()) },
   ];
+  const who = lead.name.trim() || "Website visitor";
   return {
-    subject: `New consultation request — ${lead.name}${lead.practice ? ` (${lead.practice})` : ""}`,
-    text: `New consultation request\n\n${rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`).join("\n")}\n\nReply directly to this email to reach ${lead.name} at ${lead.email}.`,
-    html: shell("New consultation request", rows),
+    subject: `New consultation request — ${who}${lead.practice ? ` (${lead.practice})` : ""}`,
+    text: [
+      "A new consultation request was submitted on the Knight Medical Billing website.",
+      "",
+      ...rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`),
+      "",
+      `Reply to this email to contact ${who} directly at ${lead.email}.`,
+      "",
+      BUSINESS_CONTACT,
+    ].join("\n"),
+    html: shell("New consultation request", rows, BUSINESS_CONTACT, { eyebrow: "New consultation request" }),
   };
 }
 
@@ -177,7 +192,7 @@ export function buildVisitorConfirmationEmail(
   kind: VisitorConfirmationKind,
   details: {
     name: string; email: string; phone?: string | null; practice?: string | null; specialty?: string | null;
-    practiceSize?: string | null; monthlyCollections?: string | null; interests?: string[] | null;
+    practiceSize?: string | null; providers?: string | null; interests?: string[] | null;
     topic?: string | null; message?: string | null; submittedAt?: Date;
   },
 ) {
@@ -194,11 +209,11 @@ export function buildVisitorConfirmationEmail(
     ];
     return {
       subject: "We received your message — Knight Medical Billing",
-      text: `Hi ${firstName},\n\nThanks for contacting Knight Medical Billing. This is a confirmation that your message reached our team — here is what you sent us:\n\n${rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`).join("\n")}\n\nA member of our team replies within one business hour, Monday–Friday, 8am–8pm ET. If you need us sooner, call (812) 994-0046.\n\nKnight Medical Billing\n585 Grove St Ste 145, Herndon, VA 20170-4790`,
+      text: [`Hi ${firstName},`, "", "Thank you for contacting Knight Medical Billing. Your message was received successfully and is with our team.", "", "A member of our team replies within one business hour, Monday to Friday, 8am-8pm ET. If you need us sooner, call (812) 994-0046.", "", "Here is a copy of what you submitted:", "", ...rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`), "", "If anything above is incorrect, reply to this email and let us know.", "", BUSINESS_CONTACT].join("\n"),
       html: shell(
         "Thanks — your message is with our team",
         rows,
-        "Knight Medical Billing · 585 Grove St Ste 145, Herndon, VA 20170-4790 · (812) 994-0046",
+        BUSINESS_CONTACT,
         {
           eyebrow: "Message received",
           intro: `Hi ${firstName}, thanks for contacting Knight Medical Billing. This is a confirmation that your message reached our team. A member of our team replies within one business hour, Monday–Friday, 8am–8pm ET.`,
@@ -212,24 +227,41 @@ export function buildVisitorConfirmationEmail(
     { label: "Name", value: details.name },
     { label: "Email", value: details.email },
     { label: "Phone", value: details.phone ?? "" },
-    { label: "Facility", value: details.practice ?? "" },
+    { label: "Practice / facility", value: details.practice ?? "" },
     { label: "Specialty", value: details.specialty ?? "" },
     { label: "Facility type", value: details.practiceSize ?? "" },
-    { label: "Providers", value: details.monthlyCollections ?? "" },
+    { label: "Provider count", value: details.providers ?? "" },
     { label: "Interested in", value: (details.interests ?? []).join(", ") },
     { label: "Your message", value: details.message ?? "" },
     { label: "Submitted", value: submitted },
   ];
   return {
     subject: "We received your consultation request — Knight Medical Billing",
-    text: `Hi ${firstName},\n\nThanks for requesting a consultation with Knight Medical Billing. This is a confirmation that your request reached our team — here is what you sent us:\n\n${rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`).join("\n")}\n\nWe will contact you during business hours to arrange your consultation and review your current billing process. There is no prepayment and no obligation.\n\nKnight Medical Billing\n585 Grove St Ste 145, Herndon, VA 20170-4790`,
+    text: [
+      `Hi ${firstName},`,
+      "",
+      "Thank you for contacting Knight Medical Billing. Your consultation request was received successfully and is with our team.",
+      "",
+      "What happens next:",
+      "1. A member of our team reviews the information you submitted.",
+      "2. We contact you using the details below, normally within one business day (Monday to Friday).",
+      "3. We arrange a time to review your current billing process.",
+      "",
+      "Here is a copy of what you submitted:",
+      "",
+      ...rows.filter((r) => r.value).map((r) => `${r.label}: ${r.value}`),
+      "",
+      "If anything above is incorrect, reply to this email and let us know.",
+      "",
+      BUSINESS_CONTACT,
+    ].join("\n"),
     html: shell(
-      "Thanks — your consultation request is in",
+      "Your consultation request was received",
       rows,
-      "Knight Medical Billing · 585 Grove St Ste 145, Herndon, VA 20170-4790 · (812) 994-0046",
+      BUSINESS_CONTACT,
       {
         eyebrow: "Consultation request received",
-        intro: `Hi ${firstName}, thanks for requesting a consultation with Knight Medical Billing. This is a confirmation that your request reached our team. We will contact you during business hours — no prepayment, no obligation.`,
+        intro: `Hi ${firstName}, thank you for contacting Knight Medical Billing. Your request was received successfully. A member of our team will review it and contact you using the details below, normally within one business day (Monday to Friday).`,
         cta: null,
       },
     ),
@@ -243,16 +275,38 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 async function viaResend(payload: MailPayload): Promise<DeliveryResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { status: "failed", error: "RESEND_API_KEY not configured" };
+
+  // Replies to a visitor confirmation must land in the monitored business
+  // inbox, not on the no-reply sending address; owner mail already sets the
+  // visitor as Reply-To. Both improve the engagement signal Gmail scores.
+  const replyTo = cleanHeader(payload.replyTo) ?? (payload.to && payload.to !== OWNER_EMAIL ? OWNER_EMAIL : undefined);
+
   const response = await withTimeout(
     fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: MAIL_FROM, to: [payload.to ?? OWNER_EMAIL], reply_to: cleanHeader(payload.replyTo), subject: cleanHeader(payload.subject), text: payload.text, html: payload.html }),
+      body: JSON.stringify({
+        from: MAIL_FROM,
+        to: [payload.to ?? OWNER_EMAIL],
+        reply_to: replyTo,
+        subject: cleanHeader(payload.subject),
+        text: payload.text,
+        html: payload.html,
+        // Transactional markers: an auto-submitted notice suppresses vacation
+        // responders, and the reference id makes each send traceable without
+        // turning it into a bulk/broadcast message.
+        headers: {
+          "X-Entity-Ref-ID": `${payload.kind}-${Date.now()}`,
+          "X-Auto-Response-Suppress": "All",
+          "Auto-Submitted": "auto-generated",
+        },
+      }),
     }),
     9000,
   );
   if (!response.ok) throw new Error(`Resend ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  return { status: "sent", provider: "resend" };
+  const body = (await response.json().catch(() => null)) as { id?: string } | null;
+  return { status: "sent", provider: "resend", messageId: typeof body?.id === "string" ? body.id : undefined };
 }
 
 async function viaSmtp(payload: MailPayload): Promise<DeliveryResult> {
@@ -364,10 +418,17 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
         if (outboxId) {
           await db
             .update(emailOutbox)
-            .set({ status: "sent", provider: result.provider, sentAt: new Date(), attempts: 1, lastError: null })
+            .set({
+              status: "sent",
+              provider: result.provider,
+              providerMessageId: result.messageId ?? null,
+              sentAt: new Date(),
+              attempts: 1,
+              lastError: null,
+            })
             .where(eq(emailOutbox.id, outboxId));
         }
-        return { status: "sent", provider: result.provider, outboxId };
+        return { status: "sent", provider: result.provider, messageId: result.messageId, outboxId };
       }
       if (result.error) errors.push(result.error);
     } catch (error) {
@@ -391,28 +452,71 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
  * separately.
  */
 export async function sendVisitorConfirmation(payload: MailPayload): Promise<DeliveryResult> {
+  const message: MailPayload = { ...payload, replyTo: payload.replyTo ?? OWNER_EMAIL };
+
+  // Visitor confirmations are logged in the same outbox as owner mail, under a
+  // distinct kind, so delivery, bounces and complaints are traceable for both
+  // messages and the Resend webhook can update either one.
+  let outboxId: number | undefined;
+  if (isSqliteAvailable()) {
+    try {
+      const [row] = await db
+        .insert(emailOutbox)
+        .values({
+          kind: `${payload.kind}_visitor`,
+          toEmail: message.to ?? OWNER_EMAIL,
+          replyTo: cleanHeader(message.replyTo) ?? null,
+          subject: cleanHeader(message.subject) ?? "Confirmation",
+          textBody: message.text,
+          htmlBody: message.html,
+          status: "pending",
+          relatedType: payload.relatedType ?? null,
+          relatedId: payload.relatedId ?? null,
+        })
+        .returning({ id: emailOutbox.id });
+      outboxId = row?.id;
+    } catch (error) {
+      console.error("visitor outbox insert failed", error);
+    }
+  }
+
   const providers: ((p: MailPayload) => Promise<DeliveryResult>)[] = [];
   if (process.env.RESEND_API_KEY) providers.push(viaResend);
   if (process.env.SMTP_HOST) providers.push(viaSmtp);
   if (providers.length === 0) {
     const notice = "No email channel configured (set RESEND_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS)";
     console.error(`[email] visitor confirmation skipped: ${notice}`);
-    return { status: "queued", error: notice };
+    if (outboxId) {
+      await db.update(emailOutbox).set({ status: "queued", lastError: notice }).where(eq(emailOutbox.id, outboxId));
+    }
+    return { status: "queued", error: notice, outboxId };
   }
 
   const errors: string[] = [];
   for (const provider of providers) {
     try {
-      const result = await provider(payload);
-      if (result.status === "sent") return result;
+      const result = await provider(message);
+      if (result.status === "sent") {
+        if (outboxId) {
+          await db
+            .update(emailOutbox)
+            .set({ status: "sent", provider: result.provider, providerMessageId: result.messageId ?? null, sentAt: new Date(), attempts: 1, lastError: null })
+            .where(eq(emailOutbox.id, outboxId));
+        }
+        console.info(`[email] visitor confirmation sent to ${message.to ?? "unknown"} via ${result.provider}${result.messageId ? ` (${result.messageId})` : ""}`);
+        return { ...result, outboxId };
+      }
       if (result.error) errors.push(result.error);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : "unknown provider error");
     }
   }
-  const message = errors.join(" | ").slice(0, 600) || "Visitor confirmation failed";
-  console.error(`[email] visitor confirmation to ${payload.to ?? "unknown"} failed: ${message}`);
-  return { status: "failed", error: message };
+  const failure = errors.join(" | ").slice(0, 600) || "Visitor confirmation failed";
+  console.error(`[email] visitor confirmation to ${message.to ?? "unknown"} failed: ${failure}`);
+  if (outboxId) {
+    await db.update(emailOutbox).set({ status: "queued", lastError: failure.slice(0, 900) }).where(eq(emailOutbox.id, outboxId));
+  }
+  return { status: "failed", error: failure, outboxId };
 }
 
 export async function retryOutboxItem(id: number) {

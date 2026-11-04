@@ -59,6 +59,7 @@ export const emailOutbox = sqliteTable("email_outbox", {
   htmlBody: text("html_body"),
   status: text("status").notNull().default("pending"),
   provider: text("provider"),
+  providerMessageId: text("provider_message_id"),
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),
   relatedType: text("related_type"),

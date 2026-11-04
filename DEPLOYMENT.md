@@ -229,10 +229,23 @@ submissions notify the owner but do not send a visitor confirmation. Configure
 `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` instead to fall back to SMTP when
 `RESEND_API_KEY` is unset or Resend delivery fails.
 
-Owner notifications are recorded in the SQLite `email_outbox`; configure a channel, then
+Owner notifications and visitor confirmations are both recorded in the SQLite
+`email_outbox` (visitor rows use the `<kind>_visitor` kind). Configure a channel, then
 use **Admin → Email delivery → Send test email** to confirm, and **Retry queued**
 to deliver anything captured earlier. With no channel configured, messages remain
 queued in the admin panel — nothing is lost.
+
+**Delivery events (optional, recommended):** create a Resend webhook pointing at
+`https://<your-domain>/api/webhooks/resend`, subscribe to `email.delivered`,
+`email.bounced`, `email.complained`, `email.delivery_delayed` and `email.failed`, and set
+`RESEND_WEBHOOK_SECRET` (the `whsec_…` signing secret from Resend). Events then update the
+outbox row's status for either email, so bounces and complaints are visible in the admin
+console. The endpoint verifies the Svix signature and refuses requests when the secret is
+unset; sending still works without it.
+
+Set `ADMIN_EMAIL` to the monitored owner inbox (for example
+`thomas@knightmedicalbilling.com`). It is both the owner recipient and the Reply-To on
+visitor confirmations, so replies reach a person rather than the sending address.
 
 ---
 
