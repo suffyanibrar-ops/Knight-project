@@ -72,6 +72,8 @@ export function AiChatWidget() {
   const voice = useVoice({
     onFinalUtterance: (text) => { bargeRef.current = false; sendRef.current(text, true); },
     onBargeIn: () => bargeHandlerRef.current(),
+    rate: config?.voiceRate,
+    voiceName: config?.voiceName,
   });
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
 

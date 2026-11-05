@@ -48,12 +48,16 @@ export interface UseVoiceOptions {
   onFinalUtterance: (text: string) => void;
   onBargeIn: () => void;
   lang?: string;
+  /** Speech rate from admin settings (0.6–1.4). */
+  rate?: number;
+  /** Preferred browser voice name (partial match); empty = auto-select. */
+  voiceName?: string;
 }
 
 const BARGE_RMS = 0.055;
 const BARGE_FRAMES = 4;
 
-export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US" }: UseVoiceOptions) {
+export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1, voiceName = "" }: UseVoiceOptions) {
   const [state, setState] = useState<VoiceState>("off");
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -69,10 +73,14 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US" }: UseVoi
   const startedRef = useRef(false);
   const onFinalRef = useRef(onFinalUtterance);
   const onBargeInRef = useRef(onBargeIn);
+  const rateRef = useRef(rate);
+  const voiceNameRef = useRef(voiceName);
 
   useEffect(() => { onFinalRef.current = onFinalUtterance; }, [onFinalUtterance]);
   useEffect(() => { onBargeInRef.current = onBargeIn; }, [onBargeIn]);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
+  useEffect(() => { rateRef.current = rate; }, [rate]);
+  useEffect(() => { voiceNameRef.current = voiceName; }, [voiceName]);
 
   const supported = useSyncExternalStore(
     () => () => undefined,
@@ -243,9 +251,12 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US" }: UseVoi
     setState((current) => (current === "off" || current === "unsupported" ? current : "speaking"));
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = lang;
-    utterance.rate = 1;
+    utterance.rate = Math.max(0.6, Math.min(1.4, rateRef.current || 1));
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()) && /natural|google|samantha|aria|jenny/i.test(voice.name)) ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
+    const wanted = voiceNameRef.current.trim().toLowerCase();
+    const preferred = (wanted ? voices.find((voice) => voice.name.toLowerCase().includes(wanted)) : undefined)
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()) && /natural|google|samantha|aria|jenny/i.test(voice.name))
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
     if (preferred) utterance.voice = preferred;
     utterance.onend = () => {
       // Only return to listening when the whole queue has finished.
