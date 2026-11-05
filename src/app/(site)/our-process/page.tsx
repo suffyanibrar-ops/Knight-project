@@ -6,7 +6,8 @@ import { CtaBand } from "@/components/cta-band";
 import { PageHero } from "@/components/page-hero";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { ParallaxFrame } from "@/components/sections/parallax-frame";
-import { pageHeroVisuals, visual } from "@/components/sections/visuals";
+import { pageHeroVisuals } from "@/components/sections/visuals";
+import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { billingSoftware, processSteps, rcmLifecycle, site } from "@/lib/site";
 
@@ -30,7 +31,7 @@ export default function OurProcessPage() {
         }
         description="No prepayment, no hidden fees, no six-month implementation. We interview you about what you are looking for, then build a billing and coding team dedicated to your facility — and get to work."
         image={pageHeroVisuals.process}
-        imageAlt="Abstract illustration of the five-day onboarding process"
+        imageAlt="Photograph of a team presentation during onboarding"
         badges={["5-day onboarding", "No prepayment", "24/5 support"]}
         crumbs={[{ label: "Our process" }]}
         primaryCta={{ label: "Start with a consultation", href: "/schedule-form" }}
@@ -116,8 +117,8 @@ export default function OurProcessPage() {
         <div className="shell grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
           <div className="relative order-2 lg:order-1">
             <ParallaxFrame
-              src={visual("service-rcm")}
-              alt="Illustration of revenue cycle reporting"
+              src={photo.documentsDesk}
+              alt="Photograph of revenue cycle reporting documents"
               aspect="aspect-[4/3]"
               className="border-mist-200 shadow-[0_36px_70px_-45px_rgba(4,20,31,0.5)]"
             >

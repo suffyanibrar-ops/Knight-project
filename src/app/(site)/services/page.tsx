@@ -31,7 +31,7 @@ export default async function ServicesPage() {
         }
         description="We offer complete medical billing services spanning coding, accounts receivable, credentialing, out-of-network negotiation, eligibility verification and full revenue cycle management — delivered by a dedicated team built around your facility."
         image={pageHeroVisuals.services}
-        imageAlt="Abstract illustration of a connected medical billing revenue cycle"
+        imageAlt="Photograph of two healthcare professionals reviewing billing information on a tablet"
         badges={["99.9% claim acceptance", "Filed within 24 hours", "No prepayment"]}
         crumbs={[{ label: "Services" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
@@ -47,7 +47,7 @@ export default async function ServicesPage() {
                 <TiltCard className="group h-full">
                   <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-300 hover:shadow-[0_32px_64px_-40px_rgba(4,20,31,0.45)]">
                     <div className="relative aspect-[16/9] overflow-hidden bg-night-soft">
-                      <Image src={serviceVisuals[service.slug] ?? service.image} alt={`Illustration representing ${service.name}`} fill className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-[1.04]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                      <Image src={serviceVisuals[service.slug] ?? service.image} alt={`Photograph representing ${service.name}`} fill className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-[1.04]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                       <div className="absolute inset-0 bg-gradient-to-t from-ink-950/80 via-ink-950/20 to-transparent" />
                       <div className="absolute inset-x-4 bottom-3.5 flex items-end justify-between gap-2">
                         <span className="grid h-10 w-10 place-items-center rounded-xl border border-white/25 bg-white/15 text-white backdrop-blur-md">

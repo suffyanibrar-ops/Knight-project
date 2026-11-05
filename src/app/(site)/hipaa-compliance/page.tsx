@@ -81,7 +81,7 @@ export default function HipaaPage() {
           "Documented process for file intake and delivery",
         ]}
         visual={pageHeroVisuals.compliance}
-        alt="Abstract illustration of HIPAA-compliant data protection"
+        alt="Photograph of clinical documentation being reviewed for compliance"
         cta={{ label: "Talk to our team", href: "/contact" }}
       />
     </>

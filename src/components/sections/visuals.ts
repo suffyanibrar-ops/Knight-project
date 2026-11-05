@@ -1,125 +1,98 @@
 /**
- * Central map of the generated SVG illustration library.
+ * Placement map for the site's licensed photography.
  *
- * These unique visuals replace the repeated stock section-*.jpg photography on
- * the marketing pages. Every file is listed once here so pages can share a
- * single, typo-safe source of truth and avoid showing the same image twice
- * within one page (the repetition the owner complained about).
+ * The previous abstract SVG illustrations were replaced with Pexels photography
+ * (see `src/lib/photos.ts` for provenance and licensing). Each page/section maps
+ * to a specific photograph, and no photograph is used twice within one page.
  */
 
-export type VisualName =
-  | "hero-home"
-  | "hero-services"
-  | "hero-specialties"
-  | "hero-results"
-  | "hero-about"
-  | "hero-contact"
-  | "hero-consultation"
-  | "hero-who-we-serve"
-  | "hero-process"
-  | "hero-insights"
-  | "hero-faq"
-  | "hero-compliances"
-  | "service-billing"
-  | "service-coding"
-  | "service-ar"
-  | "service-eligibility"
-  | "service-credentialing"
-  | "service-oon"
-  | "service-rcm"
-  | "results-dashboard"
-  | "intake-form"
-  | "team-abstract"
-  | "facility-hospital"
-  | "facility-private-practice"
-  | "facility-healthcare-system";
+import { photo } from "@/lib/photos";
 
-/** Resolves a visual name to its public URL. */
-export function visual(name: VisualName): string {
-  return `/images/visuals/${name}.svg`;
-}
-
-/** Hero illustration per marketing page (one per page, never repeated on it). */
+/** Hero photograph per marketing page. */
 export const pageHeroVisuals = {
-  services: visual("hero-services"),
-  specialties: visual("hero-specialties"),
-  whoWeServe: visual("hero-who-we-serve"),
-  results: visual("hero-results"),
-  about: visual("hero-about"),
-  contact: visual("hero-contact"),
-  schedule: visual("hero-consultation"),
-  process: visual("hero-process"),
-  insights: visual("hero-insights"),
-  faq: visual("hero-faq"),
-  compliance: visual("hero-compliances"),
+  services: photo.teamTablet,
+  specialties: photo.doctorFemale,
+  whoWeServe: photo.corridorBright,
+  results: photo.analyticsLaptop,
+  about: photo.teamLounge,
+  contact: photo.reception,
+  schedule: photo.videoConsult,
+  process: photo.presentation,
+  insights: photo.laptopNotes,
+  faq: photo.supportHeadset,
+  compliance: photo.stethoscopeNotes,
 } as const;
 
-/**
- * Hero visual for each service detail page. The first seven use the dedicated
- * service illustrations; the rest draw on the remaining library so no two
- * service pages open with the same artwork.
- */
+/** Hero photograph for each service detail page (one per service). */
 export const serviceVisuals: Record<string, string> = {
-  "medical-billing-and-coding": visual("service-billing"),
-  "accounts-receivable-management": visual("service-ar"),
-  "complete-rcm-services": visual("service-rcm"),
-  "credentialing-and-contracting": visual("service-credentialing"),
-  "out-of-network-negotiation": visual("service-oon"),
-  "eligibility-and-benefits-verification": visual("service-eligibility"),
-  "prior-and-retro-authorization": visual("intake-form"),
-  "complete-patient-billing": visual("service-coding"),
-  "clean-up-billing": visual("results-dashboard"),
-  "chart-auditing-and-drg-review": visual("team-abstract"),
-  "denial-management": visual("facility-healthcare-system"),
-  "claims-management": visual("facility-hospital"),
-  "payment-posting": visual("facility-private-practice"),
-  "contracting-and-enrollment": visual("hero-process"),
-  "eft-era-edi-support": visual("hero-consultation"),
-  "revenue-performance-reporting": visual("hero-faq"),
+  "medical-billing-and-coding": photo.documentsTeam,
+  "accounts-receivable-management": photo.documentsReview,
+  "complete-rcm-services": photo.analyticsLaptop,
+  "credentialing-and-contracting": photo.stethoscopeNotes,
+  "out-of-network-negotiation": photo.documentsDesk,
+  "eligibility-and-benefits-verification": photo.reception,
+  "prior-and-retro-authorization": photo.doctorsDiscussing,
+  "complete-patient-billing": photo.keyboard,
+  "clean-up-billing": photo.deskCharts,
+  "chart-auditing-and-drg-review": photo.laptopNotes,
+  "denial-management": photo.supportDesk,
+  "claims-management": photo.teamTablet,
+  "payment-posting": photo.teamOffice,
+  "contracting-and-enrollment": photo.presentation,
+  "eft-era-edi-support": photo.videoConsult,
+  "revenue-performance-reporting": photo.teamLounge,
 };
 
-/**
- * Inline visual for service detail pages whose data image is one of the retired
- * section-*.jpg stock photos. Already-unique per-service photos are kept as-is.
- */
+/** A second, different photograph for the in-body frame on service detail pages. */
 export const serviceInlineVisuals: Record<string, string> = {
-  "medical-billing-and-coding": visual("service-coding"),
-  "complete-rcm-services": visual("results-dashboard"),
-  "prior-and-retro-authorization": visual("service-eligibility"),
-  "payment-posting": visual("results-dashboard"),
-  "revenue-performance-reporting": visual("team-abstract"),
+  "medical-billing-and-coding": photo.keyboard,
+  "accounts-receivable-management": photo.deskCharts,
+  "complete-rcm-services": photo.documentsReview,
+  "credentialing-and-contracting": photo.documentsDesk,
+  "out-of-network-negotiation": photo.documentsTeam,
+  "eligibility-and-benefits-verification": photo.doctorsDiscussing,
+  "prior-and-retro-authorization": photo.reception,
+  "complete-patient-billing": photo.laptopNotes,
+  "clean-up-billing": photo.supportDesk,
+  "chart-auditing-and-drg-review": photo.documentsReview,
+  "denial-management": photo.supportHeadset,
+  "claims-management": photo.documentsDesk,
+  "payment-posting": photo.analyticsLaptop,
+  "contracting-and-enrollment": photo.teamTablet,
+  "eft-era-edi-support": photo.teamOffice,
+  "revenue-performance-reporting": photo.deskCharts,
 };
 
-/** The audience cards on /who-we-serve each get their own facility visual. */
+/** Audience photographs used by the who-we-serve strip and cards. */
 export const audienceVisuals: Record<string, string> = {
-  "healthcare-systems": visual("facility-healthcare-system"),
-  hospitals: visual("facility-hospital"),
-  "emergency-rooms": visual("hero-consultation"),
-  "urgent-cares": visual("intake-form"),
-  "private-practices": visual("facility-private-practice"),
+  "healthcare-systems": photo.teamOffice,
+  hospitals: photo.corridorHospital,
+  "emergency-rooms": photo.corridorBright,
+  "urgent-cares": photo.doctorsDiscussing,
+  "private-practices": photo.doctorDoorway,
 };
 
-/** Article thumbnails on /insights. */
+/** Article thumbnails for the insights index and article pages. */
 export const articleVisuals: Record<string, string> = {
-  "clean-claim-playbook": visual("service-coding"),
-  "eligibility-verification-first-step": visual("service-eligibility"),
-  "ar-follow-up-that-recovers-cash": visual("service-ar"),
-  "out-of-network-negotiation-explained": visual("service-oon"),
-  "credentialing-contracts-and-rates": visual("service-credentialing"),
-  "revenue-cycle-clean-up-audit": visual("results-dashboard"),
+  "clean-claim-playbook": photo.documentsTeam,
+  "eligibility-verification-first-step": photo.reception,
+  "ar-follow-up-that-recovers-cash": photo.supportDesk,
+  "out-of-network-negotiation-explained": photo.documentsDesk,
+  "credentialing-contracts-and-rates": photo.stethoscopeNotes,
+  "revenue-cycle-clean-up-audit": photo.deskCharts,
 };
 
 /**
- * Rotating set for /specialties/[slug]. There are more specialties than visuals,
- * so assignment is by index — neighbouring specialties still show different art.
+ * Rotation for /specialties/[slug]. There are more specialties than distinct
+ * photographs, so the artwork is assigned by index.
  */
 export const specialtyVisuals: string[] = [
-  visual("service-coding"),
-  visual("service-credentialing"),
-  visual("service-ar"),
-  visual("service-eligibility"),
-  visual("service-oon"),
-  visual("team-abstract"),
-  visual("intake-form"),
-  visual("results-dashboard"),
+  photo.doctorFemale,
+  photo.doctorsDiscussing,
+  photo.doctorDoorway,
+  photo.teamTablet,
+  photo.reception,
+  photo.doctorPortrait,
+  photo.teamLounge,
+  photo.corridorHospital,
 ];

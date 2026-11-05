@@ -30,7 +30,7 @@ export default async function InsightsPage() {
         }
         description="Short, practical guides from our billing and coding specialists: clean claim checks, eligibility verification, A/R follow-up, credentialing, out-of-network negotiation and revenue cycle audits."
         image={pageHeroVisuals.insights}
-        imageAlt="Abstract illustration of billing guides and revenue cycle resources"
+        imageAlt="Photograph of a billing specialist working at a laptop with documentation"
         badges={["Updated monthly", "Written by operators", "Free to use"]}
         crumbs={[{ label: "Insights" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}

@@ -163,7 +163,7 @@ export const services: Service[] = [
     short: "Medical billing & coding",
     tagline: "The keystone of your financial performance.",
     icon: "ReceiptText",
-    image: "/images/section-services.jpg",
+    image: "/images/photos/documents-team.jpg",
     intro:
       "The single most important element to guarantee reimbursements is proper medical billing and coding. Even the smallest mistake can delay payment. Our dedicated team of billers and coders makes sure patients and payers reimburse your facility for the services you deliver.",
     bullets: ["Certified billers and coders", "CPT, ICD-10-CM and E/M coding", "Claims filed within 24 hours", "Denials and appeals handled"],
@@ -213,7 +213,7 @@ export const services: Service[] = [
     short: "Accounts receivable management",
     tagline: "Chase every unpaid dollar — not just the easy ones.",
     icon: "TrendingUp",
-    image: "/images/kmb-service-ar.jpg",
+    image: "/images/photos/documents-review.jpg",
     intro:
       "We aggressively manage your practice's accounts receivable by pinpointing outstanding payments the provider or facility should expect, then pursuing the patient or payor for the unpaid balance. Payments are posted in a timely manner to keep billing optimal.",
     bullets: ["A/R follow-up by aging bucket", "Denial investigation and reopening", "Underpaid claim appeals", "Timely payment posting"],
@@ -263,7 +263,7 @@ export const services: Service[] = [
     short: "Complete RCM services",
     tagline: "From the moment your patient walks in until payment is received.",
     icon: "Workflow",
-    image: "/images/section-process.jpg",
+    image: "/images/photos/analytics-laptop.jpg",
     intro:
       "Knight Medical Billing offers complete revenue cycle management, from the moment your patient walks in the door until payment for your services is received. We can manage and educate your staff on compliance, streamline workflow and maximize productivity.",
     bullets: ["Staff training in scheduling and registration", "Clean claim construction", "Patient statements and calls", "Reporting that tells the truth"],
@@ -313,7 +313,7 @@ export const services: Service[] = [
     short: "Credentialing & contracting",
     tagline: "Build your practice on healthy payer relationships.",
     icon: "BadgeCheck",
-    image: "/images/kmb-service-cred.jpg",
+    image: "/images/photos/stethoscope-notes.jpg",
     intro:
       "Credentialing and contracting are the basis of starting a clinic or healthcare facility, and they lay the foundation for your relationships with insurance companies and patients. We obtain and negotiate contracts with insurance payors and keep your agreements current.",
     bullets: ["Provider enrollment and credentialing", "In-network contract negotiation", "Contract maintenance and updates", "Reimbursement rate review"],
@@ -363,7 +363,7 @@ export const services: Service[] = [
     short: "Out-of-network negotiation",
     tagline: "The trickiest billing in the industry. Our specialty.",
     icon: "Handshake",
-    image: "/images/kmb-service-oon.jpg",
+    image: "/images/photos/documents-desk.jpg",
     intro:
       "Negotiating out-of-network claims is critical for hospitals and free-standing emergency rooms. Our negotiation and settlement team has decades of expertise in medical billing, coding and RCM, and we negotiate directly with pricing vendors such as Multiplan, Zelis and Viant.",
     bullets: ["Pre-payment and post-payment negotiation", "Multiplan, Zelis, Viant and GCS claims", "OON database of underpaid claims", "Underpaid appeal support"],
@@ -413,7 +413,7 @@ export const services: Service[] = [
     short: "Eligibility & benefits verification",
     tagline: "Verify coverage before the visit, not after the denial.",
     icon: "ShieldCheck",
-    image: "/images/kmb-service-elig.jpg",
+    image: "/images/photos/reception.jpg",
     intro:
       "Eligibility and benefits verification is the first and most critical step in billing. We confirm insurance coverage, authorization requirements, deductibles and copays before your patient is seen — protecting your cash flow and your patient experience.",
     bullets: ["Primary and secondary coverage checks", "Copay, deductible and coinsurance", "Authorization requirement review", "Insurance discovery for self-pay"],
@@ -463,7 +463,7 @@ export const services: Service[] = [
     short: "Prior & retro authorization",
     tagline: "The laborious part of billing, handled by specialists.",
     icon: "ClipboardCheck",
-    image: "/images/section-consultation.jpg",
+    image: "/images/photos/doctors-discussing.jpg",
     intro:
       "Prior and retro authorization is one of the most difficult tasks a practice must take on — laborious, challenging and expensive in staff time. Our authorization specialists submit, track and follow up so approvals do not hold up your care or your cash.",
     bullets: ["Prior authorization submission", "Retro authorization support", "Payer requirement checks", "Authorization tracking to expiry"],
@@ -513,7 +513,7 @@ export const services: Service[] = [
     short: "Complete patient billing",
     tagline: "Excellent customer service for your patients.",
     icon: "Wallet",
-    image: "/images/kmb-private-practice.jpg",
+    image: "/images/photos/keyboard.jpg",
     intro:
       "Keep your focus on treating patients while we handle your complete patient billing cycle — mailing statements, collecting dues and answering patient questions. Your patients get a direct line to us, and your staff get their time back.",
     bullets: ["Patient statements and billing", "Patient phone support", "Collection follow-up", "Copay and balance resolution"],
@@ -563,7 +563,7 @@ export const services: Service[] = [
     short: "Clean-up billing",
     tagline: "The clean-up billers who find where the money went.",
     icon: "Wrench",
-    image: "/images/before-after-before.jpg",
+    image: "/images/photos/desk-charts.jpg",
     intro:
       "For a practice in trouble, we offer an audit of your revenue cycle. Knight Medical Billing is known as the clean-up billers — we find the source of the problems impacting revenue, often within the first day of auditing, then build a plan to prevent it recurring.",
     bullets: ["Revenue cycle audit", "Root-cause identification", "Recovery and resubmission", "Prevention plan"],
@@ -613,7 +613,7 @@ export const services: Service[] = [
     short: "Chart auditing & DRG review",
     tagline: "Better accuracy means better results.",
     icon: "Microscope",
-    image: "/images/kmb-hospital.jpg",
+    image: "/images/photos/laptop-notes.jpg",
     intro:
       "Maximize your returns and reduce accounts receivable with a team that ensures proper coding and adherence to regulations and each insurance company's unique rules. Chart auditing keeps documentation accurate and compliant in a constantly changing coding world.",
     bullets: ["Comprehensive chart audits", "Inpatient DRG review", "Coding compliance checks", "Documentation improvement feedback"],
@@ -663,7 +663,7 @@ export const services: Service[] = [
     short: "Denial management",
     tagline: "Stop losing revenue to preventable denials.",
     icon: "ShieldAlert",
-    image: "/images/huddle.jpg",
+    image: "/images/photos/support-desk.jpg",
     intro:
       "Denials are the most expensive kind of rework in a practice. We investigate every denial, correct the underlying cause, appeal within payer deadlines and feed each root cause back into your front end so the same denial stops recurring.",
     bullets: ["CARC and RARC root-cause analysis", "Payer-specific appeal preparation", "Deadline and timely-filing tracking", "Front-end prevention feedback"],
@@ -713,7 +713,7 @@ export const services: Service[] = [
     short: "Claims management",
     tagline: "Every claim scrubbed, filed on time and tracked to payment.",
     icon: "FileCheck2",
-    image: "/images/kmb-service-billing.jpg",
+    image: "/images/photos/team-tablet.jpg",
     intro:
       "A claim only earns money if it is clean at submission and followed until the payer pays. We manage the full claim lifecycle in your existing software — from charge entry and scrubbing to submission, payer acknowledgement and final adjudication.",
     bullets: ["Pre-submission claim scrubbing", "24-hour filing standard", "Payer acknowledgement monitoring", "Claim-level status tracking"],
@@ -763,7 +763,7 @@ export const services: Service[] = [
     short: "Payment posting",
     tagline: "Accurate posting, reconciled daily — no silent underpayments.",
     icon: "ReceiptText",
-    image: "/images/section-results.jpg",
+    image: "/images/photos/team-office.jpg",
     intro:
       "Payment posting is where payer problems first become visible. We post ERAs and manual EOBs accurately, reconcile payments against contracted rates, and flag underpayments and patient responsibility so nothing is quietly written off.",
     bullets: ["ERA and manual EOB posting", "Contractual adjustment accuracy", "Underpayment identification", "Daily reconciliation"],
@@ -813,7 +813,7 @@ export const services: Service[] = [
     short: "Contracting & enrollment",
     tagline: "Get in-network, stay enrolled, and keep agreements current.",
     icon: "Handshake",
-    image: "/images/kmb-healthcare-system.jpg",
+    image: "/images/photos/presentation.jpg",
     intro:
       "A provider who cannot bill a payer is a provider who is not generating revenue. We manage payer applications, EDI enrollment, roster maintenance and contract administration so billing starts on time and agreements do not lapse.",
     bullets: ["Payer and network applications", "EDI and ERA enrollment", "Roster and location maintenance", "Contract term tracking"],
@@ -863,7 +863,7 @@ export const services: Service[] = [
     short: "EFT, ERA & EDI support",
     tagline: "Electronic claims in, electronic payments out.",
     icon: "Network",
-    image: "/images/tablet.jpg",
+    image: "/images/photos/video-consult.jpg",
     intro:
       "Electronic data interchange is the plumbing of your revenue cycle. We configure and maintain claim submission, remittance advice and electronic funds transfer so payments arrive faster with fewer manual steps and clearer reconciliation.",
     bullets: ["EDI claim submission setup", "ERA enrollment and mapping", "EFT payment setup", "Clearinghouse issue resolution"],
@@ -913,7 +913,7 @@ export const services: Service[] = [
     short: "Revenue performance & reporting",
     tagline: "Know where the money is — and where it is stuck.",
     icon: "LineChart",
-    image: "/images/section-hero.jpg",
+    image: "/images/photos/team-lounge.jpg",
     intro:
       "You cannot manage what you cannot see. We report the revenue cycle metrics that actually move cash — collections, clean claim acceptance, denials, days in A/R and charge lag — with the actions each number requires.",
     bullets: ["Monthly performance reporting", "Payer and provider drill-downs", "Days in A/R and denial trends", "Action plans, not data dumps"],
@@ -981,7 +981,7 @@ export const audiences: Audience[] = [
     title: "Billing support built for healthcare systems",
     short: "Healthcare systems",
     icon: "Building2",
-    image: "/images/kmb-healthcare-system.jpg",
+    image: "/images/photos/team-lounge.jpg",
     intro:
       "Hospitals have seen margins shrink with rising costs, a shortage of trained coders and ever-changing regulations. We act as an extension of your team and help you collect more, faster.",
     points: [
@@ -1002,7 +1002,7 @@ export const audiences: Audience[] = [
     title: "Hassle-free hospital billing, fewer costly errors",
     short: "Hospitals",
     icon: "Cross",
-    image: "/images/kmb-hospital.jpg",
+    image: "/images/photos/corridor-hospital.jpg",
     intro:
       "Our professional medical billing staff provides hassle-free hospital billing services and eliminates costly errors, resulting in speedier payments that match your organization's requirements.",
     points: [
@@ -1023,7 +1023,7 @@ export const audiences: Audience[] = [
     title: "High-volume ER billing without the revenue leaks",
     short: "Emergency rooms",
     icon: "Siren",
-    image: "/images/emergency.jpg",
+    image: "/images/photos/corridor-bright.jpg",
     intro:
       "Emergency billing moves fast and out-of-network exposure is high. We keep claims clean, file within 24 hours and negotiate aggressively with out-of-network pricing vendors on your behalf.",
     points: [
@@ -1044,7 +1044,7 @@ export const audiences: Audience[] = [
     title: "Urgent care billing that keeps up with your volume",
     short: "Urgent cares",
     icon: "Activity",
-    image: "/images/urgent-care.jpg",
+    image: "/images/photos/doctors-discussing.jpg",
     intro:
       "Urgent care runs on volume and speed. Our team works in your software, files claims within 24 hours and follows up on every unpaid balance so front-desk momentum becomes revenue.",
     points: [
@@ -1065,7 +1065,7 @@ export const audiences: Audience[] = [
     title: "An extension of your staff for private practices",
     short: "Private practices",
     icon: "Stethoscope",
-    image: "/images/kmb-private-practice.jpg",
+    image: "/images/photos/doctor-doorway.jpg",
     intro:
       "Private practices often see revenue decline from limited RCM knowledge and documentation errors. We supplement your business practices, train your team and keep claims clean and filed on time.",
     points: [
@@ -1227,7 +1227,7 @@ export const articles: Article[] = [
     category: "Billing & coding",
     excerpt:
       "Most denials are decided before the claim leaves your building. These are the checks our coders run on every claim before it is filed.",
-    image: "/images/section-services.jpg",
+    image: "/images/photos/documents-team.jpg",
     readTime: "6 min read",
     date: "2026-02-10",
     author: "Knight Medical Billing Team",
@@ -1246,7 +1246,7 @@ export const articles: Article[] = [
     category: "Eligibility",
     excerpt:
       "Failure to validate eligibility and authorization leads to delayed payments and denials. Here is what a thorough verification should confirm.",
-    image: "/images/kmb-service-elig.jpg",
+    image: "/images/photos/reception.jpg",
     readTime: "5 min read",
     date: "2026-01-22",
     author: "Knight Medical Billing Team",
@@ -1263,7 +1263,7 @@ export const articles: Article[] = [
     category: "A/R management",
     excerpt:
       "Outstanding receivables over 180 days rarely resolve on their own. A follow-up structure that works, from aging buckets to appeals.",
-    image: "/images/kmb-service-ar.jpg",
+    image: "/images/photos/support-desk.jpg",
     readTime: "6 min read",
     date: "2026-01-08",
     author: "Knight Medical Billing Team",
@@ -1281,7 +1281,7 @@ export const articles: Article[] = [
     category: "Out-of-network",
     excerpt:
       "Out-of-network billing is the trickiest part of the industry. Understanding how pricing vendors work is the first step to recovering more.",
-    image: "/images/kmb-service-oon.jpg",
+    image: "/images/photos/documents-desk.jpg",
     readTime: "6 min read",
     date: "2025-12-15",
     author: "Knight Medical Billing Team",
@@ -1299,7 +1299,7 @@ export const articles: Article[] = [
     category: "Credentialing",
     excerpt:
       "Getting into the right networks — with contracts that pay properly — is where a new practice's revenue either works or stalls.",
-    image: "/images/kmb-service-cred.jpg",
+    image: "/images/photos/stethoscope-notes.jpg",
     readTime: "5 min read",
     date: "2025-11-27",
     author: "Knight Medical Billing Team",
@@ -1316,7 +1316,7 @@ export const articles: Article[] = [
     category: "Revenue cycle",
     excerpt:
       "Working harder on the backlog does not fix a broken process. A clean-up audit finds why the backlog exists in the first place.",
-    image: "/images/huddle.jpg",
+    image: "/images/photos/desk-charts.jpg",
     readTime: "5 min read",
     date: "2025-11-05",
     author: "Knight Medical Billing Team",

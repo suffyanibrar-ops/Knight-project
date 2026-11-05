@@ -7,7 +7,8 @@ import { PageHero } from "@/components/page-hero";
 import { RoiCalculator } from "@/components/roi-calculator";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { ParallaxImage } from "@/components/motion/parallax";
-import { pageHeroVisuals, visual } from "@/components/sections/visuals";
+import { pageHeroVisuals } from "@/components/sections/visuals";
+import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { benefits, kpis, site } from "@/lib/site";
 
@@ -32,7 +33,7 @@ export default function ResultsPage() {
         }
         description="We would rather show you how we measure performance than make promises. These are the metrics we track, report on and hold ourselves to for every client."
         image={pageHeroVisuals.results}
-        imageAlt="Abstract illustration of claim performance reporting"
+        imageAlt="Photograph of a specialist reviewing revenue reports on a laptop"
         badges={["99.9% acceptance", "24-hour filing", "Real-time reporting"]}
         crumbs={[{ label: "Results" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
@@ -72,7 +73,7 @@ export default function ResultsPage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-14 text-white sm:py-20">
-        <ParallaxImage src={visual("results-dashboard")} distance={32} className="opacity-40" />
+        <ParallaxImage src={photo.analyticsLaptop} distance={32} className="opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" aria-hidden />
         <div className="shell relative grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-14">
           <Reveal>

@@ -30,7 +30,7 @@ export default function ContactPage() {
         }
         description="Call, email or send us a message. Tell us about your facility, your specialty and roughly what you collect each month — we will respond with a clear next step. No prepayment, no hidden fees, no pressure."
         image={pageHeroVisuals.contact}
-        imageAlt="Abstract illustration of the Knight Medical Billing contact team"
+        imageAlt="Photograph of a welcoming medical office reception desk"
         badges={["HIPAA compliant", "24/5 multilingual support", "Free consultation"]}
         crumbs={[{ label: "Contact" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}

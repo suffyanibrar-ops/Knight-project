@@ -9,6 +9,7 @@ import { Hero } from "@/components/hero";
 import { Icon } from "@/components/icon";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { ParallaxImage } from "@/components/motion/parallax";
+import { photo } from "@/lib/photos";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { StickySteps } from "@/components/motion/sticky-steps";
 import { BeforeAfter } from "@/components/motion/before-after";
@@ -116,8 +117,8 @@ export default async function HomePage() {
                   title: "Patient access & eligibility",
                   body: "Coverage, benefits and authorisation requirements are confirmed before the visit, so the claim starts with correct data.",
                   points: ["Eligibility and benefits verified", "Authorisation requirements flagged", "Estimate shared with the patient"],
-                  image: "/images/visuals/facility-private-practice.svg",
-                  alt: "Illustration of a private practice consultation, where patient access begins",
+                  image: photo.reception,
+                  alt: "Receptionist welcoming a patient at a modern practice front desk",
                 },
                 {
                   id: "coding",
@@ -125,8 +126,8 @@ export default async function HomePage() {
                   title: "Coding & charge integrity",
                   body: "Certified coders review documentation against the codes billed, so what is submitted matches what was documented.",
                   points: ["Specialty-matched coding review", "Modifier and bundling checks", "Documentation queries raised early"],
-                  image: "/images/visuals/service-coding.svg",
-                  alt: "Illustration representing certified coding and documentation review",
+                  image: photo.laptopNotes,
+                  alt: "Certified coder reviewing clinical documentation at a laptop",
                 },
                 {
                   id: "claims",
@@ -134,8 +135,8 @@ export default async function HomePage() {
                   title: "Claims, scrubbing & submission",
                   body: "Each claim is scrubbed against payer rules and filed within 24 hours, leaving room to correct anything rejected.",
                   points: ["Payer-specific edits applied", "Filed within 24 hours", "Acknowledgements monitored daily"],
-                  image: "/images/visuals/intake-form.svg",
-                  alt: "Illustration of a structured intake form feeding the claim workflow",
+                  image: photo.stethoscopeNotes,
+                  alt: "Stethoscope resting on clinical notes during a documentation review",
                 },
                 {
                   id: "payment",
@@ -143,8 +144,8 @@ export default async function HomePage() {
                   title: "Posting, follow-up & reporting",
                   body: "Payments post against contracted rates, variances become work, and you see the results in a monthly report.",
                   points: ["ERAs posted and reconciled", "Underpayments flagged", "Reporting with an action plan"],
-                  image: "/images/visuals/results-dashboard.svg",
-                  alt: "Illustration of revenue reporting and analytics",
+                  image: photo.analyticsLaptop,
+                  alt: "Revenue analyst reviewing performance charts on a laptop",
                 },
               ]}
             />
@@ -153,7 +154,7 @@ export default async function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-16 text-white sm:py-24">
-        <ParallaxImage src="/images/visuals/hero-home.svg" alt="" className="opacity-70" distance={60} sizes="100vw" />
+        <ParallaxImage src={photo.deskCharts} alt="" className="opacity-70" distance={60} sizes="100vw" />
         <div className="absolute inset-0 bg-gradient-to-r from-night via-night/85 to-night/25" />
         <div className="shell relative">
           <Reveal className="max-w-2xl">
@@ -341,7 +342,7 @@ export default async function HomePage() {
             <div className="relative">
               <div className="absolute -left-3 -top-3 h-full w-full rounded-[2rem] border border-brand-200" />
               <div className="relative aspect-[4/4.3] overflow-hidden rounded-[1.9rem] shadow-[0_40px_80px_-50px_rgba(4,20,31,0.6)]">
-                <Image src="/images/visuals/team-abstract.svg" alt="Abstract illustration of the Knight Medical Billing revenue cycle team" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                <Image src={photo.doctorPortrait} alt="Doctor standing in a modern clinical workspace" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950/60 via-transparent to-transparent" />
               </div>
               <div className="absolute -bottom-5 -right-2 w-48 rounded-2xl border border-white bg-surface p-4 shadow-[0_24px_50px_-28px_rgba(4,20,31,0.45)] sm:-right-6 sm:w-56">
@@ -406,7 +407,7 @@ export default async function HomePage() {
 
       <section className="relative overflow-hidden bg-night py-16 text-white sm:py-20">
         <div className="absolute inset-0">
-          <Image src="/images/visuals/hero-about.svg" alt="" fill className="object-cover opacity-[0.34]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+          <Image src={photo.teamOffice} alt="" fill className="object-cover opacity-[0.34]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
           <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
         </div>
         <div className="dot-grid absolute inset-0 opacity-[0.1]" />

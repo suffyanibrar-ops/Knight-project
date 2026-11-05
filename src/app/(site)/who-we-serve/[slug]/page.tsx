@@ -49,7 +49,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
         }
         description={audience.intro}
         image={audienceVisuals[audience.slug] ?? audience.image}
-        imageAlt={`Abstract illustration representing ${audience.name} billing support`}
+        imageAlt={`Photograph representing ${audience.name} billing support`}
         badges={audience.points.slice(0, 3)}
         crumbs={[{ label: "Who we serve", href: "/who-we-serve" }, { label: audience.name }]}
         stat={audience.stat}

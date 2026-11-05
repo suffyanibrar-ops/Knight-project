@@ -31,7 +31,7 @@ export default async function FaqPage() {
         }
         description="Pricing, onboarding, software, compliance and what happens to claims in progress. If your question is not here, call or email us — we answer directly."
         image={pageHeroVisuals.faq}
-        imageAlt="Abstract illustration of common medical billing questions"
+        imageAlt="Photograph of a support specialist ready to answer questions"
         crumbs={[{ label: "FAQ" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
         secondaryCta={{ label: "Contact us", href: "/contact" }}

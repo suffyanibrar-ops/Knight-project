@@ -6,7 +6,8 @@ import type { Metadata } from "next";
 import { DemoForm } from "@/components/demo-form";
 import { ParallaxImage } from "@/components/motion/parallax";
 import { PageHero } from "@/components/page-hero";
-import { pageHeroVisuals, visual } from "@/components/sections/visuals";
+import { pageHeroVisuals } from "@/components/sections/visuals";
+import { photo } from "@/lib/photos";
 import { Reveal } from "@/components/ui";
 import { kpis, site } from "@/lib/site";
 
@@ -35,7 +36,7 @@ export default function SchedulePage() {
         }
         description="Tell us about your facility and current billing process. We will review it with you, identify the problem areas in your revenue cycle and show you how a dedicated Knight team would take over — with no prepayment required."
         image={pageHeroVisuals.schedule}
-        imageAlt="Abstract illustration of a billing consultation between Knight and a practice"
+        imageAlt="Photograph of a clinician in a video consultation at a desk"
         badges={["Free · no obligation", "No hidden fees", "24/5 support"]}
         crumbs={[{ label: "Schedule a consultation" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
@@ -63,7 +64,7 @@ export default function SchedulePage() {
 
             <Reveal delay={0.08} className="mt-6">
               <div className="relative overflow-hidden rounded-3xl bg-night p-6 text-white">
-                <ParallaxImage src={visual("intake-form")} distance={26} className="opacity-35" />
+                <ParallaxImage src={photo.documentsReview} distance={26} className="opacity-35" />
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-night via-ink-950/95 to-ink-950/60" />
                 <div className="dot-grid absolute inset-0 opacity-[0.12]" />
                 <div className="relative">

@@ -8,7 +8,8 @@ import { Icon } from "@/components/icon";
 import { ParallaxImage } from "@/components/motion/parallax";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { PageHero } from "@/components/page-hero";
-import { pageHeroVisuals, visual, audienceVisuals } from "@/components/sections/visuals";
+import { pageHeroVisuals, audienceVisuals } from "@/components/sections/visuals";
+import { photo } from "@/lib/photos";
 import { ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { audiences, rcmLifecycle, site } from "@/lib/site";
 
@@ -26,7 +27,7 @@ export default function WhoWeServePage() {
         }
         description="Knight Medical Billing is a recognized medical billing organization serving a range of facilities — from hospitals and healthcare systems to emergency rooms, urgent cares and independent practices."
         image={pageHeroVisuals.whoWeServe}
-        imageAlt="Abstract illustration of the facilities Knight Medical Billing serves"
+        imageAlt="Photograph of a bright modern hospital corridor"
         badges={["Hospitals & health systems", "ER & urgent care", "Private practices"]}
         crumbs={[{ label: "Who we serve" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
@@ -42,7 +43,7 @@ export default function WhoWeServePage() {
                 <TiltCard className="group h-full">
                   <Link href={`/who-we-serve/${audience.slug}`} className="group grid h-full overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_32px_64px_-40px_rgba(4,20,31,0.45)] sm:grid-cols-[0.9fr_1.1fr]">
                     <div className="relative min-h-[12rem] overflow-hidden">
-                      <Image src={audienceVisuals[audience.slug] ?? audience.image} alt={`Illustration representing ${audience.name} billing support`} fill className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                      <Image src={audienceVisuals[audience.slug] ?? audience.image} alt={`Photograph representing ${audience.name} billing support`} fill className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                       <div className="absolute inset-0 bg-gradient-to-t from-ink-950/65 to-transparent" />
                       <span className="absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl border border-white/25 bg-white/15 text-white backdrop-blur">
                         <Icon name={audience.icon} className="h-4 w-4" />
@@ -73,7 +74,7 @@ export default function WhoWeServePage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-16 text-white sm:py-20">
-        <ParallaxImage src={visual("results-dashboard")} distance={32} className="opacity-40" />
+        <ParallaxImage src={photo.deskCharts} distance={32} className="opacity-40" />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
         <div className="shell relative grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
           <Reveal>

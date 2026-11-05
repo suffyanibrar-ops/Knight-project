@@ -59,7 +59,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
         }
         description={`${specialty.blurb} Your billing team knows this specialty's code hierarchies, payer policies and documentation standards before your first claim goes out.`}
         image={image}
-        imageAlt={`Abstract illustration representing ${specialty.name} medical billing`}
+        imageAlt={`Photograph representing ${specialty.name} medical billing`}
         badges={specialty.focus.slice(0, 3)}
         crumbs={[{ label: "Specialties", href: "/specialties" }, { label: specialty.name }]}
         stat={{ value: "99.9%", label: "Claim acceptance rate" }}

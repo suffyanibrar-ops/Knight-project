@@ -8,7 +8,8 @@ import { Lightbox } from "@/components/motion/lightbox";
 import { Icon } from "@/components/icon";
 import { PageHero } from "@/components/page-hero";
 import { ParallaxFrame } from "@/components/sections/parallax-frame";
-import { pageHeroVisuals, visual } from "@/components/sections/visuals";
+import { pageHeroVisuals } from "@/components/sections/visuals";
+import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { benefits, coreValues, leadership, site, stats } from "@/lib/site";
 
@@ -33,7 +34,7 @@ export default function AboutPage() {
         }
         description="Led by a seasoned medical billing and coding team, Knight Medical Billing is dedicated to easing the financial management burden of healthcare providers. Several of our team members have worked as healthcare providers themselves — they understand the demands of practice."
         image={pageHeroVisuals.about}
-        imageAlt="Abstract illustration of the Knight Medical Billing team and its values"
+        imageAlt="Photograph of the Knight Medical Billing team in a modern office"
         badges={["25 years combined experience", "Clinician-led", "Herndon, Virginia"]}
         crumbs={[{ label: "About" }]}
         primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
@@ -76,8 +77,8 @@ export default function AboutPage() {
 
           <div className="relative">
             <ParallaxFrame
-              src={visual("team-abstract")}
-              alt="Abstract illustration of the Knight Medical Billing team"
+              src={photo.laptopNotes}
+              alt="Photograph of the Knight Medical Billing team collaborating in an office"
               aspect="aspect-[4/3.4]"
               className="border-white shadow-[0_40px_80px_-50px_rgba(4,20,31,0.55)]"
             >
@@ -251,12 +252,12 @@ export default function AboutPage() {
           <Reveal className="mt-8">
             <Lightbox
               items={[
-                { src: visual("facility-private-practice"), alt: "Illustration of a private practice supported by our billing team", caption: "Independent practice teams" },
-                { src: visual("facility-hospital"), alt: "Illustration of hospital billing support", caption: "Specialty and hospital groups" },
-                { src: visual("facility-healthcare-system"), alt: "Illustration of a connected multi-facility revenue cycle", caption: "Multi-facility revenue cycle" },
-                { src: visual("intake-form"), alt: "Illustration of patient intake and documentation review", caption: "Dedicated billing specialists" },
-                { src: visual("service-coding"), alt: "Illustration of certified coding review", caption: "Direct access to your team" },
-                { src: visual("results-dashboard"), alt: "Illustration of monthly revenue reporting", caption: "Reporting that explains itself" },
+                { src: photo.reception, alt: "Receptionist supporting a patient at a modern practice front desk", caption: "Independent practice teams" },
+                { src: photo.corridorHospital, alt: "Hospital corridor in a facility we support", caption: "Specialty and hospital groups" },
+                { src: photo.doctorsDiscussing, alt: "Two physicians reviewing a case together", caption: "Multi-facility revenue cycle" },
+                { src: photo.documentsTeam, alt: "Billing specialists reviewing claim documentation at a laptop", caption: "Dedicated billing specialists" },
+                { src: photo.documentsDesk, alt: "Billing specialists reviewing claim documentation together", caption: "Direct access to your team" },
+                { src: photo.analyticsLaptop, alt: "Analyst reviewing revenue performance reports on a laptop", caption: "Reporting that explains itself" },
               ]}
             />
           </Reveal>

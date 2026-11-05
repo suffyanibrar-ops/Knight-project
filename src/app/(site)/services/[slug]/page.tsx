@@ -51,7 +51,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         }
         description={service.intro}
         image={heroVisual}
-        imageAlt={`Illustration representing ${service.name} at Knight Medical Billing`}
+        imageAlt={`Photograph representing ${service.name} at Knight Medical Billing`}
         badges={service.bullets.slice(0, 3)}
         crumbs={[{ label: "Services", href: "/services" }, { label: service.short }]}
         stat={{ value: service.metrics[0].value, label: service.metrics[0].label }}
