@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { chooseBestVoice, splitForSpeech } from "./voice-text";
+import { chooseBestVoice, normalizeForSpeech } from "./voice-text";
 
 /**
  * Browser-native voice stack (no paid speech services):
@@ -58,6 +58,39 @@ export interface UseVoiceOptions {
 const BARGE_RMS = 0.055;
 const BARGE_FRAMES = 4;
 
+interface UtteranceChunk { text: string; rate: number; pitch: number }
+
+/**
+ * Keep an answer in as few utterances as practical. Web Speech inserts a small
+ * silence at every utterance boundary; grouping sentences into ~420-character
+ * phrases removes most of those gaps while still allowing streaming playback.
+ */
+function chunkSpeech(clean: string): UtteranceChunk[] {
+  const max = 420;
+  if (clean.length <= max) {
+    return [{ text: clean, rate: 0.97, pitch: /\?\s*$/.test(clean) ? 1.03 : 0.99 }];
+  }
+  const sentences = clean.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) ?? [clean];
+  const chunks: UtteranceChunk[] = [];
+  let buffer = "";
+  const push = (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed) chunks.push({ text: trimmed, rate: 0.97, pitch: /\?\s*$/.test(trimmed) ? 1.03 : 0.99 });
+  };
+  for (const raw of sentences) {
+    const sentence = raw.trim();
+    if (!sentence) continue;
+    if (buffer && (buffer + " " + sentence).length > max) {
+      push(buffer);
+      buffer = sentence;
+    } else {
+      buffer = `${buffer} ${sentence}`.trim();
+    }
+  }
+  push(buffer);
+  return chunks;
+}
+
 export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1, voiceName = "" }: UseVoiceOptions) {
   const [state, setState] = useState<VoiceState>("off");
   const [interim, setInterim] = useState("");
@@ -77,6 +110,9 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
   const rateRef = useRef(rate);
   const voiceNameRef = useRef(voiceName);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  // Incremented on every stop/interrupt/new speech session. Stale utterance
+  // callbacks from a cancelled answer can never put the UI back into a wrong state.
+  const speechSessionRef = useRef(0);
 
   useEffect(() => { onFinalRef.current = onFinalUtterance; }, [onFinalUtterance]);
   useEffect(() => { onBargeInRef.current = onBargeIn; }, [onBargeIn]);
@@ -189,9 +225,13 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     recognition.onerror = (event) => {
       if (event.error === "no-speech" || event.error === "aborted") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        recognitionRef.current = null;
+        startedRef.current = false;
         setError("Microphone permission was denied. You can keep chatting by typing.");
         setState("error");
       } else if (event.error === "network") {
+        recognitionRef.current = null;
+        startedRef.current = false;
         setError("Speech recognition needs a network connection in this browser. Text chat still works.");
         setState("error");
       }
@@ -236,7 +276,10 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
   }, []);
 
   const stopSpeech = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    speechSessionRef.current += 1;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch { /* browser quirk */ }
+    }
     speakingRef.current = false;
   }, []);
 
@@ -255,40 +298,72 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
 
   const setThinking = useCallback(() => { setState((current) => (current === "off" || current === "unsupported" ? current : "thinking")); }, []);
 
-  /** Speak an answer with natural chunking, best-available voice and light prosody. */
+  /**
+   * Speak a complete batch as one natural utterance.
+   *
+   * The chat widget batches at least two completed sentences (or the end of the
+   * answer) before calling this. Speaking whole phrases in one utterance avoids
+   * the noticeable silence Chrome/Edge insert between many tiny utterances while
+   * preserving natural sentence pauses inside the text.
+   */
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const chunks = splitForSpeech(text);
-    if (!chunks.length) return;
+    const clean = normalizeForSpeech(text);
+    if (!clean) return;
     const synth = window.speechSynthesis;
+    if (synth.paused) { try { synth.resume(); } catch { /* ignore */ } }
     const voices = voicesRef.current.length ? voicesRef.current : synth.getVoices();
     const voice = chooseBestVoice(voices, lang, voiceNameRef.current);
+    const generation = speechSessionRef.current;
+    // Ordinary answers (2–3 sentences) become one utterance. Only exceptionally
+    // long text is split, and then only at sentence boundaries.
+    const chunks = chunkSpeech(clean);
+    if (!chunks.length) return;
     speakingRef.current = true;
     setState((current) => (current === "off" || current === "unsupported" ? current : "speaking"));
+
     let pending = chunks.length;
-    const finishOne = () => {
-      pending -= 1;
-      if (pending <= 0) {
-        // The queue may still be flushing the final utterance.
-        window.setTimeout(() => {
-          if (!synth.speaking) {
-            speakingRef.current = false;
-            setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
-          }
-        }, 60);
-      }
+    let settled = false;
+    const finish = () => {
+      if (pending > 0) pending -= 1;
+      if (pending > 0 || settled) return;
+      // Give the browser queue a moment to move to the next queued batch.
+      window.setTimeout(() => {
+        if (generation !== speechSessionRef.current) return;
+        if (!synth.speaking) {
+          settled = true;
+          speakingRef.current = false;
+          setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+        }
+      }, 90);
     };
+
     for (const chunk of chunks) {
       const utterance = new SpeechSynthesisUtterance(chunk.text);
       utterance.lang = voice?.lang ?? lang;
       if (voice) utterance.voice = voice;
-      utterance.rate = Math.max(0.6, Math.min(1.4, (rateRef.current || 1) * chunk.rate));
-      utterance.pitch = Math.max(0.8, Math.min(1.2, chunk.pitch));
+      utterance.rate = Math.max(0.6, Math.min(1.4, (rateRef.current || 1) * (chunk.rate || 0.97)));
+      utterance.pitch = Math.max(0.8, Math.min(1.2, chunk.pitch || 0.99));
       utterance.volume = 1;
-      utterance.onend = finishOne;
-      utterance.onerror = finishOne;
-      synth.speak(utterance);
+      utterance.onend = finish;
+      utterance.onerror = finish;
+      try {
+        synth.speak(utterance);
+      } catch {
+        finish();
+      }
     }
+
+    // Safety net: if a browser never fires onend/onerror (a known Web Speech
+    // quirk in background tabs), release the UI state rather than getting stuck.
+    window.setTimeout(() => {
+      if (generation !== speechSessionRef.current || settled) return;
+      if (!synth.speaking) {
+        settled = true;
+        speakingRef.current = false;
+        setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+      }
+    }, Math.max(7000, clean.length * 95));
   }, [lang]);
 
   /** Cancel current playback + mark not speaking (used by barge-in and Stop). */
@@ -297,7 +372,12 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
   }, [stopSpeech]);
 
+  /** Called when an answer finishes with no speakable text, so UI never sticks on "Thinking". */
+  const settle = useCallback(() => {
+    setState((current) => (current === "thinking" ? "listening" : current));
+  }, []);
+
   useEffect(() => () => { end(); }, [end]);
 
-  return { supported, state, interim, error, muted, start, end, stopSpeech, toggleMute, speak, interrupt, setThinking, setError };
+  return { supported, state, interim, error, muted, start, end, stopSpeech, toggleMute, speak, interrupt, settle, setThinking, setError };
 }

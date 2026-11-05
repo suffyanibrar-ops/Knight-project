@@ -74,6 +74,7 @@ export function AiChatWidget() {
   const abortRef = useRef<AbortController | null>(null);
   const voiceModeRef = useRef(false);
   const speechBufferRef = useRef("");
+  const speechStartedRef = useRef(false);
   const bargeRef = useRef(false);
   const sendRef = useRef<(text: string, fromVoice?: boolean) => void>(() => undefined);
   const bargeHandlerRef = useRef<() => void>(() => undefined);
@@ -113,9 +114,40 @@ export function AiChatWidget() {
     if (open) window.setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
 
+  /**
+   * Batch streamed sentences before speaking.
+   *
+   * Speaking each sentence as its own utterance was the source of the unnatural
+   * gaps: Web Speech inserts noticeable silence between utterances, and the next
+   * sentence often arrived mid-gap. We now wait for two completed sentences (or
+   * the end of the answer) and send them as one naturally paced utterance.
+   */
   const flushSpeech = useCallback((force: boolean) => {
     if (!voiceModeRef.current) return;
     const buffer = speechBufferRef.current;
+
+    // The answer is finished: speak everything not yet spoken as one natural
+    // utterance. If nothing was spoken yet, this is the whole answer (no gaps at
+    // all). If an opening batch is playing, this simply queues the rest.
+    if (force) {
+      speechBufferRef.current = "";
+      const combined = buffer.replace(/\s+/g, " ").trim();
+      if (combined) speakRef.current(combined);
+      return;
+    }
+
+    // Once the opening batch is speaking, hold the remainder so a normal answer
+    // crosses only one utterance boundary at the end. Very long answers (>700
+    // chars waiting) are released early so audio never runs dry.
+    if (speechStartedRef.current) {
+      if (buffer.length < 700) return;
+      speechBufferRef.current = "";
+      speakRef.current(buffer.replace(/\s+/g, " ").trim());
+      return;
+    }
+
+    // Opening: wait for two completed sentences (or one substantial sentence)
+    // to give the voice a natural phrase to start with.
     const sentences: string[] = [];
     const pattern = /[^.!?]+[.!?]+(?=\s|$)/g;
     let match: RegExpExecArray | null;
@@ -125,11 +157,12 @@ export function AiChatWidget() {
       lastIndex = pattern.lastIndex;
     }
     const remainder = buffer.slice(lastIndex);
-    speechBufferRef.current = force ? "" : remainder;
-    if (force && remainder.trim()) sentences.push(remainder);
-    for (const sentence of sentences) {
-      if (sentence.trim()) speakRef.current(sentence.trim());
-    }
+    const combined = sentences.join(" ").replace(/\s+/g, " ").trim();
+    if (!combined) return;
+    if (sentences.length < 2 && combined.length < 220) return;
+    speechBufferRef.current = remainder;
+    speechStartedRef.current = true;
+    speakRef.current(combined);
   }, []);
 
   const stopEverything = useCallback(() => {
@@ -137,6 +170,8 @@ export function AiChatWidget() {
     abortRef.current = null;
     setBusy(false);
     setToolStatus(null);
+    speechBufferRef.current = "";
+    speechStartedRef.current = false;
     voice.interrupt();
   }, [voice]);
 
@@ -147,6 +182,8 @@ export function AiChatWidget() {
     abortRef.current = null;
     setBusy(false);
     setToolStatus(null);
+    speechBufferRef.current = "";
+    speechStartedRef.current = false;
     voice.interrupt();
     setMessages((prev) => prev.map((message) => (message.pending ? { ...message, pending: false } : message)));
   };
@@ -161,12 +198,19 @@ export function AiChatWidget() {
     bargeRef.current = false;
     setError(null);
     setInput("");
+    if (voiceModeRef.current && voice.state === "speaking") {
+      // A new typed turn supersedes any audio still finishing from the old one.
+      speechBufferRef.current = "";
+      speechStartedRef.current = false;
+      voice.interrupt();
+    }
     setMessages((prev) => [...prev, { id: uid(), role: "user", text }]);
     const assistantId = uid();
     setMessages((prev) => [...prev, { id: assistantId, role: "assistant", text: "", pending: true }]);
     setBusy(true);
     setToolStatus(null);
     speechBufferRef.current = "";
+    speechStartedRef.current = false;
     if (voice.state !== "off" && voice.state !== "unsupported") voice.setThinking();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -236,6 +280,10 @@ export function AiChatWidget() {
       } else {
         const message = failure instanceof Error ? failure.message : "The assistant is unavailable.";
         setError(message);
+        // Never speak a partial answer after a failed response.
+        speechBufferRef.current = "";
+        speechStartedRef.current = false;
+        if (voiceModeRef.current) voice.interrupt();
         setMessages((prev) => prev.map((item) => (item.id === assistantId && !item.text ? { ...item, text: "I'm sorry — I couldn't respond just now. You can try again, use the contact form, or ask me to arrange a human follow-up." } : item)));
       }
     } finally {
@@ -244,7 +292,7 @@ export function AiChatWidget() {
       setMessages((prev) => prev.map((message) => (message.id === assistantId ? { ...message, pending: false } : message)));
       if (voiceModeRef.current) {
         flushSpeech(true);
-        if (voice.supported) voice.setThinking();
+        voice.settle();
       }
     }
   }, [busy, flushSpeech, stopEverything, voice]);
@@ -326,6 +374,7 @@ export function AiChatWidget() {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               role="dialog"
               aria-label={`Chat with ${config?.agentName ?? "the Knight Medical Billing assistant"}`}
+              data-voice-state={voice.state}
               className="flex max-h-[min(82vh,40rem)] w-[min(94vw,24.5rem)] flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface shadow-[0_40px_80px_-30px_rgba(4,20,31,0.45)]"
             >
               <div className="relative bg-night-soft px-4 py-4 text-white">
