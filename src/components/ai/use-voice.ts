@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { chooseBestVoice, splitForSpeech } from "./voice-text";
 
 /**
  * Browser-native voice stack (no paid speech services):
@@ -75,11 +76,22 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
   const onBargeInRef = useRef(onBargeIn);
   const rateRef = useRef(rate);
   const voiceNameRef = useRef(voiceName);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => { onFinalRef.current = onFinalUtterance; }, [onFinalUtterance]);
   useEffect(() => { onBargeInRef.current = onBargeIn; }, [onBargeIn]);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
   useEffect(() => { rateRef.current = rate; }, [rate]);
+
+  // Browsers load the voice list asynchronously; keep a warm cache.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    const load = () => { voicesRef.current = synth.getVoices(); };
+    load();
+    synth.addEventListener?.("voiceschanged", load);
+    return () => synth.removeEventListener?.("voiceschanged", load);
+  }, []);
   useEffect(() => { voiceNameRef.current = voiceName; }, [voiceName]);
 
   const supported = useSyncExternalStore(
@@ -243,33 +255,40 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
 
   const setThinking = useCallback(() => { setState((current) => (current === "off" || current === "unsupported" ? current : "thinking")); }, []);
 
+  /** Speak an answer with natural chunking, best-available voice and light prosody. */
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const clean = text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*_#`]/g, "").replace(/\s+/g, " ").trim();
-    if (!clean) return;
+    const chunks = splitForSpeech(text);
+    if (!chunks.length) return;
+    const synth = window.speechSynthesis;
+    const voices = voicesRef.current.length ? voicesRef.current : synth.getVoices();
+    const voice = chooseBestVoice(voices, lang, voiceNameRef.current);
     speakingRef.current = true;
     setState((current) => (current === "off" || current === "unsupported" ? current : "speaking"));
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.lang = lang;
-    utterance.rate = Math.max(0.6, Math.min(1.4, rateRef.current || 1));
-    const voices = window.speechSynthesis.getVoices();
-    const wanted = voiceNameRef.current.trim().toLowerCase();
-    const preferred = (wanted ? voices.find((voice) => voice.name.toLowerCase().includes(wanted)) : undefined)
-      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()) && /natural|google|samantha|aria|jenny/i.test(voice.name))
-      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
-    if (preferred) utterance.voice = preferred;
-    utterance.onend = () => {
-      // Only return to listening when the whole queue has finished.
-      if (!window.speechSynthesis.speaking) {
-        speakingRef.current = false;
-        setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+    let pending = chunks.length;
+    const finishOne = () => {
+      pending -= 1;
+      if (pending <= 0) {
+        // The queue may still be flushing the final utterance.
+        window.setTimeout(() => {
+          if (!synth.speaking) {
+            speakingRef.current = false;
+            setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+          }
+        }, 60);
       }
     };
-    utterance.onerror = () => {
-      speakingRef.current = false;
-      setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
-    };
-    window.speechSynthesis.speak(utterance);
+    for (const chunk of chunks) {
+      const utterance = new SpeechSynthesisUtterance(chunk.text);
+      utterance.lang = voice?.lang ?? lang;
+      if (voice) utterance.voice = voice;
+      utterance.rate = Math.max(0.6, Math.min(1.4, (rateRef.current || 1) * chunk.rate));
+      utterance.pitch = Math.max(0.8, Math.min(1.2, chunk.pitch));
+      utterance.volume = 1;
+      utterance.onend = finishOne;
+      utterance.onerror = finishOne;
+      synth.speak(utterance);
+    }
   }, [lang]);
 
   /** Cancel current playback + mark not speaking (used by barge-in and Stop). */

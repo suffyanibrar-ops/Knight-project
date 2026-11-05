@@ -30,7 +30,8 @@ const slotsBody = await slotsResponse.json()
 ok('availability API returns real slots', slotsResponse.status() === 200 && Array.isArray(slotsBody.slots) && slotsBody.slots.length > 0, JSON.stringify(slotsBody).slice(0, 120))
 
 // ---------- text chat streaming (real DeepSeek call) ----------
-await page.goto(BASE + '/', { waitUntil: 'networkidle' })
+await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 60000 })
+await page.waitForTimeout(2000)
 await page.getByRole('button', { name: /open chat/i }).click()
 await page.waitForTimeout(1200)
 ok('chat widget opens with welcome', (await page.locator('[role="dialog"]').innerText()).includes('Riley'))
@@ -80,6 +81,9 @@ ok('handoff request created', handoff.status() === 200 && (await handoff.json())
 // ---------- voice barge-in with mocked browser speech ----------
 await page.addInitScript(() => {
   window.__speech = { utterances: [], cancelCount: 0, recognition: null, timers: [] }
+  // Keep the energy analyser out of this mock so barge-in is driven only by
+  // recognition interim results (deterministic in headless CI).
+  try { navigator.mediaDevices.getUserMedia = () => Promise.reject(new Error("test: no microphone")); } catch { /* ignore */ }
   class FakeRecognition {
     constructor() { this.lang = ''; this.continuous = true; this.interimResults = true; this.maxAlternatives = 1; this.onresult = null; this.onerror = null; this.onend = null; this.onstart = null; window.__speech.recognition = this }
     start() { this.onstart?.() }
@@ -98,7 +102,8 @@ await page.addInitScript(() => {
     return true
   }
 })
-await page.reload({ waitUntil: 'networkidle' })
+await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.waitForTimeout(1500)
 ok('voice feature advertised in config', config.voiceEnabled === true)
 await page.getByRole('button', { name: /open chat/i }).click()
 await page.waitForTimeout(900)

@@ -473,3 +473,56 @@ SELECT 4, 4, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availabilit
 INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
 SELECT 5, 5, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules WHERE id = 5);
 `;
+
+
+/* -------------------------------------------------------------------------
+ * v6 — scheduling intelligence.
+ * Structured per-conversation scheduling state (stage machine + remembered
+ * visitor details) and local-time columns so appointments always preserve the
+ * visitor's requested date, time and IANA timezone alongside UTC instants.
+ * ---------------------------------------------------------------------- */
+
+export const AI_V6_SCHEMA = `
+CREATE TABLE IF NOT EXISTS ai_conversation_contexts (
+  conversation_id INTEGER PRIMARY KEY REFERENCES ai_conversations(id) ON DELETE CASCADE,
+  stage TEXT NOT NULL DEFAULT 'DISCOVERY',
+  user_name TEXT,
+  practice TEXT,
+  specialty TEXT,
+  concern TEXT,
+  concern_detail TEXT,
+  preferred_date TEXT,
+  preferred_time TEXT,
+  timezone TEXT,
+  appointment_type TEXT,
+  duration_minutes INTEGER,
+  booking_confirmed INTEGER NOT NULL DEFAULT 0,
+  last_checked_utc INTEGER,
+  last_checked_date TEXT,
+  last_checked_time TEXT,
+  last_checked_timezone TEXT,
+  last_check_available INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+ALTER TABLE ai_appointments ADD COLUMN local_date TEXT;
+ALTER TABLE ai_appointments ADD COLUMN local_time TEXT;
+ALTER TABLE ai_appointments ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 15;
+CREATE INDEX IF NOT EXISTS idx_ai_appointments_local ON ai_appointments (local_date, local_time);
+`.replace(/;\s*$/, ';');
+
+
+/* -------------------------------------------------------------------------
+ * v7 — conversation-quality defaults.
+ * Only removes stored copies of the old pushy default welcome/instructions so
+ * the new advisor-first defaults apply. Admin-customised values are preserved.
+ * ---------------------------------------------------------------------- */
+export const AI_V7_SCHEMA = `
+DELETE FROM settings
+WHERE key = 'ai.welcome'
+  AND value LIKE 'Hi, I''m Riley from Knight Medical Billing. I can answer questions about our medical billing and revenue cycle services,%';
+DELETE FROM settings
+WHERE key = 'ai.instructions'
+  AND value LIKE 'Prioritise understanding the visitor''s practice, specialty and billing challenge.%';
+`;

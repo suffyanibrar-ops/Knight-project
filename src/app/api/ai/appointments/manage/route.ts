@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cancelAppointmentByToken, formatSlot, getAppointmentByToken, rescheduleAppointmentByToken } from "@/lib/ai-appointments";
+import { appointmentDisplay, cancelAppointmentByToken, getAppointmentByToken, rescheduleAppointmentByToken, SchedulingError, TimezoneInputError } from "@/lib/ai-appointments";
 import { sendOwnerNotification, sendVisitorConfirmation } from "@/lib/email";
 import { isSameOrigin } from "@/lib/request-security";
 import { checkRateLimit, clientKeyFromHeaders } from "@/lib/rate-limit";
@@ -24,21 +24,29 @@ export async function POST(request: Request) {
     if (action === "cancel") {
       cancelAppointmentByToken(token);
     } else if (action === "reschedule") {
-      const startsAtUtc = Number(body.startsAtUtc);
-      if (!Number.isFinite(startsAtUtc)) return NextResponse.json({ ok: false, error: "Choose a new time." }, { status: 400 });
-      rescheduleAppointmentByToken(token, startsAtUtc);
+      rescheduleAppointmentByToken(token, {
+        date: typeof body.date === "string" ? body.date : undefined,
+        time: typeof body.time === "string" ? body.time : undefined,
+        timezone: typeof body.timezone === "string" ? body.timezone : undefined,
+        durationMinutes: typeof body.durationMinutes === "number" ? body.durationMinutes : undefined,
+        startsAtUtc: typeof body.startsAtUtc === "number" ? body.startsAtUtc : undefined,
+      });
     } else {
       return NextResponse.json({ ok: false, error: "Unknown action." }, { status: 400 });
     }
   } catch (error) {
+    if (error instanceof TimezoneInputError) return NextResponse.json({ ok: false, code: error.code, error: error.message }, { status: 400 });
+    if (error instanceof SchedulingError) {
+      const status = error.code === "calendar_unavailable" ? 503 : 409;
+      return NextResponse.json({ ok: false, code: error.code, error: error.message }, { status });
+    }
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Could not update the appointment." }, { status: 409 });
   }
-  const updated = getAppointmentByToken(token);
-  const startsAtUtc = Number(updated?.starts_at_utc ?? appointment.starts_at_utc);
-  const labels = formatSlot(startsAtUtc);
+  const updated = getAppointmentByToken(token) ?? appointment;
+  const display = appointmentDisplay(updated);
   const email = String(appointment.email);
   const name = String(appointment.name);
-  const summary = action === "cancel" ? "cancelled" : `moved to ${labels.dateLabel} at ${labels.timeLabel}`;
+  const summary = action === "cancel" ? "cancelled" : `moved to ${display.formatted.dateLabel} at ${display.formatted.timeLabel}`;
   try {
     await sendOwnerNotification({
       kind: "appointment",
@@ -52,5 +60,14 @@ export async function POST(request: Request) {
       await sendVisitorConfirmation({ kind: "appointment", to: email, subject: "Your Knight Medical Billing call was cancelled", text: `Hi ${name},\n\nYour introductory call was cancelled. You can book a new time any time at ${site.url}/schedule-form.\n\n${site.phone}`, html: `<p>Hi ${name},</p><p>Your introductory call has been cancelled. You can book a new time at <a href="${site.url}/schedule-form">our scheduling page</a>.</p><p>${site.phone}</p>` });
     }
   } catch { /* status change already succeeded */ }
-  return NextResponse.json({ ok: true, status: action === "cancel" ? "cancelled" : "confirmed", startsAtUtc, dateLabel: labels.dateLabel, timeLabel: labels.timeLabel });
+  return NextResponse.json({
+    ok: true,
+    status: action === "cancel" ? "cancelled" : "confirmed",
+    startsAtUtc: Number(updated.starts_at_utc),
+    dateLabel: display.formatted.dateLabel,
+    timeLabel: display.formatted.timeLabel,
+    timezone: display.formatted.timezone,
+    timezoneLabel: display.formatted.timezoneLabel,
+    durationMinutes: display.durationMinutes,
+  });
 }

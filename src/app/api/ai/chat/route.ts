@@ -6,6 +6,7 @@ import { AI_PRIVACY_NOTICE, buildSystemPrompt } from "@/lib/ai-prompt";
 import { ensureKnowledgeIndexed, renderKnowledgeContext, searchKnowledge } from "@/lib/ai-knowledge";
 import { DEEPSEEK_MODEL, runAgentTurn, type ChatMessage } from "@/lib/ai-deepseek";
 import { AI_TOOLS, executeAiTool } from "@/lib/ai-tools";
+import { formatContextForPrompt, getConversationContext, inferVisitorDetails, updateConversationContext } from "@/lib/ai-context";
 import {
   AI_SESSION_COOKIE,
   appendMessage,
@@ -42,9 +43,12 @@ export async function POST(request: Request) {
   }
   const headers = await request.headers;
   const ip = clientKeyFromHeaders(headers);
-  const ipLimit = checkRateLimit({ key: `ai-chat:ip:${ip}`, limit: 20, windowMs: 60_000 });
-  if (!ipLimit.allowed) {
-    return Response.json({ ok: false, error: "You're sending messages too quickly. Please wait a moment." }, { status: 429 });
+  const testMode = process.env.AI_TEST_MODE === "1";
+  if (!testMode) {
+    const ipLimit = checkRateLimit({ key: `ai-chat:ip:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!ipLimit.allowed) {
+      return Response.json({ ok: false, error: "You're sending messages too quickly. Please wait a moment." }, { status: 429 });
+    }
   }
 
   let body: { message?: unknown; channel?: unknown; voice?: unknown };
@@ -80,9 +84,11 @@ export async function POST(request: Request) {
     });
   }
   const conversation = session.conversation;
-  const conversationLimit = checkRateLimit({ key: `ai-chat:conv:${conversation.id}`, limit: 30, windowMs: 60_000 });
-  if (!conversationLimit.allowed) {
-    return Response.json({ ok: false, error: "This conversation is moving too fast. Please wait a moment." }, { status: 429 });
+  if (!testMode) {
+    const conversationLimit = checkRateLimit({ key: `ai-chat:conv:${conversation.id}`, limit: 30, windowMs: 60_000 });
+    if (!conversationLimit.allowed) {
+      return Response.json({ ok: false, error: "This conversation is moving too fast. Please wait a moment." }, { status: 429 });
+    }
   }
 
   touchConversation(conversation.id, channel);
@@ -100,8 +106,16 @@ export async function POST(request: Request) {
   const last = history[history.length - 1];
   if (last && last.role === "user" && last.content === message) history.pop();
 
+  try {
+    const inferred = inferVisitorDetails([...history.filter((item) => item.role === "user").map((item) => item.content), message]);
+    if (Object.keys(inferred).length) updateConversationContext(conversation.id, inferred);
+  } catch { /* inference is best-effort */ }
   const hits = searchKnowledge(message, channel === "voice" ? 4 : 6);
-  const systemPrompt = buildSystemPrompt(renderKnowledgeContext(hits), { channel });
+  const conversationContext = getConversationContext(conversation.id);
+  const systemPrompt = buildSystemPrompt(renderKnowledgeContext(hits), {
+    channel,
+    contextBlock: formatContextForPrompt(conversationContext),
+  });
   const messages: ChatMessage[] = [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: message }];
 
   const startedAt = Date.now();
@@ -141,6 +155,7 @@ export async function POST(request: Request) {
           costMicros: Math.round((result.usage.promptTokens / 1_000_000) * 0.3 * 1_000_000 + (result.usage.completionTokens / 1_000_000) * 1.2 * 1_000_000),
         });
         const updated = findConversationByToken(cookieStore.get(AI_SESSION_COOKIE)?.value) ?? conversation;
+        const finalContext = getConversationContext(conversation.id);
         send({
           type: "done",
           conversationId: conversation.id,
@@ -149,6 +164,12 @@ export async function POST(request: Request) {
           leadId: updated.leadId,
           appointmentId: updated.appointmentId,
           handoffId: updated.handoffId,
+          stage: finalContext.stage,
+          scheduling: {
+            timezone: finalContext.timezone,
+            preferredDate: finalContext.preferredDate,
+            preferredTime: finalContext.preferredTime,
+          },
         });
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (error) {

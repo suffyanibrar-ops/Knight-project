@@ -39,10 +39,10 @@ export interface AiSettings {
 export const AI_DEFAULTS: AiSettings = {
   enabled: process.env.AI_AGENT_ENABLED !== "false",
   agentName: "Riley",
-  welcome: "Hi, I'm Riley from Knight Medical Billing. I can answer questions about our medical billing and revenue cycle services, or help you book a free 15-minute intro call. How can I help?",
+  welcome: "Hi, I'm Riley from Knight Medical Billing. I can help with billing, A/R, denials or anything revenue-cycle related. What's going on with your practice?",
   tone: "Professional, warm and concise. Sound like an experienced billing consultant, not a call-centre script.",
   instructions:
-    "Prioritise understanding the visitor's practice, specialty and billing challenge. Explain how Knight can help, then offer a 15-minute intro call. Keep replies short enough to be spoken aloud. Ask at most one question at a time.",
+    "Lead with understanding. Answer the visitor's question first, then ask at most one useful follow-up. Recommend only what fits their situation, and offer a short call only when they show genuine interest. Keep replies short enough to be spoken aloud, and never repeat details they already shared.",
   voiceEnabled: true,
   voiceRate: 1,
   voiceName: "",

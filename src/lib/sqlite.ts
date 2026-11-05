@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
-import { AI_SCHEMA, BLOG_SCHEMA, SCHEMA } from "./sqlite-schema";
+import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, BLOG_SCHEMA, SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -118,7 +118,7 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 7;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
@@ -138,6 +138,10 @@ const MIGRATIONS: { version: number; statements: string }[] = [
   // v5: AI voice/chat agent tables (conversations, leads, appointments,
   // availability, handoffs, knowledge base + FTS5, usage). Additive only.
   { version: 5, statements: AI_SCHEMA },
+  // v6: scheduling state machine context + local-time appointment columns.
+  { version: 6, statements: AI_V6_SCHEMA },
+  // v7: retire stored copies of the old default welcome/instructions.
+  { version: 7, statements: AI_V7_SCHEMA },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {

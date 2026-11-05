@@ -388,3 +388,27 @@ export const aiUsageLogs = sqliteTable("ai_usage_logs", {
   error: text("error"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
+
+
+export const aiConversationContexts = sqliteTable("ai_conversation_contexts", {
+  conversationId: integer("conversation_id").primaryKey().references(() => aiConversations.id, { onDelete: "cascade" }),
+  stage: text("stage").notNull().default("DISCOVERY"),
+  userName: text("user_name"),
+  practice: text("practice"),
+  specialty: text("specialty"),
+  concern: text("concern"),
+  concernDetail: text("concern_detail"),
+  preferredDate: text("preferred_date"),
+  preferredTime: text("preferred_time"),
+  timezone: text("timezone"),
+  appointmentType: text("appointment_type"),
+  durationMinutes: integer("duration_minutes"),
+  bookingConfirmed: integer("booking_confirmed").notNull().default(0),
+  lastCheckedUtc: integer("last_checked_utc"),
+  lastCheckedDate: text("last_checked_date"),
+  lastCheckedTime: text("last_checked_time"),
+  lastCheckedTimezone: text("last_checked_timezone"),
+  lastCheckAvailable: integer("last_check_available"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Check, Loader2, X } from "lucide-react";
 
-interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string }
+interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; dateISO: string; timeISO: string }
 
-export function AppointmentManager({ token }: { token: string }) {
+export function AppointmentManager({ token, timezone }: { token: string; timezone: string }) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -15,13 +15,13 @@ export function AppointmentManager({ token }: { token: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/ai/slots", { cache: "no-store" })
+    fetch(`/api/ai/slots?timezone=${encodeURIComponent(timezone)}`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load times."))))
       .then((data: { slots?: Slot[] }) => { if (!cancelled) setSlots(data.slots ?? []); })
       .catch((failure: Error) => { if (!cancelled) setError(failure.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [timezone]);
 
   async function act(action: "cancel" | "reschedule", startsAtUtc?: number) {
     setBusy(action);
@@ -30,7 +30,7 @@ export function AppointmentManager({ token }: { token: string }) {
       const response = await fetch("/api/ai/appointments/manage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, action, startsAtUtc }),
+        body: JSON.stringify({ token, action, startsAtUtc, timezone }),
       });
       const data = (await response.json()) as { ok?: boolean; error?: string; dateLabel?: string; timeLabel?: string };
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Could not update the appointment.");

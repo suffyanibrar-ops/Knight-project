@@ -3,12 +3,27 @@
 import { useEffect, useState } from "react";
 import { CalendarCheck, Check, Loader2, X } from "lucide-react";
 
-interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; timezone: string }
+interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; timezone: string; timezoneLabel: string; dateISO: string; timeISO: string }
+
+const TIMEZONE_OPTIONS = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+];
+
+function detectedZone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return TIMEZONE_OPTIONS.some((option) => option.value === zone) ? zone : "";
+  } catch { return ""; }
+}
 export interface BookedAppointment { id: number; startsAtUtc: number; dateLabel: string; timeLabel: string; timezone: string }
 
 export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; onBooked: (appointment: BookedAppointment) => void }) {
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [timezone, setTimezone] = useState(detectedZone());
+  const [loading, setLoading] = useState(Boolean(detectedZone()));
   const [selected, setSelected] = useState<Slot | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,16 +35,21 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
   const [booked, setBooked] = useState<BookedAppointment | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/ai/slots", { cache: "no-store" })
-      .then(async (response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load available times."))))
-      .then((data: { slots?: Slot[] }) => { if (!cancelled) setSlots(data.slots ?? []); })
-      .catch((failure: Error) => { if (!cancelled) setError(failure.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
-    return () => { cancelled = true; document.removeEventListener("keydown", onKey); };
+    return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!timezone) return;
+    let cancelled = false;
+    fetch(`/api/ai/slots?timezone=${encodeURIComponent(timezone)}`, { cache: "no-store" })
+      .then(async (response) => (response.ok ? response.json() : Promise.reject(new Error("Could not load available times."))))
+      .then((data: { slots?: Slot[] }) => { if (!cancelled) { setSlots(data.slots ?? []); setError(null); } })
+      .catch((failure: Error) => { if (!cancelled) setError(failure.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [timezone]);
 
   const grouped = slots.reduce<Record<string, Slot[]>>((acc, slot) => {
     (acc[slot.dateLabel] ??= []).push(slot);
@@ -46,7 +66,7 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
       const response = await fetch("/api/ai/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startsAtUtc: selected.startsAtUtc, name, email, phone, organization, confirmed: true }),
+        body: JSON.stringify({ date: selected.dateISO, time: selected.timeISO, timezone, name, email, phone, organization, confirmed: true }),
       });
       const data = (await response.json()) as { ok?: boolean; appointment?: BookedAppointment; error?: string };
       if (!response.ok || !data.ok || !data.appointment) throw new Error(data.error ?? "Booking failed. Please try another time.");
@@ -66,7 +86,7 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
           <div>
             <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-brand-700">15-minute introduction</p>
             <h2 className="mt-1 text-lg font-extrabold tracking-tight text-ink-950">Book a call with our team</h2>
-            <p className="mt-1 text-[0.76rem] leading-relaxed text-ink-600/80">Times shown are real availability in Eastern Time. A confirmation email is sent after booking.</p>
+            <p className="mt-1 text-[0.76rem] leading-relaxed text-ink-600/80">Times shown are real availability in the time zone you choose. A confirmation email is sent after booking.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close booking" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-mist-200 text-ink-600 hover:bg-mist-50">
             <X className="h-4 w-4" />
@@ -84,8 +104,15 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
         ) : (
           <form onSubmit={submit} className="mt-4 space-y-4">
             <div>
-              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/70">Available times</p>
-              {loading ? (
+              <label className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/70">Your time zone
+                <select value={timezone} onChange={(event) => { const value = event.target.value; setTimezone(value); setSelected(null); setSlots([]); setLoading(Boolean(value)); }} className="mt-1 w-full rounded-xl border border-mist-200 bg-mist-50 px-3 py-2 text-[0.8rem] font-semibold text-ink-900 outline-none focus:border-brand-400">
+                  <option value="">Select your time zone…</option>
+                  {TIMEZONE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <p className="mt-3 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/70">Available times{timezone ? ` · ${slots[0]?.timezoneLabel ?? TIMEZONE_OPTIONS.find((option) => option.value === timezone)?.label ?? ""}` : ""}</p>
+              {!timezone && <p className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-3 text-[0.78rem] text-ink-600">Choose your time zone to see real availability. We won&apos;t assume one.</p>}
+              {loading && timezone ? (
                 <p className="mt-3 flex items-center gap-2 text-[0.78rem] text-ink-600"><Loader2 className="h-4 w-4 animate-spin" /> Loading real availability…</p>
               ) : slots.length === 0 ? (
                 <p className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-3 text-[0.78rem] text-ink-600">No online times are open right now. Call <a href="tel:+18129940046" className="font-bold text-brand-700">(812) 994-0046</a> or email us.</p>

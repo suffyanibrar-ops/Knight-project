@@ -382,6 +382,40 @@ America/New_York, 15-minute slots, 15-minute buffer). Bookings are stored in UTC
 `BEGIN IMMEDIATE`, and protected by a unique index on the start time. Confirmation emails include
 a secure reschedule/cancel link to `/appointment/manage?token=…`.
 
+**Timezone-aware scheduling (v6):** appointment times are converted with **Luxon**
+(IANA tz database, DST-safe) — never fixed offsets. The visitor's zone (Eastern,
+Central, Mountain or Pacific, or any IANA zone) is stored on the appointment together
+with `local_date`, `local_time`, UTC start/end and duration (migration v6). The agent
+asks for the timezone instead of assuming Eastern, checks real availability through
+`check_appointment_availability`, requires an exact availability check before booking,
+and confirms only after explicit visitor confirmation. Conflicts use full interval
+overlap (`start < existing_end AND end > existing_start`), so partial overlaps are
+rejected and back-to-back appointments are allowed. The chat state machine is persisted
+in `ai_conversation_contexts` (DISCOVERY → … → BOOKED) with remembered visitor details.
+The booking calendar (`/api/ai/slots?timezone=…`) and `/appointment/manage` display
+times in the visitor's chosen zone.
+
+**Natural voice:** browser speech synthesis now normalizes text for speech (A/R, RCM,
+CPT, ICD-10, punctuation and links), splits sentences with question/statement prosody,
+and scores available browser voices to prefer enhanced/neural voices (Samantha Enhanced,
+Google, Microsoft Natural, etc.). Speech rate/voice-name remain configurable in admin.
+No paid TTS is used.
+
+**AI test suite (local, test-mode only):**
+
+```bash
+npm run build
+AI_TEST_MODE=1 AI_TEST_SUPPRESS_EMAILS=1 npm run start   # test mode on :3000
+npm run test:ai:unit                                    # timezone, ambiguity, overlap, voice text
+npm run test:ai:conversation                            # 18-point scheduling + conversation suite
+npm run test:ai:ui                                      # timezone-aware booking calendar
+npm run test:ai:regression                              # original agent/voice/admin E2E
+```
+
+`AI_TEST_MODE=1` disables rate limiting and enables optional suppression/failure flags;
+it must never be set in production. `AI_TEST_FAIL_CALENDAR=1` (with test mode, second
+server on port 3101) verifies honest calendar-failure handling.
+
 **Admin:** `/admin/ai` (overview), `/admin/ai/conversations`, `/leads`, `/appointments`,
 `/handoffs`, `/knowledge`, `/settings`. Google Calendar sync is intentionally not part of v1; the
 appointments table already has an `external_event_id` column for a future adapter.

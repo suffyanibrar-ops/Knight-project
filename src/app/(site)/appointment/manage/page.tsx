@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppointmentManager } from "@/components/ai/appointment-manager";
-import { getAppointmentByToken, formatSlot } from "@/lib/ai-appointments";
+import { getAppointmentByToken, appointmentDisplay } from "@/lib/ai-appointments";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Manage your appointment", robots: { index: false, follow: false } };
@@ -18,8 +18,10 @@ export default async function ManageAppointmentPage({ searchParams }: { searchPa
       </div></section>
     );
   }
-  const startsAtUtc = Number(appointment.starts_at_utc);
-  const labels = formatSlot(startsAtUtc, String(appointment.timezone ?? "America/New_York"));
+  const display = appointmentDisplay(appointment);
+  const labels = display.formatted;
+  const timezone = labels.timezone;
+  const duration = display.durationMinutes;
   const cancelled = String(appointment.status) === "cancelled";
   return (
     <section className="bg-surface py-14 sm:py-20"><div className="shell max-w-xl">
@@ -29,10 +31,10 @@ export default async function ManageAppointmentPage({ searchParams }: { searchPa
       <div className="mt-5 rounded-2xl border border-mist-200 bg-mist-50 p-4">
         <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Current time</p>
         <p className="mt-1 text-lg font-extrabold text-ink-950">{cancelled ? "Cancelled" : `${labels.dateLabel} at ${labels.timeLabel}`}</p>
-        <p className="text-[0.74rem] text-ink-600/70">15-minute introductory call · {String(appointment.timezone ?? "America/New_York")}</p>
+        <p className="text-[0.74rem] text-ink-600/70">{duration}-minute introductory call · {labels.timezoneLabel}</p>
         {cancelled && <p className="mt-2 text-[0.78rem] text-rose-700">This appointment has been cancelled.</p>}
       </div>
-      {!cancelled && <AppointmentManager token={token} />}
+      {!cancelled && <AppointmentManager token={token} timezone={timezone} />}
       <p className="mt-6 text-[0.72rem] text-ink-600/70">Need help? Call <a className="font-bold text-brand-700" href="tel:+18129940046">(812) 994-0046</a>.</p>
     </div></section>
   );
