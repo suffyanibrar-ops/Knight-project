@@ -40,6 +40,17 @@ export default async function ServicesPage() {
         stat={{ value: "24 hrs", label: "Claim filing window" }}
       />
 
+      <section className="border-b border-mist-200 bg-mist-50 py-4">
+        <div className="shell flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <p className="text-[0.8rem] leading-relaxed text-ink-600/80">
+            Not sure which service your practice needs first? Trace where the revenue cycle is losing momentum.
+          </p>
+          <Link href="/#revenue-leak" className="group inline-flex shrink-0 items-center gap-1.5 text-[0.76rem] font-extrabold text-brand-700 transition-colors hover:text-brand-500">
+            Open the revenue-leak diagnostic <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </section>
+
       <section className="bg-surface py-16 sm:py-20">
         <div className="shell">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

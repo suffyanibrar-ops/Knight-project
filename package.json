@@ -19,7 +19,8 @@
     "test:ai:ui": "node tests/ai-scheduling-ui.e2e.mjs",
     "test:ai:regression": "node tests/ai.e2e.mjs",
     "test:intro": "node tests/intro.e2e.mjs",
-    "test:site": "node tests/site-fixes.e2e.mjs"
+    "test:site": "node tests/site-fixes.e2e.mjs",
+    "test:experience": "node tests/experience.e2e.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

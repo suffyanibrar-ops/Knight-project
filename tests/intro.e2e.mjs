@@ -45,7 +45,11 @@ async function waitForIntroEnd(page, minMs = 0) {
   ok("logo is visible before/independent of hydration", Number(await page.locator(".site-intro__brand").evaluate((el) => getComputedStyle(el).opacity)) > 0.4);
   ok("scroll is locked only while intro is open", await page.evaluate(() => document.documentElement.classList.contains("intro-open")));
 
-  await page.waitForTimeout(1450);
+  await page.waitForFunction(
+    () => Number(getComputedStyle(document.querySelector(".site-intro__tagline")).opacity) > 0.5,
+    undefined,
+    { timeout: 3200 },
+  ).catch(() => {});
   const lineScale = await page.locator(".site-intro__line").evaluate((el) => {
     const transform = getComputedStyle(el).transform;
     if (transform === "none") return 1;

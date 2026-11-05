@@ -17,10 +17,20 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
 export const EASE_IN_OUT = [0.4, 0, 0.2, 1] as const;
 
 export const DURATION = {
+  /** Button/link feedback. */
+  micro: 0.16,
+  /** Hover and small state changes. */
   fast: 0.22,
+  /** Standard reveal. */
   base: 0.5,
+  /** Larger sectional transition. */
   slow: 0.75,
+  /** Scroll-led storytelling (used sparingly). */
+  story: 1.1,
 } as const;
+
+/** Shared IntersectionObserver margin for reveals. */
+export const REVEAL_MARGIN = "-80px";
 
 export const transition = (duration: number = DURATION.base, delay = 0): Transition => ({
   duration,

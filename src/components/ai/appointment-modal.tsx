@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { CalendarCheck, Check, Loader2, X } from "lucide-react";
 
 interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; timezone: string; timezoneLabel: string; dateISO: string; timeISO: string }
@@ -18,7 +19,7 @@ function detectedZone(): string {
     return TIMEZONE_OPTIONS.some((option) => option.value === zone) ? zone : "";
   } catch { return ""; }
 }
-export interface BookedAppointment { id: number; startsAtUtc: number; dateLabel: string; timeLabel: string; timezone: string }
+export interface BookedAppointment { id: number; startsAtUtc: number; dateLabel: string; timeLabel: string; timezone: string; timezoneLabel?: string }
 
 export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; onBooked: (appointment: BookedAppointment) => void }) {
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -33,6 +34,14 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [booked, setBooked] = useState<BookedAppointment | null>(null);
+
+  const step = booked ? 4 : !timezone ? 1 : !selected ? 2 : 3;
+  const steps = [
+    { label: "Time zone", value: 1 },
+    { label: "Time", value: 2 },
+    { label: "Details", value: 3 },
+    { label: "Confirmed", value: 4 },
+  ];
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -93,14 +102,30 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
           </button>
         </div>
 
+        <ol className="mt-4 flex items-center gap-1.5" aria-label="Booking progress">
+          {steps.map((item, index) => {
+            const done = step > item.value;
+            const current = step === item.value;
+            return (
+              <li key={item.label} className="flex min-w-0 flex-1 items-center gap-1.5" aria-current={current ? "step" : undefined}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[0.52rem] font-extrabold transition-colors ${done ? "bg-mint-500 text-white" : current ? "bg-brand-500 text-white" : "border border-mist-200 bg-surface text-ink-600/50"}`}>
+                  {done ? <Check className="h-2.5 w-2.5" strokeWidth={4} /> : index + 1}
+                </span>
+                <span className={`hidden truncate text-[0.6rem] font-bold sm:block ${current ? "text-ink-900" : "text-ink-600/55"}`}>{item.label}</span>
+                {index < steps.length - 1 && <span aria-hidden className={`hidden h-px flex-1 sm:block ${done ? "bg-mint-300" : "bg-mist-200"}`} />}
+              </li>
+            );
+          })}
+        </ol>
+
         {booked ? (
-          <div className="mt-5 rounded-2xl border border-mint-200 bg-mint-50 p-4 text-center">
+          <motion.div initial={{ opacity: 0, y: 8, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="mt-5 rounded-2xl border border-mint-200 bg-mint-50 p-4 text-center">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-mint-500 text-white"><Check className="h-5 w-5" /></span>
             <p className="mt-3 text-[0.9rem] font-extrabold text-ink-950">You&apos;re booked</p>
-            <p className="mt-1 text-[0.8rem] text-ink-700">{booked.dateLabel} at {booked.timeLabel} ({booked.timezone})</p>
+            <p className="mt-1 text-[0.8rem] text-ink-700">{booked.dateLabel} at {booked.timeLabel} <span className="text-ink-600/70">({booked.timezoneLabel ?? booked.timezone})</span></p>
             <p className="mt-2 text-[0.74rem] text-ink-600/80">A confirmation email with reschedule and cancel options is on its way.</p>
             <button type="button" onClick={onClose} className="btn btn-primary mt-4 px-5">Done</button>
-          </div>
+          </motion.div>
         ) : (
           <form onSubmit={submit} className="mt-4 space-y-4">
             <div>
@@ -140,6 +165,16 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
               )}
             </div>
 
+            {selected && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5" aria-live="polite">
+                <div>
+                  <p className="text-[0.56rem] font-extrabold uppercase tracking-[0.12em] text-brand-700">Selected time</p>
+                  <p className="mt-0.5 text-[0.78rem] font-bold text-ink-900">{selected.dateLabel} at {selected.timeLabel}</p>
+                </div>
+                <button type="button" onClick={() => setSelected(null)} className="shrink-0 text-[0.68rem] font-bold text-brand-700 underline decoration-brand-300 underline-offset-2">Change</button>
+              </div>
+            )}
+
             <div className="grid gap-2.5 sm:grid-cols-2">
               <label className="text-[0.7rem] font-bold text-ink-700 sm:col-span-2">Full name
                 <input required value={name} onChange={(event) => setName(event.target.value)} maxLength={120} autoComplete="name" className="mt-1 w-full rounded-xl border border-mist-200 bg-mist-50 px-3 py-2 text-[0.8rem] outline-none focus:border-brand-400" />
@@ -166,7 +201,7 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
 
             {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.74rem] font-semibold text-rose-700">{error}</p>}
 
-            <button type="submit" disabled={submitting || !selected || slots.length === 0} className="btn btn-primary w-full justify-center">
+            <button type="submit" disabled={submitting || !selected || slots.length === 0} aria-busy={submitting} className="btn btn-primary w-full justify-center">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
               {submitting ? "Booking…" : "Confirm booking"}
             </button>

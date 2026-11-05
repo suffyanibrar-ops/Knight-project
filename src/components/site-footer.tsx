@@ -45,6 +45,14 @@ export function SiteFooter() {
       <div aria-hidden className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-mint-600/10 blur-3xl" />
 
       <div className="shell relative">
+        <div aria-hidden="true" className="flex items-center gap-0 pt-7">
+          {[0, 1, 2, 3].map((node) => (
+            <span key={node} className="flex flex-1 items-center gap-0 last:flex-none">
+              <span className="h-1 w-1 shrink-0 rounded-full bg-brand-300/70" />
+              {node < 3 && <span className="h-px flex-1 bg-gradient-to-r from-brand-300/25 via-mint-300/20 to-transparent" />}
+            </span>
+          ))}
+        </div>
         <div className="grid gap-10 py-12 lg:grid-cols-[1.2fr_2fr] lg:gap-14">
           {/* Brand */}
           <div>

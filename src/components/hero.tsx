@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Typewriter } from "./motion/typewriter";
 import { HeroCanvas } from "./motion/hero-canvas";
 import { HeroPanel } from "./hero-panel";
+import { TiltCard } from "./motion/tilt-card";
 import { site } from "@/lib/site";
 import { Icon } from "./icon";
 import { Magnetic } from "./motion/magnetic";
@@ -104,7 +105,9 @@ export function Hero() {
           className="relative mx-auto w-full max-w-[30rem] lg:max-w-none"
         >
           <div aria-hidden className="absolute -inset-3 -z-10 rounded-[2.2rem] bg-gradient-to-tr from-brand-100/70 via-surface/40 to-mint-100/70" />
-          <HeroPanel />
+          <TiltCard max={4} className="relative">
+            <HeroPanel />
+          </TiltCard>
         </motion.div>
       </div>
 

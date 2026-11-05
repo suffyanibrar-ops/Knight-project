@@ -140,12 +140,14 @@ export function SiteIntro() {
       if (exitStarted) return;
       const elapsed = performance.now() - startedAt;
       if (!full) {
-        if (elapsed >= 320) beginExit();
+        // Absolute navigation-time cap keeps a late hydration from stretching
+        // the brief transition.
+        if (elapsed >= 320 || window.performance.now() >= 700) beginExit();
         else later(tick, 40);
         return;
       }
       const ready = document.readyState === "complete";
-      if ((ready && elapsed >= 1960) || elapsed >= 2600) beginExit();
+      if ((ready && elapsed >= 1960) || elapsed >= 2600 || window.performance.now() >= 2800) beginExit();
       else later(tick, 60);
     };
     later(tick, 60);

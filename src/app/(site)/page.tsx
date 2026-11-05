@@ -6,6 +6,8 @@ import { AlertCircle, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronRight,
 import Link from "next/link";
 import { CtaBand } from "@/components/cta-band";
 import { Hero } from "@/components/hero";
+import { RevenuePipeline } from "@/components/interactive/revenue-pipeline";
+import { AnimatedMetric } from "@/components/interactive/animated-metric";
 import { Icon } from "@/components/icon";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { ParallaxImage } from "@/components/motion/parallax";
@@ -102,6 +104,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <RevenuePipeline />
+
       <section className="bg-surface py-16 sm:py-24">
         <div className="shell">
           <Reveal className="mx-auto max-w-2xl text-center">
@@ -175,7 +179,7 @@ export default async function HomePage() {
             {kpis.slice(0, 4).map((kpi, index) => (
               <Reveal key={kpi.label} delay={index * 0.06}>
                 <div className="group h-full rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-sm transition-colors hover:border-brand-300/40 hover:bg-white/[0.09]">
-                  <p className="text-[1.9rem] font-extrabold leading-none tracking-tight text-white">{kpi.value}</p>
+                  <p className="text-[1.9rem] font-extrabold leading-none tracking-tight text-white"><AnimatedMetric value={kpi.value} /></p>
                   <p className="mt-2 text-[0.78rem] font-bold uppercase tracking-[0.08em] text-brand-200">{kpi.label}</p>
                   <p className="mt-2 text-[0.78rem] leading-relaxed text-white/60">{kpi.detail}</p>
                 </div>
@@ -241,7 +245,7 @@ export default async function HomePage() {
             {kpis.map((kpi, index) => (
               <Reveal key={kpi.label} delay={index * 0.05}>
                 <div className="group relative h-full overflow-hidden rounded-2xl border border-mist-200 bg-gradient-to-b from-white to-mist-50/60 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_24px_50px_-34px_rgba(4,20,31,0.45)]">
-                  <p className="text-[clamp(1.8rem,4vw,2.4rem)] font-extrabold leading-none tracking-tight text-ink-950">{kpi.value}</p>
+                  <p className="text-[clamp(1.8rem,4vw,2.4rem)] font-extrabold leading-none tracking-tight text-ink-950"><AnimatedMetric value={kpi.value} /></p>
                   <p className="mt-2 text-sm font-extrabold tracking-tight text-ink-900">{kpi.label}</p>
                   <p className="mt-1 text-[0.78rem] leading-relaxed text-ink-600/70">{kpi.detail}</p>
                 </div>

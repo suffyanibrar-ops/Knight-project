@@ -6,26 +6,28 @@ import { useEffect, useState } from "react";
 import { DURATION, EASE, usePrefersReducedMotion } from "@/lib/motion";
 
 /**
- * Live "revenue cycle" panel that replaces the hero photograph.
+ * Interactive "revenue cycle" panel beside the hero.
  *
- * It animates on its own — claims advance through four stages, then the totals
- * update — so visitors see the product idea rather than a stock photo. Values
- * are illustrative and labelled as such; they are not client results.
+ * The stages advance on their own so the panel feels alive, but as soon as the
+ * visitor points at or focuses it the rotation pauses and the stages become
+ * buttons. Selecting a stage explains what happens at that point. Figures are
+ * illustrative and labelled as such.
  */
 const stages = [
-  { id: "eligibility", label: "Eligibility verified", icon: ShieldCheck },
-  { id: "coded", label: "Coded & reviewed", icon: FileCheck2 },
-  { id: "filed", label: "Filed to payer", icon: Clock3 },
-  { id: "posted", label: "Payment posted", icon: TrendingUp },
+  { id: "eligibility", label: "Eligibility verified", icon: ShieldCheck, detail: "Coverage and benefits are confirmed before the claim exists." },
+  { id: "coded", label: "Coded & reviewed", icon: FileCheck2, detail: "Certified coders check documentation, codes and modifiers before submission." },
+  { id: "filed", label: "Filed to payer", icon: Clock3, detail: "Clean claims are filed within our stated 24-hour window and tracked." },
+  { id: "posted", label: "Payment posted", icon: TrendingUp, detail: "Payments are reconciled against contracted rates so variances become work." },
 ] as const;
 
 export function HeroPanel() {
   const reduced = usePrefersReducedMotion();
   const [active, setActive] = useState(0);
   const [cycle, setCycle] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || paused) return;
     const timer = window.setInterval(() => {
       setActive((value) => {
         if (value === stages.length - 1) {
@@ -34,14 +36,18 @@ export function HeroPanel() {
         }
         return value + 1;
       });
-    }, 1700);
+    }, 3400);
     return () => window.clearInterval(timer);
-  }, [reduced]);
-
-  const current = stages[active];
+  }, [paused, reduced]);
 
   return (
-    <div className="glass relative overflow-hidden rounded-[1.75rem] border border-white/60 p-5 shadow-[0_40px_80px_-50px_rgba(4,20,31,0.5)] sm:p-6">
+    <div
+      className="glass group relative overflow-hidden rounded-[1.75rem] border border-white/60 p-5 shadow-[0_40px_80px_-50px_rgba(4,20,31,0.5)] sm:p-6"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
       <div aria-hidden className="animated-gradient pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-25 blur-2xl" />
 
       <div className="relative flex items-start justify-between gap-3">
@@ -54,48 +60,51 @@ export function HeroPanel() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-mint-500 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-mint-600" />
           </span>
-          Running
+          {paused ? "Paused" : "Running"}
         </span>
       </div>
 
-      {/* Stage progress rail */}
+      {/* Interactive stage rail */}
       <div className="relative mt-5">
-        <span aria-hidden className="absolute left-[1.05rem] top-3 bottom-3 w-px bg-mist-200" />
-        <span aria-hidden className="absolute left-[1.05rem] top-3 bottom-3 w-px bg-gradient-to-b from-brand-500 to-mint-500 transition-all duration-500" style={{ clipPath: `inset(0 0 ${100 - ((active + 1) / stages.length) * 100}% 0)` }} />
-        <ol className="relative space-y-2.5">
+        <span aria-hidden className="absolute bottom-3 left-[1.05rem] top-3 w-px bg-mist-200" />
+        <span aria-hidden className="absolute bottom-3 left-[1.05rem] top-3 w-px bg-gradient-to-b from-brand-500 to-mint-500 transition-all duration-500" style={{ clipPath: `inset(0 0 ${100 - ((active + 1) / stages.length) * 100}% 0)` }} />
+        <ol className="relative space-y-1.5">
           {stages.map((stage, index) => {
             const done = index < active;
             const isActive = index === active;
             return (
-              <li key={stage.id} className="flex items-center gap-3">
-                <span
-                  className={`relative z-10 grid h-[1.35rem] w-[1.35rem] shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${
-                    done
-                      ? "border-mint-500 bg-mint-500 text-white"
-                      : isActive
-                        ? "border-brand-500 bg-surface text-brand-700"
-                        : "border-mist-200 bg-surface text-ink-600/60"
-                  }`}
-                  aria-hidden
+              <li key={stage.id}>
+                <button
+                  type="button"
+                  onClick={() => { setActive(index); setPaused(true); }}
+                  aria-pressed={isActive}
+                  className={`group/stage flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 ${isActive ? "bg-brand-50/60" : "hover:bg-white/50"}`}
                 >
-                  {done ? <Check className="h-2.5 w-2.5" strokeWidth={3.5} /> : <stage.icon className="h-2.5 w-2.5" />}
-                </span>
-                <span className={`flex-1 text-[0.8rem] font-bold transition-colors ${isActive ? "text-ink-950" : done ? "text-ink-700" : "text-ink-600/70"}`}>
-                  {stage.label}
-                </span>
-                <AnimatePresence initial={false}>
-                  {isActive && (
-                    <motion.span
-                      initial={reduced ? false : { opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: DURATION.fast, ease: EASE }}
-                      className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[0.54rem] font-extrabold uppercase tracking-[0.08em] text-brand-700"
-                    >
-                      Now
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                  <span
+                    className={`relative z-10 grid h-[1.35rem] w-[1.35rem] shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${
+                      done ? "border-mint-500 bg-mint-500 text-white" : isActive ? "border-brand-500 bg-surface text-brand-700" : "border-mist-200 bg-surface text-ink-600/60"
+                    }`}
+                    aria-hidden
+                  >
+                    {done ? <Check className="h-2.5 w-2.5" strokeWidth={3.5} /> : <stage.icon className="h-2.5 w-2.5" />}
+                  </span>
+                  <span className={`flex-1 text-[0.8rem] font-bold transition-colors ${isActive ? "text-ink-950" : done ? "text-ink-700" : "text-ink-600/70"}`}>
+                    {stage.label}
+                  </span>
+                  <AnimatePresence initial={false}>
+                    {isActive && (
+                      <motion.span
+                        initial={reduced ? false : { opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: DURATION.fast, ease: EASE }}
+                        className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[0.54rem] font-extrabold uppercase tracking-[0.08em] text-brand-700"
+                      >
+                        Now
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
               </li>
             );
           })}
@@ -103,7 +112,7 @@ export function HeroPanel() {
       </div>
 
       {/* Illustrative metrics */}
-      <div className="relative mt-5 grid grid-cols-3 gap-2">
+      <div className="relative mt-4 grid grid-cols-3 gap-2">
         {[
           { label: "Filed in", value: "24h" },
           { label: "Clean claims", value: "99.9%" },
@@ -116,15 +125,29 @@ export function HeroPanel() {
         ))}
       </div>
 
-      <div className="relative mt-3 flex items-center gap-2 rounded-xl bg-night/95 px-3 py-2.5">
-        <ArrowDownRight className="h-3.5 w-3.5 shrink-0 text-brand-300" aria-hidden />
-        <p className="text-[0.66rem] font-semibold leading-snug text-white/70">
-          Every stage has an owner. <span className="text-white">Nothing sits unworked.</span>
-        </p>
+      <div className="relative mt-3 min-h-[3.05rem] rounded-xl bg-night/95 px-3 py-2.5">
+        <div className="flex items-start gap-2">
+          <ArrowDownRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-300" aria-hidden />
+          <div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={active}
+                initial={reduced ? false : { opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduced ? undefined : { opacity: 0, y: -3 }}
+                transition={{ duration: DURATION.fast, ease: EASE }}
+                className="text-[0.68rem] font-semibold leading-snug text-white/80"
+              >
+                {stages[active].detail}
+              </motion.p>
+            </AnimatePresence>
+            <p className="mt-1 text-[0.6rem] font-semibold text-white/45">Every stage has an owner. Nothing sits unworked.</p>
+          </div>
+        </div>
       </div>
 
       <p className="relative mt-2.5 text-[0.58rem] leading-relaxed text-ink-600/70">
-        Illustrative workflow · figures reflect our stated service standards, not client results.
+        Interactive workflow · figures reflect our stated service standards, not client results.
       </p>
     </div>
   );

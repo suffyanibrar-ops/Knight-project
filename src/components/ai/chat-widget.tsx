@@ -275,8 +275,9 @@ export function AiChatWidget() {
   }
 
   function onBooked(appointment: BookedAppointment) {
-    setMessages((prev) => [...prev, { id: uid(), role: "assistant", text: `You're booked for **${appointment.dateLabel} at ${appointment.timeLabel}** (${appointment.timezone}). A confirmation email with reschedule and cancel options has been sent.` }]);
-    setBookingOpen(false);
+    setMessages((prev) => [...prev, { id: uid(), role: "assistant", text: `You're booked for **${appointment.dateLabel} at ${appointment.timeLabel}** (${appointment.timezoneLabel ?? appointment.timezone}). A confirmation email with reschedule and cancel options has been sent.` }]);
+    // Leave the modal open so the visitor sees the explicit success state.
+    // The Done button closes it.
   }
 
   async function submitHandoff(event: React.FormEvent) {
