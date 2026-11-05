@@ -69,7 +69,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script
           // Runs before first paint so the saved theme applies without a flash.
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=JSON.parse(localStorage.getItem("kmb-prefs")||"{}");var d=p.theme==="dark"||(!p.theme&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d)r.classList.add("dark");r.style.colorScheme=d?"dark":"light";if(p.contrast)r.dataset.contrast=p.contrast;if(p.textSize)r.dataset.textsize=p.textSize;if(p.motion)r.dataset.motion=p.motion;}catch(e){}})();`,
+            __html: `(function(){try{
+  var p=JSON.parse(localStorage.getItem("kmb-prefs")||"{}");
+  var r=document.documentElement;
+  var dark=p.theme==="dark"||(!p.theme&&window.matchMedia("(prefers-color-scheme: dark)").matches);
+  if(dark)r.classList.add("dark");
+  r.style.colorScheme=dark?"dark":"light";
+  if(p.contrast)r.dataset.contrast=p.contrast;
+  if(p.textSize)r.dataset.textsize=p.textSize;
+  if(p.motion)r.dataset.motion=p.motion;
+  var reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var seen=false;try{seen=sessionStorage.getItem("kmb-intro-seen")==="1";}catch(e){}
+  var intro="off";
+  if(location.pathname==="/"&&!reduced&&p.motion!=="reduced"){intro=seen?"brief":"full";}
+  r.dataset.intro=intro;
+}catch(e){try{document.documentElement.dataset.intro="off";}catch(ignore){}}})();`,
           }}
         />
       </head>

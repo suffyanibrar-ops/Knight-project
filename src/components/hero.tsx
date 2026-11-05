@@ -34,7 +34,7 @@ export function Hero() {
         <div className="absolute -left-32 top-40 h-80 w-80 rounded-full bg-mint-100/70 blur-[90px]" />
       </div>
 
-      <div className="shell relative grid items-center gap-12 pb-14 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-16">
+      <div data-hero-reveal className="shell relative grid items-center gap-12 pb-14 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-16">
         <div>
           <motion.div initial="hidden" animate="show" custom={0} variants={fadeUp} className="flex flex-wrap items-center gap-2.5">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-3 py-1.5 text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-brand-700 shadow-sm">
@@ -114,6 +114,19 @@ export function Hero() {
           <div aria-hidden className="absolute -inset-3 -z-10 rounded-[2.2rem] bg-gradient-to-tr from-brand-100/70 via-surface/40 to-mint-100/70" />
           <HeroPanel />
         </motion.div>
+      </div>
+
+      {/* Revenue-flow rail: the intro's hairline lands here and becomes part of the hero. */}
+      <div className="shell relative pb-8 sm:pb-10">
+        <div data-hero-flow-line className="hero-flow" aria-hidden="true">
+          <span className="hero-flow__track" />
+          {["Claims", "Processing", "A/R", "Payments"].map((label, index) => (
+            <span key={label} className="hero-flow__node" style={{ left: `${(index / 3) * 100}%` }}>
+              <span className={`hero-flow__dot ${index >= 2 ? "hero-flow__dot--mint" : ""}`} />
+              <span className="hero-flow__label">{label}</span>
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
