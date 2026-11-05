@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Drizzle schema for the embedded SQLite database.
@@ -150,3 +150,96 @@ export type CaseStudyRow = typeof caseStudiesTable.$inferSelect;
 export type ArticleRow = typeof articlesTable.$inferSelect;
 export type FaqRow = typeof faqsTable.$inferSelect;
 export type EmailOutboxRow = typeof emailOutbox.$inferSelect;
+
+
+/* -------------------------------------------------------------------------
+ * Blog CMS (schema migration v4). Created by `src/lib/sqlite.ts`; these
+ * declarations only provide typed query building.
+ * ---------------------------------------------------------------------- */
+
+export const blogCategories = sqliteTable("blog_categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const blogTags = sqliteTable("blog_tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const blogMedia = sqliteTable("blog_media", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceUrl: text("source_url"),
+  storageKey: text("storage_key").notNull(),
+  mime: text("mime").notNull().default("image/webp"),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  sizeBytes: integer("size_bytes"),
+  sha256: text("sha256").notNull().unique(),
+  alt: text("alt"),
+  caption: text("caption"),
+  license: text("license"),
+  attribution: text("attribution"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const blogPosts = sqliteTable("blog_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt"),
+  contentHtml: text("content_html").notNull().default(""),
+  featuredMediaId: integer("featured_media_id").references(() => blogMedia.id, { onDelete: "set null" }),
+  featuredImage: text("featured_image"),
+  featuredImageAlt: text("featured_image_alt"),
+  featuredImageWidth: integer("featured_image_width"),
+  featuredImageHeight: integer("featured_image_height"),
+  author: text("author").notNull().default("Knight Medical Billing"),
+  categoryId: integer("category_id").references(() => blogCategories.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("draft"),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  canonicalUrl: text("canonical_url"),
+  socialImage: text("social_image"),
+  readingTime: integer("reading_time").notNull().default(0),
+  sourceNotes: text("source_notes"),
+  viewCount: integer("view_count").notNull().default(0),
+});
+
+export const blogPostTags = sqliteTable(
+  "blog_post_tags",
+  {
+    postId: integer("post_id").notNull().references(() => blogPosts.id, { onDelete: "cascade" }),
+    tagId: integer("tag_id").notNull().references(() => blogTags.id, { onDelete: "cascade" }),
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.postId, table.tagId] }) }),
+);
+
+export const blogRevisions = sqliteTable("blog_revisions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  postId: integer("post_id").notNull().references(() => blogPosts.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  excerpt: text("excerpt"),
+  contentHtml: text("content_html").notNull().default(""),
+  status: text("status"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const blogRedirects = sqliteTable("blog_redirects", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  fromPath: text("from_path").notNull().unique(),
+  toPath: text("to_path").notNull(),
+  postId: integer("post_id").references(() => blogPosts.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});

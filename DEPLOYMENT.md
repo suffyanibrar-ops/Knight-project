@@ -310,3 +310,20 @@ curl -s https://your-domain.com/api/health | jq
 - [ ] `/api/health` monitored; `/admin` blocked from indexing (already configured)
 - [ ] If migrating: old-database CSV import completed and verified (§5)
 - [ ] `npm audit --omit=dev` reviewed on your release cadence
+
+
+## Blog CMS
+
+The blog stores posts, categories, tags, revisions and redirects in the same SQLite
+database (schema migration v4). Imported images are **not** stored in SQLite: the
+WebP variants live under `<SQLITE_PATH directory>/blog-media/<media id>/`. Back up
+that directory together with the database file, otherwise existing articles will
+render with missing images.
+
+- Public routes: `/blog`, `/blog/[slug]`, `/blog/category/[slug]`, `/blog/tag/[slug]`.
+- Admin routes: `/admin/blog` (dashboard), `/admin/blog/new`, `/admin/blog/[id]`,
+  `/admin/blog/preview/[id]`, `/admin/blog/categories`.
+- Scheduled posts are promoted on read by `publishDuePosts()` (also exposed as
+  `POST /api/admin/blog/publish-due`), so no external cron or open browser is needed.
+- Run `BASE_URL=... ADMIN_PW=... node tests/blog.e2e.mjs` against a running server to
+  exercise the whole workflow end to end.

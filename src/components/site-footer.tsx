@@ -10,6 +10,7 @@ const companyLinks = [
   { label: "Our process", href: "/our-process" },
   { label: "Results", href: "/results" },
   { label: "Resources", href: "/insights" },
+  { label: "Blog", href: "/blog" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];

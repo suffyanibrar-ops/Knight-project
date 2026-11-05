@@ -122,6 +122,7 @@ export const primaryNav: NavItem[] = [
       { label: "Contact", href: "/contact", description: "Talk to our team", icon: "Phone" },
     ],
   },
+  { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
 ];
 

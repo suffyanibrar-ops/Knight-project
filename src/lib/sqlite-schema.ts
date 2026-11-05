@@ -192,3 +192,105 @@ CREATE TABLE IF NOT EXISTS faqs (
 );
 CREATE INDEX IF NOT EXISTS idx_faqs_sort ON faqs (sort_order);
 `;
+
+
+/* -------------------------------------------------------------------------
+ * v4 — Blog CMS.
+ * Media rows are created before posts so posts can reference a media record.
+ * Binary image files never live in SQLite: blog_media holds only metadata and a
+ * storage key, while optimized variants are written to the data directory.
+ * ---------------------------------------------------------------------- */
+
+export const BLOG_SCHEMA = `
+CREATE TABLE IF NOT EXISTS blog_media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_url TEXT,
+  storage_key TEXT NOT NULL,
+  mime TEXT NOT NULL DEFAULT 'image/webp',
+  width INTEGER NOT NULL,
+  height INTEGER NOT NULL,
+  size_bytes INTEGER,
+  sha256 TEXT NOT NULL UNIQUE,
+  alt TEXT,
+  caption TEXT,
+  license TEXT,
+  attribution TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS blog_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_blog_categories_name ON blog_categories (name);
+
+CREATE TABLE IF NOT EXISTS blog_tags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_blog_tags_name ON blog_tags (name);
+
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  excerpt TEXT,
+  content_html TEXT NOT NULL DEFAULT '',
+  featured_media_id INTEGER REFERENCES blog_media(id) ON DELETE SET NULL,
+  featured_image TEXT,
+  featured_image_alt TEXT,
+  featured_image_width INTEGER,
+  featured_image_height INTEGER,
+  author TEXT NOT NULL DEFAULT 'Knight Medical Billing',
+  category_id INTEGER REFERENCES blog_categories(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'draft',
+  published_at INTEGER,
+  scheduled_for INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  deleted_at INTEGER,
+  seo_title TEXT,
+  seo_description TEXT,
+  canonical_url TEXT,
+  social_image TEXT,
+  reading_time INTEGER NOT NULL DEFAULT 0,
+  source_notes TEXT,
+  view_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_status_published ON blog_posts (status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_updated ON blog_posts (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts (category_id);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_deleted ON blog_posts (deleted_at);
+
+CREATE TABLE IF NOT EXISTS blog_post_tags (
+  post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES blog_tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (post_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blog_post_tags_tag ON blog_post_tags (tag_id);
+
+CREATE TABLE IF NOT EXISTS blog_revisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  content_html TEXT NOT NULL DEFAULT '',
+  status TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_blog_revisions_post ON blog_revisions (post_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS blog_redirects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_path TEXT NOT NULL UNIQUE,
+  to_path TEXT NOT NULL,
+  post_id INTEGER REFERENCES blog_posts(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+`;

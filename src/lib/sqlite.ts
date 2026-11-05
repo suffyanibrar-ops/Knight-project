@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
-import { SCHEMA } from "./sqlite-schema";
+import { BLOG_SCHEMA, SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -118,7 +118,7 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
@@ -133,6 +133,8 @@ const MIGRATIONS: { version: number; statements: string }[] = [
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );`,
   },
+  // v4: blog CMS tables (posts, categories, tags, media, revisions, redirects).
+  { version: 4, statements: BLOG_SCHEMA },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {
