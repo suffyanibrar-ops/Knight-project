@@ -5,6 +5,7 @@
 import { DateTime } from "luxon";
 import {
   chooseBestVoice,
+  naturalVoiceOptions,
   normalizeForSpeech,
   splitForSpeech,
 } from "../src/components/ai/voice-text";
@@ -107,6 +108,17 @@ ok("best natural voice chosen", best?.name === "Samantha (Enhanced)" || best?.na
 eq("preferred voice wins", chooseBestVoice(voices, "en-US", "google")?.name, "Google US English");
 eq("English fallback allowed when only en-GB exists", chooseBestVoice([{ name: "Thomas", lang: "en-GB" }], "en-US")?.lang, "en-GB");
 eq("no English voice yields null", chooseBestVoice([{ name: "Amelie", lang: "fr-FR" }], "en-US"), null);
+const voiceList = [
+  { name: "Basic Desktop", lang: "en-US" },
+  { name: "Samantha (Enhanced)", lang: "en-US" },
+  { name: "Google US English", lang: "en-US" },
+  { name: "Thomas", lang: "en-GB" },
+  { name: "Amelie", lang: "fr-FR" },
+];
+eq("free voice picker ranks enhanced voices first", naturalVoiceOptions(voiceList, "en-US")[0]?.name, "Samantha (Enhanced)");
+ok("free voice picker excludes other languages", naturalVoiceOptions(voiceList, "en-US").every((voice) => voice.lang.toLowerCase().startsWith("en")), JSON.stringify(naturalVoiceOptions(voiceList, "en-US")));
+eq("speakable 24/5", normalizeForSpeech("We offer 24/5 support."), "We offer 24 5 support.");
+eq("speakable Q&A", normalizeForSpeech("Read the Q&A."), "Read the Q and A.");
 
 console.log(`RESULT pass=${pass} fail=${fail}`);
 process.exit(fail ? 1 : 0);

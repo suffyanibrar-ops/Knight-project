@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { chooseBestVoice, normalizeForSpeech } from "./voice-text";
+import { chooseBestVoice, naturalVoiceOptions, normalizeForSpeech } from "./voice-text";
 
 /**
  * Browser-native voice stack (no paid speech services):
@@ -306,6 +306,13 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
    * the noticeable silence Chrome/Edge insert between many tiny utterances while
    * preserving natural sentence pauses inside the text.
    */
+  const getVoices = useCallback(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
+    const synth = window.speechSynthesis;
+    const voices = voicesRef.current.length ? voicesRef.current : synth.getVoices();
+    return naturalVoiceOptions(voices, lang, voiceNameRef.current);
+  }, [lang]);
+
   const speak = useCallback((text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const clean = normalizeForSpeech(text);
@@ -379,5 +386,5 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
 
   useEffect(() => () => { end(); }, [end]);
 
-  return { supported, state, interim, error, muted, start, end, stopSpeech, toggleMute, speak, interrupt, settle, setThinking, setError };
+  return { supported, state, interim, error, muted, start, end, stopSpeech, toggleMute, speak, getVoices, interrupt, settle, setThinking, setError };
 }

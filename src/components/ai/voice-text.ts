@@ -130,6 +130,25 @@ function voiceScore(voice: VoiceLike, lang: string, preferred: string): number {
   return score;
 }
 
+/**
+ * All usable voices for a language, ordered by naturalness. This powers the
+ * free voice picker: visitors can choose an installed enhanced/neural voice
+ * when their device has one, without any paid TTS service.
+ */
+export function naturalVoiceOptions<T extends VoiceLike>(voices: T[], lang = "en-US", preferredName = ""): T[] {
+  const preferred = preferredName.trim().toLowerCase();
+  const seen = new Set<string>();
+  return voices
+    .filter((voice) => voice.lang.toLowerCase().replace("_", "-").split("-")[0] === lang.slice(0, 2).toLowerCase())
+    .filter((voice) => {
+      const key = `${voice.name}|${voice.lang}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => voiceScore(b, lang, preferred) - voiceScore(a, lang, preferred));
+}
+
 /** Pick the most natural available browser voice (prefers enhanced/neural voices). */
 export function chooseBestVoice<T extends VoiceLike>(voices: T[], lang = "en-US", preferredName = ""): T | null {
   if (!voices.length) return null;

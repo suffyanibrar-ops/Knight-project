@@ -69,6 +69,8 @@ export function AiChatWidget() {
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [handoff, setHandoff] = useState({ name: "", email: "", phone: "", reason: "" });
   const [handoffSending, setHandoffSending] = useState(false);
+  const [voiceOptions, setVoiceOptions] = useState<{ name: string; lang: string }[]>([]);
+  const [voiceChoice, setVoiceChoice] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -87,7 +89,7 @@ export function AiChatWidget() {
     onFinalUtterance: (text) => { bargeRef.current = false; sendRef.current(text, true); },
     onBargeIn: () => bargeHandlerRef.current(),
     rate: config?.voiceRate,
-    voiceName: config?.voiceName,
+    voiceName: voiceChoice || config?.voiceName,
   });
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
 
@@ -298,12 +300,23 @@ export function AiChatWidget() {
   }, [busy, flushSpeech, stopEverything, voice]);
   sendRef.current = send;
 
+  function loadVoiceOptions() {
+    setVoiceOptions(voice.getVoices().map((item) => ({ name: item.name, lang: item.lang })));
+    try { setVoiceChoice(window.localStorage.getItem("kmb-voice-choice") ?? ""); } catch { /* storage blocked */ }
+  }
+
+  function chooseVoice(name: string) {
+    setVoiceChoice(name);
+    try { window.localStorage.setItem("kmb-voice-choice", name); } catch { /* storage blocked */ }
+  }
+
   function handleVoiceButton() {
     if (!config?.voiceEnabled) return;
     if (!voice.supported) {
       setError("Voice isn't supported in this browser. Please use Chrome, Edge or Safari, or keep chatting by text.");
       return;
     }
+    loadVoiceOptions();
     if (voice.state === "off") setVoiceIntro(true);
     else setVoiceIntro(false);
   }
@@ -442,6 +455,27 @@ export function AiChatWidget() {
                   <div className="rounded-2xl border border-brand-200 bg-brand-50 p-3 text-[0.74rem] leading-relaxed text-brand-900">
                     <p className="font-extrabold">Enable voice conversation</p>
                     <p className="mt-1">Voice uses your microphone to hear you and your speaker to answer. Audio is processed in your browser and is <strong>not recorded or stored</strong>. Microphone permission is requested only after you continue.</p>
+                    {voiceOptions.length > 1 && (
+                      <label className="mt-2.5 block text-[0.66rem] font-bold text-brand-900">
+                        Voice
+                        <select
+                          value={voiceChoice}
+                          onChange={(event) => chooseVoice(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-brand-200 bg-white px-2.5 py-1.5 text-[0.72rem] font-semibold text-ink-800 outline-none focus:border-brand-400"
+                          aria-label="Choose a free browser voice"
+                        >
+                          <option value="">Auto — best natural voice</option>
+                          {voiceOptions.slice(0, 20).map((item) => (
+                            <option key={`${item.name}-${item.lang}`} value={item.name}>{item.name} ({item.lang})</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {voiceOptions.length > 0 && (
+                      <p className="mt-1.5 text-[0.6rem] leading-relaxed text-brand-900/60">
+                        Free voices come from your browser and device. Enhanced or Neural voices usually sound the most natural.
+                      </p>
+                    )}
                     <div className="mt-2 flex gap-2">
                       <button type="button" onClick={() => void enableVoice()} className="btn btn-primary px-3 py-2 text-[0.72rem]"><Mic className="h-3.5 w-3.5" /> Enable microphone</button>
                       <button type="button" onClick={() => setVoiceIntro(false)} className="btn btn-light px-3 py-2 text-[0.72rem]">Not now</button>
