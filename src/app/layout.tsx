@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { site } from "@/lib/site";
 import { organizationSchema, websiteSchema, SITE_URL } from "@/lib/seo";
 import { JsonLd } from "@/components/structured-data";
+import { SiteAnalytics } from "@/components/analytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -19,7 +20,6 @@ export const metadata: Metadata = {
   creator: site.name,
   publisher: site.name,
   formatDetection: { telephone: true, address: true, email: true },
-  alternates: { canonical: SITE_URL },
   title: {
     default: "Knight Medical Billing | Custom Tailored Medical Billing & RCM",
     template: "%s | Knight Medical Billing",
@@ -61,34 +61,10 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "ProfessionalService",
-  name: site.name,
-  description: site.description,
-  url: site.url,
-  telephone: site.phone,
-  email: site.email,
-  image: `${site.url}/images/og-knight-medical-billing.jpg`,
-  logo: `${site.url}${site.logo}`,
-  priceRange: "No prepayment, no hidden fees",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "585 Grove St Ste 145",
-    addressLocality: "Herndon",
-    addressRegion: "VA",
-    postalCode: "20170",
-    addressCountry: "US",
-  },
-  areaServed: "United States",
-  knowsSpecialty: ["Medical Billing and Coding", "Accounts Receivable Management", "Credentialing and Contracting", "Out-of-Network Negotiation", "Eligibility and Benefits Verification", "Revenue Cycle Management"],
-  openingHours: "Mo-Fr 08:00-17:00",
-  slogan: "You heal. Leave the revenue management to us.",
-};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en-US" suppressHydrationWarning>
       <head>
         <script
           // Runs before first paint so the saved theme applies without a flash.
@@ -107,7 +83,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </ToastProvider>
           </MotionProvider>
         </ThemeProvider>
-        <JsonLd data={[jsonLd, organizationSchema(), websiteSchema()]} />
+        <JsonLd data={[organizationSchema(), websiteSchema()]} />
+      <SiteAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       </body>
     </html>
   );

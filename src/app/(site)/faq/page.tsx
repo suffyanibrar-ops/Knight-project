@@ -23,6 +23,7 @@ export default async function FaqPage() {
     <>
       <JsonLd data={[faqSchema(faqs), breadcrumbSchema([{ name: "Home", path: "/" }, { name: "FAQ", path: "/faq" }])]} />
       <PageHero
+
         eyebrow="FAQ"
         title={
           <>

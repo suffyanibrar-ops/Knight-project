@@ -40,6 +40,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
     <>
       <JsonLd data={[serviceSchema({ name: `${audience.name} medical billing`, description: audience.intro, path: `/who-we-serve/${audience.slug}` }), breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Who we serve", path: "/who-we-serve" }, { name: audience.name, path: `/who-we-serve/${audience.slug}` }])]} />
       <PageHero
+
         eyebrow={audience.eyebrow}
         title={
           <>

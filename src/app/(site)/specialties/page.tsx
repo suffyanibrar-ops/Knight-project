@@ -21,7 +21,8 @@ export default async function SpecialtiesPage() {
 
   return (
     <>
-      <PageHero
+      <PageHero path={"/specialties"}
+
         eyebrow="All specialties"
         title={
           <>

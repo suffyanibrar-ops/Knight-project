@@ -18,7 +18,8 @@ export const metadata: Metadata = pageMetadata({ title: 'Who We Serve | Knight M
 export default function WhoWeServePage() {
   return (
     <>
-      <PageHero
+      <PageHero path={"/who-we-serve"}
+
         eyebrow="Who we serve"
         title={
           <>

@@ -22,7 +22,8 @@ const supportPoints = [
 export default function OurProcessPage() {
   return (
     <>
-      <PageHero
+      <PageHero path={"/our-process"}
+
         eyebrow="Our process"
         title={
           <>

@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { trackConversion } from "@/lib/tracking";
 
 export function NewsletterForm({ tone = "dark" }: { tone?: "dark" | "light" }) {
   const [email, setEmail] = useState("");
@@ -24,6 +25,7 @@ export function NewsletterForm({ tone = "dark" }: { tone?: "dark" | "light" }) {
       });
       if (!response.ok) throw new Error("failed");
       setState("done");
+      trackConversion("newsletter_signup", { form: "newsletter" });
       setMessage("You're in. Watch for the next RCM briefing.");
       setEmail("");
     } catch {

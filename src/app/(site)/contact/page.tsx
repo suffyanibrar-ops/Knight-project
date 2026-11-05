@@ -21,7 +21,8 @@ const contactCards = [
 export default function ContactPage() {
   return (
     <>
-      <PageHero
+      <PageHero path={"/contact"}
+
         eyebrow="Contact"
         title={
           <>

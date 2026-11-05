@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { collectionBands, services, site, specialties } from "@/lib/site";
 import { useToast } from "./motion/toast";
+import { trackConversion } from "@/lib/tracking";
 import { cn } from "./ui";
 
 const steps = ["About you", "Your facility", "What you need"];
@@ -100,6 +101,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
       }).catch(() => undefined);
 
       setStatus("done");
+      trackConversion("consultation_request", { form: "consultation" });
       toast({ tone: "success", title: "Request received", description: "We will be in touch during business hours to arrange your consultation." });
     } catch (submitError) {
       setStatus("error");

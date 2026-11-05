@@ -11,7 +11,7 @@ import { ShareLinks } from "@/components/blog/share-links";
 import { TableOfContents } from "@/components/blog/table-of-contents";
 import { JsonLd } from "@/components/structured-data";
 import { getAdjacentPosts, getPublicPost, getRelatedPosts } from "@/lib/blog";
-import { SITE_URL, breadcrumbSchema } from "@/lib/seo";
+import { SITE_URL, breadcrumbSchema, stripBrandSuffix } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: ArticleParams }): P
   if ("redirectTo" in result) permanentRedirect(result.redirectTo);
 
   const post = result.post;
-  const title = post.seoTitle?.trim() || post.title;
+  const title = stripBrandSuffix(post.seoTitle?.trim() || post.title);
   const description = (post.seoDescription?.trim() || post.excerpt?.trim() || site.description).slice(0, 200);
   const canonical = canonicalUrlFor(post);
   const image = post.socialImage?.trim() || blogImageUrl(post) || DEFAULT_OG_IMAGE;

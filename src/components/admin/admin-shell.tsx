@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Inbox, LayoutDashboard, Menu, Newspaper, PieChart, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { ChevronDown, Inbox, LayoutDashboard, Menu, Newspaper, PieChart, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Blog", href: "/admin/blog", icon: Newspaper },
+  { label: "SEO health", href: "/admin/seo", icon: SearchCheck },
   { label: "Enquiries", href: "/admin/inbox", icon: Inbox },
   { label: "Subscribers", href: "/admin/subscribers", icon: Users },
   { label: "ROI estimates", href: "/admin/estimates", icon: PieChart },

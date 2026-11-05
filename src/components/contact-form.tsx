@@ -3,6 +3,7 @@
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/motion/toast";
+import { trackConversion } from "@/lib/tracking";
 import { cn } from "./ui";
 
 const topics = ["Medical billing & coding", "Accounts receivable", "Credentialing & contracting", "Out-of-network negotiation", "Eligibility & benefits", "Complete RCM services", "Patient billing", "Other"];
@@ -51,6 +52,7 @@ export function ContactForm() {
       }).catch(() => undefined);
 
       setStatus("done");
+      trackConversion("generate_lead", { form: "contact" });
       toast({ tone: "success", title: "Message sent", description: "Our team replies within one business hour, Monday–Friday." });
     } catch (submitError) {
       setStatus("error");

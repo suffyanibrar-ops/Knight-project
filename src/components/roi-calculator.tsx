@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { trackConversion } from "@/lib/tracking";
 import { ArrowRight, Check, Info, Loader2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -51,6 +52,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
       });
       if (!response.ok) throw new Error("failed");
       setState("done");
+      trackConversion("roi_estimate", { form: "roi" });
     } catch {
       setState("error");
     }

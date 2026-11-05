@@ -32,8 +32,8 @@ export default function NotFound() {
           {[
             { label: "Services", href: "/services" },
             { label: "Specialties", href: "/specialties" },
-            { label: "Pricing", href: "/pricing" },
-            { label: "Case studies", href: "/case-studies" },
+            { label: "Schedule a consultation", href: "/schedule-form" },
+            { label: "Results", href: "/results" },
             { label: "Insights", href: "/insights" },
           ].map((link) => (
             <Link key={link.href} href={link.href} className="inline-flex items-center gap-1 transition-colors hover:text-brand-500">

@@ -3,6 +3,21 @@ import { site } from "./site";
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? site.url);
 
+/**
+ * The root layout appends "| Knight Medical Billing" via the title template.
+ * Many pages already include the brand in their title, which produced doubled
+ * suffixes ("... | Knight Medical Billing | Knight Medical Billing"). Strip a
+ * trailing brand mention here so every rendered <title> has exactly one.
+ */
+export function stripBrandSuffix(title: string): string {
+  const brand = site.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const cleaned = title
+    .replace(new RegExp(`\\s*[|\u2013\u2014-]\\s*${brand}\\s*$`, "i"), "")
+    .replace(new RegExp(`^\\s*${brand}\\s*[|\u2013\u2014-]\\s*`, "i"), "")
+    .trim();
+  return cleaned || site.name;
+}
+
 type SeoInput = {
   title: string;
   description: string;
@@ -20,8 +35,9 @@ type SeoInput = {
  */
 export function pageMetadata({ title, description, path, image = "/images/og-knight-medical-billing.jpg", keywords = [], type = "website", publishedTime, noindex = false }: SeoInput): Metadata {
   const url = `${SITE_URL}${path === "/" ? "" : path}`;
+  const cleanTitle = stripBrandSuffix(title);
   return {
-    title,
+    title: cleanTitle.toLowerCase() === site.name.toLowerCase() ? { absolute: site.name } : cleanTitle,
     description,
     keywords: keywords.length ? keywords : undefined,
     alternates: { canonical: url },
@@ -120,7 +136,7 @@ export function websiteSchema() {
     inLanguage: "en-US",
     potentialAction: {
       "@type": "SearchAction",
-      target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/insights?q={search_term_string}` },
+      target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/blog?q={search_term_string}` },
       "query-input": "required name=search_term_string",
     },
   };

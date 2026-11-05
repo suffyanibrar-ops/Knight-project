@@ -51,6 +51,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
     <>
       <JsonLd data={[serviceSchema({ name: `${specialty.name} medical billing`, description: specialty.blurb, path: `/specialties/${specialty.slug}` }), breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Specialties", path: "/specialties" }, { name: specialty.name, path: `/specialties/${specialty.slug}` }])]} />
       <PageHero
+
         eyebrow={`${specialty.group} billing`}
         title={
           <>

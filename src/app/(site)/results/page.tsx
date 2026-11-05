@@ -24,7 +24,8 @@ const measures = [
 export default function ResultsPage() {
   return (
     <>
-      <PageHero
+      <PageHero path={"/results"}
+
         eyebrow="Results & performance"
         title={
           <>

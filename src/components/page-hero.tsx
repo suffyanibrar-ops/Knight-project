@@ -3,6 +3,8 @@ import { ArrowRight, BadgeCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { JsonLd } from "./structured-data";
+import { breadcrumbSchema } from "@/lib/seo";
 
 export function PageHero({
   eyebrow,
@@ -12,6 +14,7 @@ export function PageHero({
   imageAlt,
   badges = [],
   crumbs = [],
+  path,
   primaryCta = { label: "Schedule a consultation", href: "/schedule-form" },
   secondaryCta,
   aside,
@@ -24,12 +27,18 @@ export function PageHero({
   imageAlt?: string;
   badges?: string[];
   crumbs?: { label: string; href?: string }[];
+  /** Current public path, used to emit BreadcrumbList structured data. */
+  path?: string;
   primaryCta?: { label: string; href: string };
   secondaryCta?: { label: string; href: string };
   aside?: ReactNode;
   stat?: { value: string; label: string };
 }) {
+  const breadcrumbItems = [{ name: "Home", path: "/" }, ...crumbs.map((crumb) => ({ name: crumb.label, path: crumb.href ?? path ?? "/" }))];
+
   return (
+    <>
+      {path && crumbs.length > 0 && <JsonLd data={breadcrumbSchema(breadcrumbItems)} />}
     <section className="relative overflow-hidden border-b border-mist-200 bg-gradient-to-b from-mist-50 to-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="grid-lines absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_70%)]" />
@@ -111,5 +120,6 @@ export function PageHero({
         </div>
       </div>
     </section>
+    </>
   );
 }

@@ -327,3 +327,25 @@ render with missing images.
   `POST /api/admin/blog/publish-due`), so no external cron or open browser is needed.
 - Run `BASE_URL=... ADMIN_PW=... node tests/blog.e2e.mjs` against a running server to
   exercise the whole workflow end to end.
+
+
+## SEO verification
+
+Three runnable checks live in `tests/` and only report what they actually observe:
+
+- `BASE_URL=https://www.knightmedicalbilling.com node tests/seo-audit.mjs` — crawls the
+  sitemap plus internal links and reports status codes, redirects, missing/duplicate
+  metadata and canonicals, noindex leaks, H1 counts, missing alt attributes, broken
+  links/images and JSON-LD problems.
+- `BASE_URL=... node tests/sitemap-check.mjs` — validates every sitemap URL returns 200,
+  is indexable, is canonical to itself, and that robots.txt advertises the sitemap and
+  blocks /admin and /api.
+- `BASE_URL=... node tests/perf-mobile-audit.mjs` — Playwright lab measurements of FCP,
+  LCP, CLS, TTFB, transferred JS/image bytes plus mobile overflow and tap-target checks.
+
+The admin console has a matching **SEO health** page (`/admin/seo`) that runs the same
+kind of real crawl from the server. It fetches `NEXT_PUBLIC_SITE_URL`, so build with the
+public origin and make sure the site answers there.
+
+Optional analytics: set `NEXT_PUBLIC_GA_ID` at build time to enable GA4 with phone/email
+click and lead-form conversion events. When it is empty no analytics script is shipped.

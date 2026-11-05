@@ -25,7 +25,8 @@ const promises = [
 export default function AboutPage() {
   return (
     <>
-      <PageHero
+      <PageHero path={"/about"}
+
         eyebrow="About Knight Medical Billing"
         title={
           <>

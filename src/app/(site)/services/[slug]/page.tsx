@@ -42,6 +42,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
     <>
       <JsonLd data={[serviceSchema({ name: service.name, description: service.intro, path: `/services/${service.slug}` }), breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Services", path: "/services" }, { name: service.short, path: `/services/${service.slug}` }])]} />
       <PageHero
+
         eyebrow={service.short}
         title={
           <>

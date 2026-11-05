@@ -88,10 +88,15 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
                 aria-selected={itemIndex === index}
                 aria-label={`Perspective ${itemIndex + 1}: ${item.theme}`}
                 onClick={() => setIndex(itemIndex)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  itemIndex === index ? "w-7 bg-brand-300" : "w-3 bg-white/25 hover:bg-white/45"
-                }`}
-              />
+                className="group grid h-6 w-6 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+              >
+                <span
+                  aria-hidden
+                  className={`block h-1.5 rounded-full transition-all duration-300 ${
+                    itemIndex === index ? "w-7 bg-brand-300" : "w-3 bg-white/25 group-hover:bg-white/45"
+                  }`}
+                />
+              </button>
             ))}
           </div>
           <div className="flex gap-2">

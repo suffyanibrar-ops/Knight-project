@@ -21,7 +21,8 @@ export default async function InsightsPage() {
 
   return (
     <>
-      <PageHero
+      <PageHero path={"/insights"}
+
         eyebrow="Resources"
         title={
           <>

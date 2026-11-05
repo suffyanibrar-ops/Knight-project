@@ -22,7 +22,8 @@ export default async function ServicesPage() {
 
   return (
     <>
-      <PageHero
+      <PageHero path={"/services"}
+
         eyebrow="Medical billing services we offer"
         title={
           <>

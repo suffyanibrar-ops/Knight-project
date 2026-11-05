@@ -28,6 +28,7 @@ export default function SchedulePage() {
     <>
       <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Schedule a consultation", path: "/schedule-form" }])} />
       <PageHero
+
         eyebrow="Schedule a consultation"
         title={
           <>
