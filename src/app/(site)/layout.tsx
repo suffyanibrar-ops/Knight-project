@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ChatWidget, ScrollProgress } from "@/components/site-chrome";
+import { ScrollProgress } from "@/components/site-chrome";
+import { AiChatWidget } from "@/components/ai/chat-widget";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -24,7 +25,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <SiteHeader />
       <main id="main">{children}</main>
       <SiteFooter />
-      <ChatWidget />
+      <AiChatWidget />
     </>
   );
 }

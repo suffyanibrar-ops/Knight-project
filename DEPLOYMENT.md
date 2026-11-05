@@ -349,3 +349,39 @@ public origin and make sure the site answers there.
 
 Optional analytics: set `NEXT_PUBLIC_GA_ID` at build time to enable GA4 with phone/email
 click and lead-form conversion events. When it is empty no analytics script is shipped.
+
+
+## AI agent (chat + voice)
+
+The website includes an AI representative (DeepSeek reasoning + local retrieval) with text chat,
+browser-native voice, real appointment booking and human handoff.
+
+**Required server environment**
+
+- `DEEPSEEK_API_KEY` (server only — never `NEXT_PUBLIC_*`) and optional `DEEPSEEK_MODEL`
+  (default `deepseek-flash`, thinking mode disabled for latency).
+- `ADMIN_EMAIL` for handoff/lead/appointment notifications (uses the existing Resend setup).
+- `AI_AGENT_ENABLED` / `AI_TRANSCRIPT_RETENTION_DAYS` (optional; also editable in admin).
+
+**Database:** migration v5 adds `ai_*` tables (conversations, messages, leads, appointments,
+availability, blocked times, handoffs, knowledge sources/chunks + FTS5 index, usage logs).
+No audio is stored and there are no PHI columns.
+
+**Voice:** uses the browser's SpeechRecognition (STT) and speechSynthesis (TTS), with a WebAudio
+energy monitor for barge-in. No third-party voice service or key is required. Voice works on
+current Chrome/Edge and Safari; Firefox lacks SpeechRecognition, so visitors use text chat.
+Microphone permission is requested only after a visitor enables voice, and the `Permissions-Policy`
+header allows `microphone=(self)`.
+
+**Knowledge base:** `ai_knowledge_sources`/`ai_knowledge_chunks` are built from approved website
+content plus manual notes and searched with SQLite FTS5 (no vector database). Rebuild with the
+button in Admin → AI agent → Knowledge after content changes.
+
+**Booking:** availability rules live in `ai_availability_rules` (default Mon–Fri 09:00–17:00
+America/New_York, 15-minute slots, 15-minute buffer). Bookings are stored in UTC, validated inside
+`BEGIN IMMEDIATE`, and protected by a unique index on the start time. Confirmation emails include
+a secure reschedule/cancel link to `/appointment/manage?token=…`.
+
+**Admin:** `/admin/ai` (overview), `/admin/ai/conversations`, `/leads`, `/appointments`,
+`/handoffs`, `/knowledge`, `/settings`. Google Calendar sync is intentionally not part of v1; the
+appointments table already has an `external_event_id` column for a future adapter.

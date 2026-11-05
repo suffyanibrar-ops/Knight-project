@@ -294,3 +294,182 @@ CREATE TABLE IF NOT EXISTS blog_redirects (
   created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 `;
+
+
+/* -------------------------------------------------------------------------
+ * v5 — AI voice/chat agent.
+ * Conversations/transcripts, leads, appointments (UTC + unique active slot),
+ * availability rules, blocked times, human handoffs, knowledge base + FTS5,
+ * usage logs. No audio is stored anywhere; no PHI columns by design.
+ * ---------------------------------------------------------------------- */
+
+export const AI_SCHEMA = `
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_hash TEXT NOT NULL UNIQUE,
+  channel TEXT NOT NULL DEFAULT 'text',
+  status TEXT NOT NULL DEFAULT 'active',
+  visitor_name TEXT,
+  visitor_email TEXT,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  lead_id INTEGER,
+  appointment_id INTEGER,
+  handoff_id INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  last_activity_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  expires_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_activity ON ai_conversations (last_activity_at DESC);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  tool_name TEXT,
+  tool_args TEXT,
+  tool_result TEXT,
+  tokens_in INTEGER,
+  tokens_out INTEGER,
+  latency_ms INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages (conversation_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ai_leads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER REFERENCES ai_conversations(id) ON DELETE SET NULL,
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  organization TEXT,
+  specialty TEXT,
+  providers TEXT,
+  current_setup TEXT,
+  challenge TEXT,
+  services_interest TEXT,
+  preferred_contact TEXT,
+  status TEXT NOT NULL DEFAULT 'new',
+  notes TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_leads_created ON ai_leads (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_leads_status ON ai_leads (status);
+
+CREATE TABLE IF NOT EXISTS ai_appointments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER REFERENCES ai_conversations(id) ON DELETE SET NULL,
+  lead_id INTEGER REFERENCES ai_leads(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  organization TEXT,
+  specialty TEXT,
+  starts_at_utc INTEGER NOT NULL,
+  ends_at_utc INTEGER NOT NULL,
+  timezone TEXT NOT NULL DEFAULT 'America/New_York',
+  status TEXT NOT NULL DEFAULT 'confirmed',
+  token_hash TEXT UNIQUE,
+  email_status TEXT NOT NULL DEFAULT 'pending',
+  notes TEXT,
+  external_event_id TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_appointments_start ON ai_appointments (starts_at_utc);
+CREATE INDEX IF NOT EXISTS idx_ai_appointments_status ON ai_appointments (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_appointments_active_slot
+  ON ai_appointments (starts_at_utc) WHERE status IN ('pending', 'confirmed');
+
+CREATE TABLE IF NOT EXISTS ai_availability_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  weekday INTEGER NOT NULL,
+  start_minute INTEGER NOT NULL DEFAULT 540,
+  end_minute INTEGER NOT NULL DEFAULT 1020,
+  slot_minutes INTEGER NOT NULL DEFAULT 15,
+  buffer_minutes INTEGER NOT NULL DEFAULT 15,
+  timezone TEXT NOT NULL DEFAULT 'America/New_York',
+  active INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS ai_blocked_times (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  starts_at_utc INTEGER NOT NULL,
+  ends_at_utc INTEGER NOT NULL,
+  reason TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_blocked_times_start ON ai_blocked_times (starts_at_utc);
+
+CREATE TABLE IF NOT EXISTS ai_handoffs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER REFERENCES ai_conversations(id) ON DELETE SET NULL,
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  admin_note TEXT,
+  notified_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_handoffs_status ON ai_handoffs (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ai_knowledge_sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL,
+  url TEXT,
+  content_text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  checksum TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  last_indexed_at INTEGER,
+  UNIQUE (kind, slug)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_sources_kind ON ai_knowledge_sources (kind, status);
+
+CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id INTEGER NOT NULL REFERENCES ai_knowledge_sources(id) ON DELETE CASCADE,
+  heading TEXT,
+  content TEXT NOT NULL,
+  ord INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_chunks_source ON ai_knowledge_chunks (source_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS ai_knowledge_fts USING fts5(
+  content, heading, source_title, source_url, chunk_id UNINDEXED, tokenize = 'porter unicode61'
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER,
+  model TEXT,
+  prompt_tokens INTEGER NOT NULL DEFAULT 0,
+  completion_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  cost_micros INTEGER NOT NULL DEFAULT 0,
+  latency_ms INTEGER,
+  error TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_created ON ai_usage_logs (created_at DESC);
+
+INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
+SELECT 1, 1, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules);
+INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
+SELECT 2, 2, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules WHERE id = 2);
+INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
+SELECT 3, 3, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules WHERE id = 3);
+INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
+SELECT 4, 4, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules WHERE id = 4);
+INSERT OR IGNORE INTO ai_availability_rules (id, weekday, start_minute, end_minute, slot_minutes, buffer_minutes, active)
+SELECT 5, 5, 540, 1020, 15, 15, 1 WHERE NOT EXISTS (SELECT 1 FROM ai_availability_rules WHERE id = 5);
+`;

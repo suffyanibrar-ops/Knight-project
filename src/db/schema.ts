@@ -243,3 +243,148 @@ export const blogRedirects = sqliteTable("blog_redirects", {
   postId: integer("post_id").references(() => blogPosts.id, { onDelete: "set null" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
+
+
+/* -------------------------------------------------------------------------
+ * AI agent (schema migration v5). DDL lives in src/lib/sqlite-schema.ts.
+ * ---------------------------------------------------------------------- */
+
+export const aiConversations = sqliteTable("ai_conversations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionHash: text("session_hash").notNull().unique(),
+  channel: text("channel").notNull().default("text"),
+  status: text("status").notNull().default("active"),
+  visitorName: text("visitor_name"),
+  visitorEmail: text("visitor_email"),
+  messageCount: integer("message_count").notNull().default(0),
+  leadId: integer("lead_id"),
+  appointmentId: integer("appointment_id"),
+  handoffId: integer("handoff_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  lastActivityAt: integer("last_activity_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+});
+
+export const aiMessages = sqliteTable("ai_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id").notNull().references(() => aiConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull().default(""),
+  toolName: text("tool_name"),
+  toolArgs: text("tool_args"),
+  toolResult: text("tool_result"),
+  tokensIn: integer("tokens_in"),
+  tokensOut: integer("tokens_out"),
+  latencyMs: integer("latency_ms"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiLeads = sqliteTable("ai_leads", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id"),
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  organization: text("organization"),
+  specialty: text("specialty"),
+  providers: text("providers"),
+  currentSetup: text("current_setup"),
+  challenge: text("challenge"),
+  servicesInterest: text("services_interest"),
+  preferredContact: text("preferred_contact"),
+  status: text("status").notNull().default("new"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiAppointments = sqliteTable("ai_appointments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id"),
+  leadId: integer("lead_id"),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  organization: text("organization"),
+  specialty: text("specialty"),
+  startsAtUtc: integer("starts_at_utc", { mode: "timestamp_ms" }).notNull(),
+  endsAtUtc: integer("ends_at_utc", { mode: "timestamp_ms" }).notNull(),
+  timezone: text("timezone").notNull().default("America/New_York"),
+  status: text("status").notNull().default("confirmed"),
+  tokenHash: text("token_hash").unique(),
+  emailStatus: text("email_status").notNull().default("pending"),
+  notes: text("notes"),
+  externalEventId: text("external_event_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiAvailabilityRules = sqliteTable("ai_availability_rules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  weekday: integer("weekday").notNull(),
+  startMinute: integer("start_minute").notNull().default(540),
+  endMinute: integer("end_minute").notNull().default(1020),
+  slotMinutes: integer("slot_minutes").notNull().default(15),
+  bufferMinutes: integer("buffer_minutes").notNull().default(15),
+  timezone: text("timezone").notNull().default("America/New_York"),
+  active: integer("active").notNull().default(1),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiBlockedTimes = sqliteTable("ai_blocked_times", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  startsAtUtc: integer("starts_at_utc", { mode: "timestamp_ms" }).notNull(),
+  endsAtUtc: integer("ends_at_utc", { mode: "timestamp_ms" }).notNull(),
+  reason: text("reason"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiHandoffs = sqliteTable("ai_handoffs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id"),
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("pending"),
+  adminNote: text("admin_note"),
+  notifiedAt: integer("notified_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiKnowledgeSources = sqliteTable("ai_knowledge_sources", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kind: text("kind").notNull(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  url: text("url"),
+  contentText: text("content_text").notNull(),
+  status: text("status").notNull().default("active"),
+  checksum: text("checksum"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  lastIndexedAt: integer("last_indexed_at", { mode: "timestamp_ms" }),
+});
+
+export const aiKnowledgeChunks = sqliteTable("ai_knowledge_chunks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceId: integer("source_id").notNull().references(() => aiKnowledgeSources.id, { onDelete: "cascade" }),
+  heading: text("heading"),
+  content: text("content").notNull(),
+  ord: integer("ord").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const aiUsageLogs = sqliteTable("ai_usage_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id"),
+  model: text("model"),
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  costMicros: integer("cost_micros").notNull().default(0),
+  latencyMs: integer("latency_ms"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});

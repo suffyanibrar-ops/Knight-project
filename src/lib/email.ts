@@ -25,7 +25,7 @@ const ADMIN_APP_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "
  */
 export const BUSINESS_CONTACT = "Knight Medical Billing · 585 Grove St Ste 145, Herndon, VA 20170-4790 · (812) 994-0046 · admin@knightmedicalbilling.com";
 
-export type MailKind = "consultation" | "contact" | "subscriber" | "roi" | "test";
+export type MailKind = "consultation" | "contact" | "subscriber" | "roi" | "test" | "appointment" | "handoff" | "ai_lead";
 
 export type MailPayload = {
   kind: MailKind;

@@ -38,6 +38,13 @@ export default function PrivacyPage() {
           paragraphs: ["We do not ask for PHI through this website. If you become a client, PHI is exchanged only through HIPAA-compliant channels under a signed business associate agreement. We maintain safeguards designed to protect PHI, including secure data flow, role-based access and documented confidentiality and quality control policies."],
         },
         {
+          heading: "AI chat assistant and transcripts",
+            paragraphs: [
+              "Our website offers an AI chat assistant for business questions about our billing services. When you use it, your messages and the assistant's replies are stored as a text transcript so we can follow up and improve the service. Voice mode uses your browser's built-in speech recognition and speech synthesis; audio is not recorded or stored by us.",
+              "Please do not share patient information, medical records, insurance identifiers or other protected health information in the chat. The assistant is configured to refuse such information. Transcripts are retained for a limited period and can be deleted by the site owner on request.",
+            ],
+        },
+        {
           heading: "Cookies and analytics",
           paragraphs: ["We use essential cookies to operate the site and limited analytics to understand aggregate usage. You can control cookies through your browser settings; disabling them may affect site functionality."],
         },
