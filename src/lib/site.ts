@@ -25,7 +25,7 @@ export const site = {
     linkedin: "https://www.linkedin.com/company/knight-medical-billing",
   },
   mapEmbed:
-    "https://www.google.com/maps?q=585+Grove+St+Ste+145,+Herndon,+VA+20170-4790&hl=en&z=15&output=embed",
+    "https://maps.google.com/maps?q=585+Grove+St+Ste+145,+Herndon,+VA+20170-4790&t=&z=16&ie=UTF8&iwloc=&output=embed",
   mapLink: "https://www.google.com/maps/search/?api=1&query=585+Grove+St+Ste+145,+Herndon,+VA+20170-4790",
   url: process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com",
 };

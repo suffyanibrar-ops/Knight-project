@@ -89,7 +89,7 @@ export function SiteIntro() {
                 { transform: "translate3d(0, 0, 0) scaleX(1)", opacity: 1 },
                 { transform: `translate3d(${dx}px, ${dy}px, 0) scaleX(${scale})`, opacity: 0 },
               ],
-              { duration: 560, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
+              { duration: 680, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
             );
           }
         }
@@ -107,13 +107,13 @@ export function SiteIntro() {
                 { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1 },
                 { transform: `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`, opacity: 0.2 },
               ],
-              { duration: 560, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
+              { duration: 700, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
             );
           }
         }
       }
 
-      later(finalize, skipped ? 280 : full ? 600 : 320);
+      later(finalize, skipped ? 300 : full ? 700 : 340);
     };
 
     skipRef.current = () => beginExit(true);
@@ -131,7 +131,7 @@ export function SiteIntro() {
     // Stage 1: calm logo reveal.
     window.requestAnimationFrame(() => overlay.classList.add("is-entered"));
     // Stage 2: flow line + nodes. Brief visits skip the theatre.
-    if (full) later(() => overlay.classList.add("is-flow"), 220);
+    if (full) later(() => overlay.classList.add("is-flow"), 300);
     else overlay.classList.add("is-flow");
 
     // Stage 3: wait for the page to be ready, but never loop or hold for long.
@@ -140,18 +140,18 @@ export function SiteIntro() {
       if (exitStarted) return;
       const elapsed = performance.now() - startedAt;
       if (!full) {
-        if (elapsed >= 220) beginExit();
+        if (elapsed >= 320) beginExit();
         else later(tick, 40);
         return;
       }
       const ready = document.readyState === "complete";
-      if ((ready && elapsed >= 960) || elapsed >= 1900) beginExit();
+      if ((ready && elapsed >= 1960) || elapsed >= 2600) beginExit();
       else later(tick, 60);
     };
     later(tick, 60);
 
     // Hard safety: even if something throws above, the overlay releases.
-    later(() => beginExit(true), full ? 2800 : 1200);
+    later(() => beginExit(true), full ? 3800 : 1200);
 
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
@@ -175,7 +175,7 @@ export function SiteIntro() {
       <div className="site-intro__content">
         <div ref={brandRef} className="site-intro__brand">
           <span className="site-intro__mark">
-            <Image src={site.logoWhite} alt="" width={46} height={46} priority style={{ width: 46, height: 46 }} />
+            <Image src={site.logoWhite} alt="" width={64} height={64} priority style={{ width: 64, height: 64 }} />
           </span>
           <span className="site-intro__wordmark">
             <span className="site-intro__name">Knight</span>
@@ -189,7 +189,7 @@ export function SiteIntro() {
             <span
               key={node.label}
               className={`site-intro__node site-intro__node--${node.tone}`}
-              style={{ left: `${(index / (FLOW_NODES.length - 1)) * 100}%`, animationDelay: `${320 + index * 60}ms` }}
+              style={{ left: `${(index / (FLOW_NODES.length - 1)) * 100}%`, animationDelay: `${500 + index * 70}ms` }}
             />
           ))}
         </div>

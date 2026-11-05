@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarCheck, Headphones, Loader2, MessageCircle, Mic, MicOff, PhoneCall, Send, Square, UserRound, X } from "lucide-react";
+import { CalendarCheck, Headphones, Loader2, Mic, MicOff, PhoneCall, Send, Square, UserRound, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/components/ui";
 import { AppointmentModal, type BookedAppointment } from "./appointment-modal";
@@ -37,6 +37,19 @@ const TOOL_LABELS: Record<string, string> = {
   book_appointment: "Booking your call…",
   request_human_assistance: "Logging a human follow-up…",
 };
+
+/** Distinct voice-agent mark (not a generic chat/WhatsApp bubble). */
+function VoiceAgentIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <rect x="4.1" y="9.1" width="1.9" height="5.8" rx="0.95" fill="currentColor" opacity="0.92" />
+      <rect x="7.75" y="6.2" width="1.9" height="11.6" rx="0.95" fill="currentColor" />
+      <rect x="11.4" y="7.8" width="1.9" height="8.4" rx="0.95" fill="currentColor" />
+      <rect x="15.05" y="9.8" width="1.9" height="4.4" rx="0.95" fill="currentColor" opacity="0.92" />
+      <circle cx="18.85" cy="5.15" r="1.15" fill="#7ee0c1" />
+    </svg>
+  );
+}
 
 function uid(): string {
   return Math.random().toString(36).slice(2);
@@ -460,16 +473,21 @@ export function AiChatWidget() {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          aria-label={open ? "Close chat" : "Open chat with Knight Medical Billing"}
+          aria-label={open ? "Close AI assistant" : "Open Knight AI assistant"}
           aria-expanded={open}
-          className="group relative grid h-14 w-14 place-items-center rounded-full bg-night-soft text-white shadow-[0_20px_40px_-15px_rgba(4,20,31,0.7)] transition-colors hover:bg-brand-600"
+          className="group relative grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-[linear-gradient(145deg,#0d3346_0%,#04141f_100%)] text-white shadow-[0_20px_40px_-15px_rgba(4,20,31,0.7)] transition-colors hover:border-brand-300/40 hover:bg-[linear-gradient(145deg,#0f6988_0%,#071f2f_100%)]"
         >
           {!open && <span className="animate-pulse-ring absolute inset-0 rounded-full bg-brand-400/40" />}
           <AnimatePresence mode="wait" initial={false}>
             <motion.span key={open ? "close" : "open"} initial={{ opacity: 0, rotate: -30, scale: 0.7 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 30, scale: 0.7 }} transition={{ duration: 0.18 }} className="relative">
-              {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
+              {open ? <X className="h-5 w-5" /> : <VoiceAgentIcon className="h-7 w-7" />}
             </motion.span>
           </AnimatePresence>
+          {!open && (
+            <span aria-hidden className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-night-soft bg-mint-400 px-1 text-[0.42rem] font-extrabold uppercase leading-none tracking-[0.02em] text-night-soft">
+              AI
+            </span>
+          )}
         </button>
       </div>
 

@@ -30,9 +30,11 @@ const slotsBody = await slotsResponse.json()
 ok('availability API returns real slots', slotsResponse.status() === 200 && Array.isArray(slotsBody.slots) && slotsBody.slots.length > 0, JSON.stringify(slotsBody).slice(0, 120))
 
 // ---------- text chat streaming (real DeepSeek call) ----------
+await page.addInitScript(() => { try { sessionStorage.setItem('kmb-intro-seen', '1'); } catch { /* ignore */ } })
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 60000 })
+await page.waitForFunction(() => { const intro = document.querySelector('[data-site-intro]'); return !intro || getComputedStyle(intro).display === 'none' || getComputedStyle(intro).visibility === 'hidden'; }, undefined, { timeout: 6000 }).catch(() => {})
 await page.waitForTimeout(2000)
-await page.getByRole('button', { name: /open chat/i }).click()
+await page.getByRole('button', { name: /open knight ai assistant/i }).click()
 await page.waitForTimeout(1200)
 ok('chat widget opens with welcome', (await page.locator('[role="dialog"]').innerText()).includes('Riley'))
 await page.getByLabel('Chat message').fill('What services do you offer? Keep it under 40 words.')
@@ -105,7 +107,7 @@ await page.addInitScript(() => {
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(1500)
 ok('voice feature advertised in config', config.voiceEnabled === true)
-await page.getByRole('button', { name: /open chat/i }).click()
+await page.getByRole('button', { name: /open knight ai assistant/i }).click()
 await page.waitForTimeout(900)
 await page.getByRole('button', { name: /start voice conversation/i }).click()
 await page.getByRole('button', { name: /enable microphone/i }).click()

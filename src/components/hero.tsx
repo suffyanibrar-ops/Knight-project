@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, BadgeCheck, Check, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Typewriter } from "./motion/typewriter";
 import { HeroCanvas } from "./motion/hero-canvas";
@@ -82,14 +82,6 @@ export function Hero() {
                 <ArrowRight className="h-4 w-4 text-brand-600 transition-transform group-hover:translate-x-1" strokeWidth={2.2} />
               </Link>
             </Magnetic>
-          </motion.div>
-
-          <motion.div initial="hidden" animate="show" custom={4} variants={fadeUp} className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.75rem] font-semibold text-ink-600/70">
-            {["No prepayment", "No long-term lock-in", "Dedicated billing team"].map((item) => (
-              <span key={item} className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-mint-600" strokeWidth={2.6} /> {item}
-              </span>
-            ))}
           </motion.div>
 
           <motion.div initial="hidden" animate="show" custom={5} variants={fadeUp} className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">

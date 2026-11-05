@@ -34,6 +34,7 @@ export const photo = {
   documentsTeam: "/images/photos/documents-team.jpg",
   documentsDesk: "/images/photos/documents-desk.jpg",
   keyboard: "/images/photos/keyboard.jpg",
+  executiveMeeting: "/images/photos/executive-meeting.jpg",
 } as const;
 
 export type PhotoPath = (typeof photo)[keyof typeof photo];
@@ -71,4 +72,5 @@ export const photoCredits: PhotoCredit[] = [
   { file: "/images/photos/documents-team.jpg", source: "Pexels", sourceUrl: "https://www.pexels.com/photo/6914022/", license: PEXELS_LICENSE },
   { file: "/images/photos/documents-desk.jpg", source: "Pexels", sourceUrl: "https://www.pexels.com/photo/7654600/", license: PEXELS_LICENSE },
   { file: "/images/photos/keyboard.jpg", source: "Pexels", sourceUrl: "https://www.pexels.com/photo/31421514/", license: PEXELS_LICENSE },
+  { file: "/images/photos/executive-meeting.jpg", source: "Pexels", sourceUrl: "https://www.pexels.com/photo/professional-business-meeting-in-modern-office-36714213/", license: PEXELS_LICENSE },
 ];

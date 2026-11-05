@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ScrollProgress } from "@/components/site-chrome";
+import { BackToTop, ScrollProgress } from "@/components/site-chrome";
 import { SiteIntro } from "@/components/site-intro";
 import { AiChatWidget } from "@/components/ai/chat-widget";
 import { SiteFooter } from "@/components/site-footer";
@@ -27,6 +27,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <SiteHeader />
       <main id="main">{children}</main>
       <SiteFooter />
+      <BackToTop />
       <AiChatWidget />
     </>
   );

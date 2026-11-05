@@ -41,10 +41,11 @@ async function waitForIntroEnd(page, minMs = 0) {
   const mode = await page.evaluate(() => document.documentElement.dataset.intro);
   ok("first visit uses the full intro", mode === "full", String(mode));
   ok("intro overlay is painted immediately", await page.locator("[data-site-intro]").isVisible());
+  await page.waitForTimeout(320);
   ok("logo is visible before/independent of hydration", Number(await page.locator(".site-intro__brand").evaluate((el) => getComputedStyle(el).opacity)) > 0.4);
   ok("scroll is locked only while intro is open", await page.evaluate(() => document.documentElement.classList.contains("intro-open")));
 
-  await page.waitForTimeout(780);
+  await page.waitForTimeout(1450);
   const lineScale = await page.locator(".site-intro__line").evaluate((el) => {
     const transform = getComputedStyle(el).transform;
     if (transform === "none") return 1;
@@ -57,7 +58,7 @@ async function waitForIntroEnd(page, minMs = 0) {
 
   await waitForIntroEnd(page);
   const totalIntroMs = Date.now() - domReadyAt;
-  ok("intro finishes in the target window (1.1–2.2s after DOM ready)", totalIntroMs >= 1100 && totalIntroMs <= 2200, `${totalIntroMs}ms`);
+  ok("intro finishes in the target window (2.2–3.6s after DOM ready)", totalIntroMs >= 2200 && totalIntroMs <= 3600, `${totalIntroMs}ms`);
   ok("overlay is removed from interaction", !(await page.locator("[data-site-intro]").isVisible()));
   ok("hero becomes interactive", await page.locator("[data-hero-reveal]").isVisible());
   ok("scroll lock is released", !(await page.evaluate(() => document.documentElement.classList.contains("intro-open"))));
@@ -88,7 +89,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.waitForTimeout(750);
+  await page.waitForTimeout(1450);
   const skip = page.getByRole("button", { name: /skip introduction/i });
   ok("skip control is available", await skip.count() === 1 && (await skip.isVisible()));
   await skip.click();
@@ -140,12 +141,12 @@ async function waitForIntroEnd(page, minMs = 0) {
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   const domReadyAt = Date.now();
   ok("mobile: intro visible", await page.locator("[data-site-intro]").isVisible());
-  await page.waitForTimeout(780);
+  await page.waitForTimeout(1450);
   const overflow = await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth);
   ok("mobile: no horizontal overflow during intro", overflow <= 1, String(overflow));
   await waitForIntroEnd(page);
   const mobileTotalMs = Date.now() - domReadyAt;
-  ok("mobile: intro completes in the target window", mobileTotalMs >= 1000 && mobileTotalMs <= 2600, `${mobileTotalMs}ms`);
+  ok("mobile: intro completes in the target window", mobileTotalMs >= 2000 && mobileTotalMs <= 3800, `${mobileTotalMs}ms`);
   ok("mobile: rail labels simplify away", await page.locator(".hero-flow__label").first().evaluate((el) => getComputedStyle(el).display === "none"));
   await page.screenshot({ path: "/Users/nokhaizibrar/Desktop/Project Folder/preview/99-hero-mobile.png" });
   await context.close();
@@ -162,9 +163,9 @@ async function waitForIntroEnd(page, minMs = 0) {
   const started = Date.now();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   const elapsed = await waitForIntroEnd(page);
-  ok("slow HTML does not leave a stuck overlay", elapsed >= 0 && elapsed < 3000, `${elapsed}ms`);
+  ok("slow HTML does not leave a stuck overlay", elapsed >= 0 && elapsed < 4200, `${elapsed}ms`);
   ok("slow load remains usable after intro", (await page.locator("body").innerText()).includes("Your revenue cycle"));
-  ok("slow load still dismisses within a bounded total", Date.now() - started < 7000, `${Date.now() - started}ms`);
+  ok("slow load still dismisses within a bounded total", Date.now() - started < 9000, `${Date.now() - started}ms`);
   await context.close();
 }
 
@@ -173,7 +174,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 980 } });
   const page = await context.newPage();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.waitForTimeout(820);
+  await page.waitForTimeout(1450);
   await page.screenshot({ path: "/Users/nokhaizibrar/Desktop/Project Folder/preview/95-intro-stage.png" });
   await context.close();
 }
@@ -193,7 +194,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(1200);
   await page.keyboard.press("Escape");
   const elapsed = await waitForIntroEnd(page);
   ok("Escape key skips the intro", elapsed >= 0 && elapsed < 800, `${elapsed}ms`);
@@ -226,7 +227,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   ok("tablet: no horizontal overflow", overflow <= 1, String(overflow));
   await waitForIntroEnd(page);
   const total = Date.now() - domReadyAt;
-  ok("tablet: intro completes cleanly", total <= 2600, `${total}ms`);
+  ok("tablet: intro completes cleanly", total <= 3800, `${total}ms`);
   ok("tablet: hero rail visible", await page.locator("[data-hero-flow-line]").isVisible());
   await context.close();
 }

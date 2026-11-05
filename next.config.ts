@@ -26,6 +26,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com",
       "font-src 'self' data:",
       "connect-src 'self' https: https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+      "frame-src 'self' https://www.google.com https://maps.google.com https://*.google.com",
       "frame-ancestors 'self'",
       "form-action 'self'",
       "base-uri 'self'",

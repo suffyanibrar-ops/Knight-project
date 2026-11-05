@@ -23,7 +23,12 @@ import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getArticles, getFaqs, getSpecialties } from "@/lib/data";
 import { audiences, benefits, billingSoftware, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Knight Medical Billing | Custom Tailored Medical Billing & RCM', description: 'Knight Medical Billing delivers custom tailored medical billing and revenue cycle management with a 99.9% claim acceptance rate, claims filed in 24 hours, no prepayment and 24/5 multilingual support.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'custom tailored medical billing'] });
+const homeTitle = "Knight Medical Billing | Custom Tailored Medical Billing & RCM";
+const homeMetadata = pageMetadata({ title: homeTitle, description: 'Knight Medical Billing delivers custom tailored medical billing and revenue cycle management with a 99.9% claim acceptance rate, claims filed in 24 hours, no prepayment and 24/5 multilingual support.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'custom tailored medical billing'] });
+
+// Keep the brand first in the browser tab / search result title. The shared
+// title template appends the brand only when it is not already leading.
+export const metadata: Metadata = { ...homeMetadata, title: { absolute: homeTitle } };
 
 export const dynamic = "force-dynamic";
 
@@ -772,6 +777,10 @@ export default async function HomePage() {
               <p className="mt-3 text-[0.92rem] leading-relaxed text-white/60">
                 Anonymised feedback themes gathered in our conversations with administrators and clinicians — not published client endorsements.
               </p>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-white/35">
+                <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-brand-300" /> Four recurring themes</span>
+                <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-mint-300" /> Administrator &amp; clinician conversations</span>
+              </div>
             </Reveal>
             <Reveal delay={0.08}>
               <Link href="/results" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-[0.78rem] font-bold text-white/85 transition-colors hover:border-brand-300 hover:text-white">
