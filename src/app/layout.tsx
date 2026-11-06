@@ -10,7 +10,6 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { site } from "@/lib/site";
 import { organizationSchema, websiteSchema, SITE_URL } from "@/lib/seo";
 import { JsonLd } from "@/components/structured-data";
-import { SiteAnalytics } from "@/components/analytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -98,7 +97,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </MotionProvider>
         </ThemeProvider>
         <JsonLd data={[organizationSchema(), websiteSchema()]} />
-      <SiteAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       </body>
     </html>
   );

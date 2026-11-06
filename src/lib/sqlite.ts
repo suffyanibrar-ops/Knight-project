@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
-import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, BLOG_SCHEMA, SCHEMA } from "./sqlite-schema";
+import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, ANALYTICS_SCHEMA, BLOG_SCHEMA, SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -118,7 +118,7 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
@@ -142,6 +142,8 @@ const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 6, statements: AI_V6_SCHEMA },
   // v7: retire stored copies of the old default welcome/instructions.
   { version: 7, statements: AI_V7_SCHEMA },
+  // v8: first-party, privacy-conscious website analytics.
+  { version: 8, statements: ANALYTICS_SCHEMA },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {
@@ -166,6 +168,12 @@ function migrate(driver: Driver, raw: RawDatabase) {
 
 function open(): DriverState {
   const file = sqlitePath();
+  const publicDir = `${process.cwd()}/public/`;
+  const allowCreate = process.env.SQLITE_ALLOW_CREATE === "1";
+  const requireExisting = process.env.SQLITE_REQUIRE_EXISTING === "1";
+  const exists = fs.existsSync(file);
+  const unsafePath = file.startsWith(publicDir) || file.startsWith(`${process.cwd()}/public`);
+  const refuseCreate = (!exists && (requireExisting || (process.env.NODE_ENV === "production" && !allowCreate)));
 
   const attempt = (kind: string, create: () => RawDatabase): DriverState | null => {
     try {
@@ -190,6 +198,26 @@ function open(): DriverState {
       return null;
     }
   };
+
+  if (unsafePath) {
+    return {
+      driver: null,
+      raw: null,
+      path: file,
+      error: `SQLITE_PATH points inside the public directory ("${file}"). Set it to a private persistent volume outside public/.`,
+      kind: null,
+    };
+  }
+
+  if (refuseCreate) {
+    return {
+      driver: null,
+      raw: null,
+      path: file,
+      error: `SQLite database "${file}" does not exist. Refusing to create a fresh production database silently. Restore the existing database, or set SQLITE_ALLOW_CREATE=1 only for an intentional first boot.`,
+      kind: null,
+    };
+  }
 
   const opened = attempt("better-sqlite3", () => new Database(file));
   if (opened) return opened;

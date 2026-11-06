@@ -39,8 +39,8 @@ ok("admin session cookie is HttpOnly", Boolean(session?.httpOnly), JSON.stringif
 const overviewText = await page.locator("main").innerText();
 ok("overview is the command center", /Command center/i.test(overviewText));
 ok("overview includes system status", /Website/i.test(overviewText) && /Database/i.test(overviewText) && /Email/i.test(overviewText) && /AI agent/i.test(overviewText) && /Analytics/i.test(overviewText));
-ok("overview reports GA4 honestly when disconnected", /Google Analytics is not connected/i.test(overviewText) && /GA4 not connected/i.test(overviewText));
-ok("overview does not fabricate traffic zeros", !/Visitors today\s*0/i.test(overviewText), overviewText.slice(0, 500));
+ok("overview reports first-party analytics", /First-party live|First-party analytics/i.test(overviewText));
+ok("overview does not claim third-party analytics", !/GA4|Google Analytics/i.test(overviewText), overviewText.slice(0, 500));
 ok("overview has quick actions", /Quick actions/i.test(overviewText) && /View enquiries/i.test(overviewText));
 
 // Grouped navigation
@@ -55,11 +55,11 @@ await page.waitForTimeout(1600);
 const trafficText = await page.locator("main").innerText();
 ok("Live Traffic is one unified module", /Live Traffic/i.test(trafficText) && /Pages/i.test(trafficText) && /Sources/i.test(trafficText) && /Visitors/i.test(trafficText) && /Conversions/i.test(trafficText));
 ok("Live Traffic has six sections", (await page.getByRole("tab").count()) === 6, String(await page.getByRole("tab").count()));
-ok("Live Traffic shows not-connected state", /Google Analytics is not connected/i.test(trafficText));
-ok("Live Traffic does not show fake visitor counts", !/Website visitors\s*0/i.test(trafficText));
+ok("Live Traffic renders first-party data or an honest empty state", /No first-party traffic yet|No first-party pageviews|Live first-party activity|Active last 5 min/i.test(trafficText));
+ok("Live Traffic makes no third-party analytics claim", !/GA4|Google Analytics/i.test(trafficText));
 const trafficApi = await context.request.get(BASE + "/api/admin/live-traffic?range=7d");
 const trafficBody = await trafficApi.json();
-ok("traffic API is authenticated and honest", trafficApi.ok() && trafficBody.analytics.connected === false && trafficBody.live === null && trafficBody.traffic === null, JSON.stringify({ status: trafficApi.status(), connected: trafficBody.analytics?.connected }));
+ok("traffic API is authenticated and first-party", trafficApi.ok() && trafficBody.analytics.connected === true && trafficBody.live !== null && trafficBody.traffic !== null, JSON.stringify({ status: trafficApi.status(), connected: trafficBody.analytics?.connected }));
 await page.getByRole("tab", { name: "Conversions" }).click();
 await page.waitForTimeout(250);
 ok("conversions still exposes SQLite business path", /Enquiries/i.test(await page.locator("main").innerText()) && /AI-qualified leads/i.test(await page.locator("main").innerText()));
@@ -70,7 +70,7 @@ for (const [path, heading, expected] of [
   ["/admin/outbox", "Email", /Recent delivery failures|How delivery works/i],
   ["/admin/inbox", "Enquiries", /Total submissions/i],
   ["/admin/estimates", "ROI Opportunities", /Modeled \/ illustrative opportunity/i],
-  ["/admin/settings", "Settings", /GA4 reporting/i],
+  ["/admin/settings", "Settings", /First-party tracking/i],
   ["/admin/ai", "AI & Conversations", /Conversations/i],
 ]) {
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });

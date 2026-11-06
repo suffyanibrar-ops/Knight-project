@@ -4,6 +4,7 @@ import { SiteIntro } from "@/components/site-intro";
 import { AiChatWidget } from "@/components/ai/chat-widget";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { FirstPartyAnalytics } from "@/components/analytics/first-party-analytics";
 
 /**
  * Public website shell.
@@ -29,6 +30,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <SiteFooter />
       <BackToTop />
       <AiChatWidget />
+      <FirstPartyAnalytics />
     </>
   );
 }

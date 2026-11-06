@@ -17,9 +17,10 @@ type GaTraffic = {
   series: { date: string; users: number; sessions: number; pageViews: number }[];
   pages: { path: string; views: number; users: number; averageTime: number; engagementRate: number }[];
   landingPages: { path: string; users: number; sessions: number }[];
+  exitPages: { path: string; users: number; sessions: number }[];
   sources: { source: string; users: number; sessions: number; engagedSessions: number; engagementRate: number }[];
   referrals: { source: string; medium: string; users: number }[];
-  visitors: { newVsReturning: { label: string; users: number }[]; devices: { label: string; users: number }[]; browsers: { label: string; users: number }[]; countries: { label: string; users: number }[]; cities: { label: string; users: number }[] };
+  visitors: { newVsReturning: { label: string; users: number }[]; devices: { label: string; users: number }[]; browsers: { label: string; users: number }[]; operatingSystems: { label: string; users: number }[]; countries: { label: string; users: number }[]; regions: { label: string; users: number }[] };
   warning: string | null;
 };
 type GaLive = {
@@ -42,7 +43,7 @@ type Payload = {
   live: GaLive | null;
   traffic: GaTraffic | null;
   business: { enquiries: number; consultationRequests: number; aiLeads: number; appointmentsInRange: number; pendingHandoffs: number; emailIssues: number; emailQueued: number };
-  conversions: { stages: { key: string; label: string; value: number | null; source: string }[]; rates: { key: string; label: string; value: number | null }[]; note: string };
+  conversions: { stages: { key: string; label: string; value: number | null; source: string }[]; rates: { key: string; label: string; value: number | null }[]; events?: { name: string; count: number }[]; note: string };
   generatedAt: string;
   cached?: boolean;
 };
@@ -79,15 +80,17 @@ function Change({ value }: { value: number | null }) {
   return <span className={cn("inline-flex items-center gap-0.5 font-bold", positive ? "text-mint-700" : "text-rose-600")}>{positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}{pct(value)}</span>;
 }
 
-function NotConnected({ error }: { error: string | null }) {
+function AnalyticsEmpty({ unavailable = false, error }: { unavailable?: boolean; error?: string | null }) {
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
-      <p className="flex items-center gap-2 text-[0.9rem] font-extrabold text-amber-900"><Info className="h-4 w-4" /> Google Analytics is not connected</p>
-      <p className="mt-1.5 max-w-2xl text-[0.78rem] leading-relaxed text-amber-900/75">
-        Website traffic, pages, sources and visitor aggregates come from GA4. Business data below still comes from SQLite. Configure a GA4 property ID and a read-only service account to populate this module.
+    <div className="rounded-2xl border border-mist-200 bg-surface p-5">
+      <p className="flex items-center gap-2 text-[0.9rem] font-extrabold text-ink-900"><Info className="h-4 w-4 text-brand-600" /> {unavailable ? "First-party analytics is unavailable" : "No first-party traffic yet"}</p>
+      <p className="mt-1.5 max-w-2xl text-[0.78rem] leading-relaxed text-ink-600/75">
+        {unavailable
+          ? "The analytics store could not be queried. Check database health in Settings; no visitor data is invented while it is offline."
+          : "The privacy-conscious tracker is installed on the public site. Real visitor data will appear here after the first pageview — there is no seeded or fabricated traffic."}
       </p>
-      {error && <p className="mt-2 text-[0.7rem] font-semibold text-amber-900/70">{error}</p>}
-      <Link href="/admin/settings" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-surface px-3 py-1.5 text-[0.7rem] font-extrabold text-amber-900 hover:bg-amber-100">View analytics configuration <ExternalLink className="h-3 w-3" /></Link>
+      {error && <p className="mt-2 text-[0.7rem] font-semibold text-ink-600/60">{error}</p>}
+      <Link href="/admin/settings" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-mist-50 px-3 py-1.5 text-[0.7rem] font-extrabold text-ink-700 hover:border-brand-300">Review analytics settings <ExternalLink className="h-3 w-3" /></Link>
     </div>
   );
 }
@@ -108,7 +111,7 @@ function EmptyData({ title, description }: { title: string; description: string 
 
 function TrendChart({ series, reduced = false }: { series: GaTraffic["series"]; reduced?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  if (series.length === 0) return <EmptyData title="No traffic data yet" description="GA4 has not returned a daily trend for this range." />;
+  if (series.length === 0) return <EmptyData title="No traffic data yet" description="No first-party pageviews have been recorded for this range yet." />;
   const w = 760;
   const h = 230;
   const pad = { top: 16, right: 14, bottom: 30, left: 38 };
@@ -172,19 +175,19 @@ function TableShell({ children }: { children: React.ReactNode }) {
 }
 
 function LivePanel({ payload }: { payload: Payload }) {
-  if (!payload.analytics.connected) return <NotConnected error={payload.analytics.error} />;
-  if (!payload.analytics.available || !payload.live) return <ErrorPanel message={payload.analytics.error ?? payload.live?.error ?? "Realtime analytics is unavailable."} onRetry={() => window.location.reload()} />;
+  if (!payload.analytics.available || !payload.live) return <AnalyticsEmpty unavailable error={payload.analytics.error ?? payload.live?.error} />;
   const live = payload.live;
   const online = live.activeLast5 ?? live.activeLast30;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-mint-200 bg-mint-50/60 px-4 py-3">
-        <p className="flex items-center gap-2 text-[0.76rem] font-extrabold text-mint-800"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-mint-500 opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-mint-600" /></span> Near-realtime activity</p>
-        <p className="text-[0.65rem] font-semibold text-mint-800/65">Refreshes every 60 seconds · GA4 can delay by a few seconds</p>
+        <p className="flex items-center gap-2 text-[0.76rem] font-extrabold text-mint-800"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-mint-500 opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-mint-600" /></span> Live first-party activity</p>
+        <p className="text-[0.65rem] font-semibold text-mint-800/65">Refreshes every 8 seconds · active in the last 5 minutes</p>
       </div>
+      {live.activeLast30 === 0 && <AnalyticsEmpty />}
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={live.activeBasis === "5_minutes" ? "Active last 5 min" : "Active last 30 min"} value={fmt(online)} hint={live.activeBasis === "5_minutes" ? "Near realtime" : "Provider window is 30 min"} tone="good" />
-        <StatCard label="Active last 30 min" value={fmt(live.activeLast30)} hint="GA4 realtime" tone="brand" />
+        <StatCard label="Active last 30 min" value={fmt(live.activeLast30)} hint="First-party sessions" tone="brand" />
         <StatCard label="Pages active now" value={live.pages.length} hint="Pages with active users" />
         <StatCard label="Countries active" value={live.countries.length} hint="Aggregate, not individual visitors" />
       </div>
@@ -195,7 +198,7 @@ function LivePanel({ payload }: { payload: Payload }) {
         <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Traffic source</p><BarList items={live.sources} /></section>
         <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Country</p><BarList items={live.countries} /></section>
       </div>
-      <p className="flex items-start gap-1.5 text-[0.64rem] leading-relaxed text-ink-600/55"><Info className="mt-0.5 h-3 w-3 shrink-0" /> Aggregate GA4 data only. This panel never identifies individual visitors.</p>
+      <p className="flex items-start gap-1.5 text-[0.64rem] leading-relaxed text-ink-600/55"><Info className="mt-0.5 h-3 w-3 shrink-0" /> Aggregate first-party data only. This panel never identifies individual visitors.</p>
     </div>
   );
 }
@@ -204,6 +207,7 @@ function TrafficPanel({ traffic }: { traffic: GaTraffic }) {
   if (!traffic.available) return <ErrorPanel message={traffic.error ?? "Analytics is unavailable."} onRetry={() => window.location.reload()} />;
   return (
     <div className="space-y-4">
+      {traffic.totals.sessions === 0 && <AnalyticsEmpty />}
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Users" value={fmt(traffic.totals.users)} hint={<>vs previous: <Change value={traffic.change.users} /></>} tone="brand" />
         <StatCard label="New users" value={fmt(traffic.totals.newUsers)} hint={`${fmt(traffic.totals.sessions)} sessions`} />
@@ -212,31 +216,34 @@ function TrafficPanel({ traffic }: { traffic: GaTraffic }) {
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         <StatCard label="Avg engagement time" value={duration(traffic.totals.averageSessionDuration)} hint="Per session" />
-        <StatCard label="Pages / session" value={traffic.totals.sessions ? (traffic.totals.pageViews / traffic.totals.sessions).toFixed(2) : "—"} hint="Derived from GA4 totals" />
+        <StatCard label="Pages / session" value={traffic.totals.sessions ? (traffic.totals.pageViews / traffic.totals.sessions).toFixed(2) : "—"} hint="Derived from pageviews and sessions" />
         <StatCard label="Returning share" value={traffic.totals.users ? `${Math.max(0, ((traffic.totals.users - traffic.totals.newUsers) / traffic.totals.users) * 100).toFixed(1)}%` : "—"} hint="Users minus new users" />
       </div>
       <TrendChart series={traffic.series} />
       {traffic.warning && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.72rem] text-amber-900/80">{traffic.warning}</p>}
-      <p className="text-[0.64rem] text-ink-600/55">Comparing {traffic.totals.users ? "selected period" : "data"} with the previous period. Percentages are shown only when the previous period has data.</p>
+      <p className="text-[0.64rem] text-ink-600/55">Comparing the selected range with the previous equal-length range. Percentages appear only when the previous range contains data.</p>
     </div>
   );
 }
 
 function PagesPanel({ traffic }: { traffic: GaTraffic }) {
-  if (!traffic.available) return <ErrorPanel message={traffic.error ?? "Page analytics is unavailable."} onRetry={() => window.location.reload()} />;
+  if (!traffic.available) return <AnalyticsEmpty unavailable error={traffic.error} />;
   return (
     <div className="space-y-4">
       <TableShell>
         <thead><tr className="border-b border-mist-200 bg-mist-50/80 text-[0.58rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/60"><th className="px-3 py-2.5">Page</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Users</th><th className="px-3 py-2.5 text-right">Avg time</th><th className="px-3 py-2.5 text-right">Engagement</th></tr></thead>
         <tbody>{traffic.pages.length === 0 ? <tr><td colSpan={5} className="px-3 py-8 text-center text-[0.74rem] text-ink-600/60">No page data for this range.</td></tr> : traffic.pages.map((page) => <tr key={page.path} className="border-b border-mist-100 last:border-0"><td className="max-w-[22rem] truncate px-3 py-2.5 font-semibold text-ink-800" title={page.path}>{pathLabel(page.path)}</td><td className="px-3 py-2.5 text-right tabular-nums">{fmt(page.views)}</td><td className="px-3 py-2.5 text-right tabular-nums">{fmt(page.users)}</td><td className="px-3 py-2.5 text-right tabular-nums">{duration(page.averageTime)}</td><td className="px-3 py-2.5 text-right tabular-nums">{page.engagementRate ? `${(page.engagementRate * 100).toFixed(1)}%` : "—"}</td></tr>)}</tbody>
       </TableShell>
-      <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Landing pages</p><BarList items={traffic.landingPages.map((page) => ({ label: page.path, users: page.users }))} valueKey="users" /></section>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Landing pages</p><BarList items={traffic.landingPages.map((page) => ({ label: page.path, users: page.users }))} valueKey="users" /></section>
+        <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Exit pages</p><BarList items={traffic.exitPages.map((page) => ({ label: page.path, users: page.users }))} valueKey="users" /></section>
+      </div>
     </div>
   );
 }
 
 function SourcesPanel({ traffic }: { traffic: GaTraffic }) {
-  if (!traffic.available) return <ErrorPanel message={traffic.error ?? "Source analytics is unavailable."} onRetry={() => window.location.reload()} />;
+  if (!traffic.available) return <AnalyticsEmpty unavailable error={traffic.error} />;
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
       <section className="rounded-2xl border border-mist-200 bg-surface p-4">
@@ -256,14 +263,15 @@ function SourcesPanel({ traffic }: { traffic: GaTraffic }) {
 }
 
 function VisitorsPanel({ traffic }: { traffic: GaTraffic }) {
-  if (!traffic.available) return <ErrorPanel message={traffic.error ?? "Visitor analytics is unavailable."} onRetry={() => window.location.reload()} />;
+  if (!traffic.available) return <AnalyticsEmpty unavailable error={traffic.error} />;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 flex items-center gap-2 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60"><Users className="h-3 w-3" /> New vs returning</p><BarList items={traffic.visitors.newVsReturning.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
       <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 flex items-center gap-2 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60"><MonitorSmartphone className="h-3 w-3" /> Device</p><BarList items={traffic.visitors.devices.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
       <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 flex items-center gap-2 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60"><Laptop className="h-3 w-3" /> Browser</p><BarList items={traffic.visitors.browsers.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
       <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 flex items-center gap-2 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60"><Globe2 className="h-3 w-3" /> Country</p><BarList items={traffic.visitors.countries.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
-      <section className="rounded-2xl border border-mist-200 bg-surface p-4 sm:col-span-2"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">City overview</p><BarList items={traffic.visitors.cities.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
+      <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Operating system</p><BarList items={traffic.visitors.operatingSystems.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
+      <section className="rounded-2xl border border-mist-200 bg-surface p-4"><p className="mb-3 text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Regions</p><BarList items={traffic.visitors.regions.map((item) => ({ label: item.label, users: item.users }))} valueKey="users" /></section>
     </div>
   );
 }
@@ -276,7 +284,7 @@ function ConversionsPanel({ payload }: { payload: Payload }) {
       <section className="rounded-2xl border border-mist-200 bg-surface p-4">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div><p className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/60">Traffic → business</p><h2 className="mt-1 text-[1rem] font-extrabold tracking-tight text-ink-950">Conversion path</h2></div>
-          <span className="rounded-full border border-mist-200 bg-mist-50 px-2.5 py-1 text-[0.62rem] font-bold text-ink-600/70">GA4 + SQLite</span>
+          <span className="rounded-full border border-mist-200 bg-mist-50 px-2.5 py-1 text-[0.62rem] font-bold text-ink-600/70">First-party + SQLite</span>
         </div>
         <div className="mt-4 space-y-2">
           {stages.map((stage, index) => (
@@ -293,6 +301,14 @@ function ConversionsPanel({ payload }: { payload: Payload }) {
           {payload.conversions.rates.map((rate) => <div key={rate.key} className="rounded-xl border border-mist-200 bg-mist-50/70 p-3"><p className="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/60">{rate.label}</p><p className="mt-1 text-lg font-extrabold text-ink-950">{rate.value === null ? "—" : `${(rate.value * 100).toFixed(2)}%`}</p></div>)}
         </div>
         <p className="mt-3 flex items-start gap-1.5 text-[0.64rem] leading-relaxed text-ink-600/60"><Info className="mt-0.5 h-3 w-3 shrink-0" /> {payload.conversions.note}</p>
+        {payload.conversions.events && payload.conversions.events.length > 0 && (
+          <div className="mt-4 rounded-xl border border-mist-200 bg-mist-50/60 p-3">
+            <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/60">Tracked conversion events</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {payload.conversions.events.map((event) => <span key={event.name} className="rounded-full border border-mist-200 bg-surface px-2.5 py-1 text-[0.66rem] font-semibold text-ink-700">{event.name.replaceAll("_", " ")} · {event.count}</span>)}
+            </div>
+          </div>
+        )}
       </section>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Enquiries" value={payload.business.enquiries} hint="Selected range · SQLite" tone="brand" />
@@ -348,7 +364,7 @@ export function LiveTraffic() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible" && tab === "live") void load(undefined, true);
-    }, 60_000);
+    }, 8_000);
     return () => window.clearInterval(timer);
   }, [load, tab]);
 
@@ -358,8 +374,8 @@ export function LiveTraffic() {
     <div className="space-y-5">
       <AdminPageHeader
         title="Live Traffic"
-        description="One view of website traffic, pages, acquisition, visitors and the business conversions they produce. GA4 supplies website analytics; SQLite supplies the business records."
-        actions={<button type="button" onClick={() => void load(undefined, true)} disabled={loading || refreshing} className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 disabled:opacity-60"><RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} /> Refresh</button>}
+        description="One view of first-party website traffic, pages, acquisition, visitors and the business conversions they produce. Traffic and business records share the existing SQLite database."
+        actions={<><a href={`/api/admin/live-traffic/export?${query}`} className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300"><ExternalLink className="h-3.5 w-3.5" /> Export CSV</a><button type="button" onClick={() => void load(undefined, true)} disabled={loading || refreshing} className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 disabled:opacity-60"><RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} /> Refresh</button></>}
       />
 
       {payload && <div className="flex flex-col gap-3 rounded-2xl border border-mist-200 bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -385,18 +401,17 @@ export function LiveTraffic() {
         <EmptyData title="No traffic data available" description="The traffic endpoint returned no data. Try refreshing." />
       ) : (
         <div role="tabpanel" aria-label={`${tab} section`}>
-          {!payload.analytics.connected && tab !== "conversions" ? <NotConnected error={payload.analytics.error} /> : null}
-          {tab === "live" && payload.analytics.connected && <LivePanel payload={payload} />}
-          {tab === "traffic" && payload.analytics.connected && (payload.traffic ? <TrafficPanel traffic={payload.traffic} /> : <ErrorPanel message={payload.analytics.error ?? "Traffic is unavailable."} onRetry={() => void load()} />)}
-          {tab === "pages" && payload.analytics.connected && (payload.traffic ? <PagesPanel traffic={payload.traffic} /> : <ErrorPanel message={payload.analytics.error ?? "Page analytics is unavailable."} onRetry={() => void load()} />)}
-          {tab === "sources" && payload.analytics.connected && (payload.traffic ? <SourcesPanel traffic={payload.traffic} /> : <ErrorPanel message={payload.analytics.error ?? "Source analytics is unavailable."} onRetry={() => void load()} />)}
-          {tab === "visitors" && payload.analytics.connected && (payload.traffic ? <VisitorsPanel traffic={payload.traffic} /> : <ErrorPanel message={payload.analytics.error ?? "Visitor analytics is unavailable."} onRetry={() => void load()} />)}
+          {tab === "live" && <LivePanel payload={payload} />}
+          {tab === "traffic" && (payload.traffic ? <TrafficPanel traffic={payload.traffic} /> : <AnalyticsEmpty unavailable error={payload.analytics.error} />)}
+          {tab === "pages" && (payload.traffic ? <PagesPanel traffic={payload.traffic} /> : <AnalyticsEmpty unavailable error={payload.analytics.error} />)}
+          {tab === "sources" && (payload.traffic ? <SourcesPanel traffic={payload.traffic} /> : <AnalyticsEmpty unavailable error={payload.analytics.error} />)}
+          {tab === "visitors" && (payload.traffic ? <VisitorsPanel traffic={payload.traffic} /> : <AnalyticsEmpty unavailable error={payload.analytics.error} />)}
           {tab === "conversions" && <ConversionsPanel payload={payload} />}
         </div>
       )}
 
-      {payload && payload.analytics.connected && !payload.analytics.available && <p className="text-[0.68rem] text-amber-700">Analytics is configured but the current report could not be loaded. {payload.analytics.error ?? ""}</p>}
-      <div className="flex flex-wrap items-center gap-3 text-[0.62rem] text-ink-600/50"><span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Realtime data can lag by a few seconds.</span><span className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> Conversions combine GA4 traffic with SQLite business records.</span><span className="flex items-center gap-1"><Search className="h-3 w-3" /> No individual visitors are identified.</span></div>
+      {payload && !payload.analytics.available && <p className="text-[0.68rem] text-amber-700">First-party analytics is temporarily unavailable. {payload.analytics.error ?? ""}</p>}
+      <div className="flex flex-wrap items-center gap-3 text-[0.62rem] text-ink-600/50"><span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Live data refreshes every 8 seconds.</span><span className="flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> Conversions combine first-party traffic with SQLite business records.</span><span className="flex items-center gap-1"><Search className="h-3 w-3" /> No individual visitors are identified.</span></div>
     </div>
   );
 }

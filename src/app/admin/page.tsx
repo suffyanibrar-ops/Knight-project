@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Bot, CalendarCheck, CheckCircle2, CircleDot, Inbox, LayoutDashboard, Mail, Newspaper, SearchCheck, UserRound, Users, Activity, AlertTriangle, Database, Gauge, TrendingUp, Radar } from "lucide-react";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getAdminOverview } from "@/lib/admin-overview";
-import { maskIdentifier } from "@/lib/ga4";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
 import { StorageNotice } from "@/components/admin/storage-notice";
 import { OverviewAutoRefresh } from "@/components/admin/overview-auto-refresh";
@@ -50,7 +49,7 @@ export default async function AdminOverviewPage() {
       <OverviewAutoRefresh />
       <AdminPageHeader
         title="Command center"
-        description="What is happening on the website, what needs attention and where visitors are turning into business. Business records come from SQLite; website traffic comes from GA4 when it is connected."
+        description="What is happening on the website, what needs attention and where visitors are turning into business. First-party traffic and business records are stored in the same application database."
         actions={
           <>
             <Link href="/admin/inbox" className="inline-flex items-center gap-1.5 rounded-full bg-night-soft px-4 py-2.5 text-[0.72rem] font-bold text-white hover:bg-brand-600">
@@ -84,10 +83,10 @@ export default async function AdminOverviewPage() {
           <p className="mt-2 text-[0.92rem] font-extrabold">{!status.ai.configured ? "No API key" : status.ai.enabled ? "Online" : "Disabled"}</p>
           <p className="mt-1 text-[0.66rem] opacity-65">DeepSeek · browser voice</p>
         </div>
-        <div className={`rounded-2xl border p-4 ${statusTone(status.analytics.configured)}`}>
+        <div className={`rounded-2xl border p-4 ${statusTone(status.analytics.enabled && status.database.available)}`}>
           <p className="flex items-center gap-1.5 text-[0.58rem] font-extrabold uppercase tracking-[0.14em] opacity-70"><Gauge className="h-3 w-3" /> Analytics</p>
-          <p className="mt-2 text-[0.92rem] font-extrabold">{status.analytics.configured ? "GA4 connected" : "Not connected"}</p>
-          <p className="mt-1 text-[0.66rem] opacity-65">{status.analytics.propertyId ? `Property ${maskIdentifier(status.analytics.propertyId)}` : "Business data is unaffected"}</p>
+          <p className="mt-2 text-[0.92rem] font-extrabold">{status.analytics.enabled ? "First-party live" : "Unavailable"}</p>
+          <p className="mt-1 text-[0.66rem] opacity-65">SQLite · {status.analytics.retentionDays}-day retention</p>
         </div>
       </section>
 
@@ -102,8 +101,8 @@ export default async function AdminOverviewPage() {
               <Link href="/admin/traffic" className="inline-flex items-center gap-1 text-[0.7rem] font-bold text-brand-700 hover:text-brand-500">Traffic detail <ArrowRight className="h-3 w-3" /></Link>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              <StatCard label="Visitors today" value={valueOrDash(traffic.visitorsToday)} hint={traffic.visitorsToday === null ? "GA4 not connected" : "GA4 · selected property"} tone={traffic.visitorsToday === null ? "warn" : "brand"} />
-              <StatCard label="Online now" value={valueOrDash(traffic.activeNow)} hint={traffic.activeNow === null ? "Realtime unavailable" : traffic.activeBasis === "5_minutes" ? "Active in last 5 min · near realtime" : "Active in last 30 min · near realtime"} tone={traffic.activeNow === null ? "warn" : "good"} />
+              <StatCard label="Visitors today" value={valueOrDash(traffic.visitorsToday)} hint={traffic.visitorsToday === null ? "Analytics unavailable" : "First-party · unique visitors"} tone={traffic.visitorsToday === null ? "warn" : "brand"} />
+              <StatCard label="Online now" value={valueOrDash(traffic.activeNow)} hint={traffic.activeNow === null ? "Realtime unavailable" : "Active in last 5 min · 8s polling"} tone={traffic.activeNow === null ? "warn" : "good"} />
               <StatCard label="Enquiries today" value={business.enquiriesToday} hint={`${business.enquiries} in last 7 days`} tone={business.enquiriesToday ? "good" : "default"} />
               <StatCard label="AI-qualified leads" value={business.aiLeads} hint="Last 7 days · SQLite" tone={business.aiLeads ? "brand" : "default"} />
               <StatCard label="Upcoming appointments" value={business.appointmentsUpcoming} hint="Confirmed · local calendar" tone={business.appointmentsUpcoming ? "good" : "default"} />

@@ -526,3 +526,69 @@ DELETE FROM settings
 WHERE key = 'ai.instructions'
   AND value LIKE 'Prioritise understanding the visitor''s practice, specialty and billing challenge.%';
 `;
+
+/**
+ * First-party analytics (v8).
+ *
+ * Website analytics live in the same SQLite application database. No raw IP is
+ * stored and no form/PHI content is collected. Visitor/session identifiers are
+ * random client-side values that the server hashes with a server-side salt
+ * before persistence.
+ */
+export const ANALYTICS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS analytics_sessions (
+  session_id TEXT PRIMARY KEY,
+  visitor_id TEXT NOT NULL,
+  started_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  landing_path TEXT NOT NULL,
+  exit_path TEXT,
+  referrer TEXT,
+  source TEXT NOT NULL DEFAULT 'direct',
+  medium TEXT,
+  campaign TEXT,
+  country TEXT,
+  region TEXT,
+  timezone TEXT,
+  language TEXT,
+  device TEXT NOT NULL DEFAULT 'unknown',
+  browser TEXT NOT NULL DEFAULT 'unknown',
+  os TEXT NOT NULL DEFAULT 'unknown',
+  viewport TEXT,
+  pageview_count INTEGER NOT NULL DEFAULT 0,
+  engagement_seconds INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_sessions_last_seen ON analytics_sessions (last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_sessions_started ON analytics_sessions (started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_sessions_visitor ON analytics_sessions (visitor_id);
+
+CREATE TABLE IF NOT EXISTS analytics_pageviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  visitor_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  title TEXT,
+  referrer TEXT,
+  entered_at INTEGER NOT NULL,
+  left_at INTEGER,
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  scroll_depth INTEGER NOT NULL DEFAULT 0,
+  is_landing INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_pageviews_entered ON analytics_pageviews (entered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_pageviews_path ON analytics_pageviews (path);
+CREATE INDEX IF NOT EXISTS idx_analytics_pageviews_session ON analytics_pageviews (session_id);
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT,
+  visitor_id TEXT,
+  name TEXT NOT NULL,
+  path TEXT,
+  occurred_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_occurred ON analytics_events (occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_name ON analytics_events (name);
+`;

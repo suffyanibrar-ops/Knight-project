@@ -1,7 +1,7 @@
 import "server-only";
 import { emailChannelStatus } from "./email";
 import { getAiSettings } from "./ai-config";
-import { ga4Status, getGa4Live, getGa4Traffic, resolveTrafficRange } from "./ga4";
+import { analyticsRetentionDays, getAnalyticsLive, getAnalyticsSnapshot, resolveAnalyticsRange } from "./analytics";
 import { sqliteHandle, sqliteStatus } from "./sqlite";
 
 type Row = Record<string, unknown>;
@@ -119,7 +119,7 @@ export type OverviewData = {
     database: { available: boolean; driver: string | null; path: string | null };
     email: { configured: boolean; channels: string[] };
     ai: { configured: boolean; enabled: boolean };
-    analytics: { configured: boolean; propertyId: string | null; error: string | null };
+    analytics: { enabled: boolean; retentionDays: number; error: string | null };
   };
   traffic: {
     available: boolean;
@@ -216,7 +216,7 @@ export async function getAdminOverview(): Promise<OverviewData> {
   const db = sqliteStatus();
   const email = emailChannelStatus();
   const aiSettings = getAiSettings();
-  const analytics = ga4Status();
+  const analyticsEnabled = db.available;
   const channels = [
     email.resend ? "Resend" : null,
     email.smtp ? "SMTP" : null,
@@ -224,27 +224,22 @@ export async function getAdminOverview(): Promise<OverviewData> {
   ].filter(Boolean) as string[];
 
   let traffic: OverviewData["traffic"] = {
-    available: false,
-    visitorsToday: null,
-    activeNow: null,
-    activeBasis: null,
-    error: analytics.configured ? null : "Google Analytics is not connected.",
+    available: analyticsEnabled,
+    visitorsToday: analyticsEnabled ? 0 : null,
+    activeNow: analyticsEnabled ? 0 : null,
+    activeBasis: analyticsEnabled ? "5_minutes" : null,
+    error: analyticsEnabled ? null : "First-party analytics is unavailable while the database is offline.",
   };
 
-  if (analytics.configured) {
-    const range = resolveTrafficRange("today", null, null);
-    const [live, today] = await Promise.all([
-      getGa4Live().catch(() => ({ available: false, activeLast5: null, activeLast30: 0, activeBasis: "30_minutes" as const, error: "Realtime analytics unavailable." })),
-      getGa4Traffic(range).catch(() => ({ available: false, totals: { users: 0 }, error: "Analytics unavailable." })),
-    ]);
-    const liveAvailable = "available" in live ? live.available : false;
-    const trafficAvailable = "available" in today ? today.available : false;
+  if (analyticsEnabled) {
+    const today = getAnalyticsSnapshot(resolveAnalyticsRange("today", null, null));
+    const live = getAnalyticsLive();
     traffic = {
-      available: liveAvailable || trafficAvailable,
-      visitorsToday: trafficAvailable ? today.totals.users : null,
-      activeNow: liveAvailable ? (live.activeLast5 ?? live.activeLast30) : null,
-      activeBasis: liveAvailable ? live.activeBasis : null,
-      error: trafficAvailable || liveAvailable ? null : (today.error ?? live.error ?? "Analytics unavailable."),
+      available: today.available && live.available,
+      visitorsToday: today.available ? today.totals.users : null,
+      activeNow: live.available ? live.activeLast5 : null,
+      activeBasis: live.available ? "5_minutes" : null,
+      error: today.error ?? live.error ?? null,
     };
   }
 
@@ -263,10 +258,8 @@ export async function getAdminOverview(): Promise<OverviewData> {
   if (business.appointmentsUpcoming > 0) {
     alerts.push({ key: "appointments", tone: "brand", title: `${business.appointmentsUpcoming} upcoming appointment${business.appointmentsUpcoming === 1 ? "" : "s"}`, detail: "Confirmed AI-booked calls are ahead on the calendar.", href: "/admin/ai/appointments", action: "View calendar" });
   }
-  if (!analytics.configured) {
-    alerts.push({ key: "analytics", tone: "brand", title: "Google Analytics is not connected", detail: "Traffic and visitor intelligence will remain unavailable until the GA4 property and service account are configured.", href: "/admin/settings", action: "Configure analytics" });
-  } else if (!traffic.available) {
-    alerts.push({ key: "analytics-error", tone: "warn", title: "Analytics is configured but reporting is unavailable", detail: traffic.error ?? "The GA4 Data API did not return a report. Check property access and service-account permissions.", href: "/admin/settings", action: "Review analytics" });
+  if (analyticsEnabled && !traffic.available) {
+    alerts.push({ key: "analytics-error", tone: "warn", title: "First-party analytics reporting is unavailable", detail: traffic.error ?? "The analytics store could not be queried. Check database health.", href: "/admin/settings", action: "Review storage" });
   }
   if (!process.env.DEEPSEEK_API_KEY) {
     alerts.push({ key: "ai-key", tone: "warn", title: "AI key is not configured", detail: "The public AI assistant is offline until a DeepSeek key is present.", href: "/admin/ai/settings", action: "Review AI" });
@@ -282,7 +275,7 @@ export async function getAdminOverview(): Promise<OverviewData> {
       database: { available: db.available, driver: db.driver, path: db.path },
       email: { configured: channels.length > 0, channels },
       ai: { configured: Boolean(process.env.DEEPSEEK_API_KEY), enabled: aiSettings.enabled },
-      analytics: { configured: analytics.configured, propertyId: analytics.propertyId, error: analytics.error },
+      analytics: { enabled: analyticsEnabled, retentionDays: analyticsRetentionDays(), error: traffic.error },
     },
     traffic,
     business,

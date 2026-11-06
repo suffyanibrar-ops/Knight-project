@@ -1,72 +1,55 @@
 import { NextResponse } from "next/server";
 import { limitAdmin, requireAdmin } from "@/lib/api-admin";
 import { getBusinessMetrics } from "@/lib/admin-overview";
-import { ga4Status, getGa4Live, getGa4Traffic, maskIdentifier, resolveTrafficRange } from "@/lib/ga4";
+import { getAnalyticsLive, getAnalyticsSnapshot, resolveAnalyticsRange } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type CacheEntry = { at: number; payload: Awaited<ReturnType<typeof buildPayload>> };
 const cache = new Map<string, CacheEntry>();
-const CACHE_MS = 45_000;
+const CACHE_MS = 5_000;
 
 async function buildPayload(request: Request) {
   const url = new URL(request.url);
-  const range = resolveTrafficRange(url.searchParams.get("range"), url.searchParams.get("start"), url.searchParams.get("end"));
-  const business = getBusinessMetrics(range.days ?? 7, { startDay: range.startDay, endDay: range.endDay });
-  const analytics = ga4Status();
-  const [live, traffic] = analytics.configured
-    ? await Promise.all([
-        getGa4Live().catch((error: unknown) => ({
-          available: false,
-          error: error instanceof Error ? error.message : "Unable to load realtime analytics.",
-          activeLast5: null,
-          activeLast30: 0,
-          activeBasis: "30_minutes" as const,
-          pages: [],
-          devices: [],
-          sources: [],
-          countries: [],
-          fetchedAt: new Date().toISOString(),
-          warning: null,
-        })),
-        getGa4Traffic(range).catch((error: unknown) => ({
-          available: false,
-          error: error instanceof Error ? error.message : "Unable to load analytics.",
-          totals: { users: 0, newUsers: 0, sessions: 0, pageViews: 0, engagedSessions: 0, engagementRate: 0, averageSessionDuration: 0 },
-          previous: { users: 0, newUsers: 0, sessions: 0, pageViews: 0, engagedSessions: 0, engagementRate: 0, averageSessionDuration: 0 },
-          change: { users: null, sessions: null, pageViews: null, engagedSessions: null },
-          series: [],
-          pages: [],
-          landingPages: [],
-          sources: [],
-          referrals: [],
-          visitors: { newVsReturning: [], devices: [], browsers: [], countries: [], cities: [] },
-          warning: null,
-        })),
-      ])
-    : [null, null] as const;
+  const range = resolveAnalyticsRange(url.searchParams.get("range"), url.searchParams.get("start"), url.searchParams.get("end"));
+  const business = getBusinessMetrics(range.days, {
+    startDay: new Date(range.startMs).toISOString().slice(0, 10),
+    endDay: new Date(range.endMs - 1).toISOString().slice(0, 10),
+  });
+  const snapshot = getAnalyticsSnapshot(range);
+  const live = getAnalyticsLive();
 
-  const visitorCount = traffic?.available ? traffic.totals.users : null;
-  const engagedCount = traffic?.available ? traffic.totals.engagedSessions : null;
+  const visitorCount = snapshot.available ? snapshot.totals.users : null;
   const rate = (value: number, base: number | null) => (base && base > 0 ? value / base : null);
+  const eventCount = (name: string) => snapshot.events.find((event) => event.name === name)?.count ?? 0;
 
   return {
     ok: true,
     analytics: {
-      connected: analytics.configured,
-      available: Boolean(live?.available || traffic?.available),
-      propertyIdMasked: maskIdentifier(analytics.propertyId),
-      error: analytics.configured ? (analytics.error ?? traffic?.error ?? live?.error ?? null) : "Google Analytics is not connected.",
+      connected: snapshot.available,
+      available: snapshot.available,
+      propertyIdMasked: "",
+      error: snapshot.error ?? live.error,
     },
-    range,
+    range: {
+      key: range.key,
+      label: range.label,
+      startDay: new Date(range.startMs).toISOString().slice(0, 10),
+      endDay: new Date(range.endMs - 1).toISOString().slice(0, 10),
+      compareLabel: `previous ${range.days} day${range.days === 1 ? "" : "s"}`,
+    },
     live,
-    traffic,
+    traffic: {
+      ...snapshot,
+      available: snapshot.available,
+    },
     business,
     conversions: {
       stages: [
-        { key: "visitors", label: "Website visitors", value: visitorCount, source: "GA4" },
-        { key: "engaged", label: "Engaged sessions", value: engagedCount, source: "GA4" },
+        { key: "visitors", label: "Unique visitors", value: visitorCount, source: "First-party" },
+        { key: "sessions", label: "Sessions", value: snapshot.available ? snapshot.totals.sessions : null, source: "First-party" },
+        { key: "pageviews", label: "Page views", value: snapshot.available ? snapshot.totals.pageViews : null, source: "First-party" },
         { key: "enquiries", label: "Enquiries", value: business.enquiries, source: "SQLite" },
         { key: "consultations", label: "Consultation requests", value: business.consultationRequests, source: "SQLite" },
         { key: "ai_leads", label: "AI-qualified leads", value: business.aiLeads, source: "SQLite" },
@@ -77,7 +60,8 @@ async function buildPayload(request: Request) {
         { key: "visitor_ai_lead", label: "Visitor → AI lead", value: rate(business.aiLeads, visitorCount) },
         { key: "visitor_appointment", label: "Visitor → appointment", value: rate(business.appointmentsInRange, visitorCount) },
       ],
-      note: visitorCount === null ? "Website traffic is unavailable, so visitor-to-business rates cannot be calculated." : "Rates compare counted business records with GA4 users for the selected range. They are indicative, not deduplicated identities.",
+      events: snapshot.events,
+      note: visitorCount === null ? "Traffic is unavailable, so visitor-to-business rates cannot be calculated." : "Rates compare counted business records with unique first-party visitors for the selected range. They are indicative, not deduplicated identities.",
     },
     generatedAt: new Date().toISOString(),
   };
@@ -86,7 +70,7 @@ async function buildPayload(request: Request) {
 export async function GET(request: Request) {
   const denied = await requireAdmin(request);
   if (denied) return denied;
-  const limited = await limitAdmin("live-traffic", 90);
+  const limited = await limitAdmin("live-traffic", 180);
   if (limited) return limited;
 
   const url = new URL(request.url);
@@ -102,6 +86,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ ...payload, cached: false }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("[admin/live-traffic] report failed", error);
-    return NextResponse.json({ ok: false, error: "Unable to load traffic analytics. Try again." }, { status: 502, headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ ok: false, error: "Unable to load first-party analytics. Try again." }, { status: 502, headers: { "cache-control": "no-store" } });
   }
 }

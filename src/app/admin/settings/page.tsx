@@ -4,7 +4,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { isPasswordManagedInPanel } from "@/lib/admin-password";
 import { getAiSettings } from "@/lib/ai-config";
 import { emailChannelStatus, MAIL_FROM, OWNER_EMAIL } from "@/lib/email";
-import { ga4Status, maskIdentifier } from "@/lib/ga4";
+import { analyticsRetentionDays } from "@/lib/analytics";
 import { getSetting, sqliteStatus } from "@/lib/sqlite";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { PasswordForm } from "@/components/admin/password-form";
@@ -25,7 +25,7 @@ export default async function AdminSettingsPage() {
   const email = emailChannelStatus();
   const channels = [email.resend ? "Resend" : null, email.smtp ? "SMTP" : null, email.relay ? "FormSubmit relay" : null].filter(Boolean) as string[];
   const ai = getAiSettings();
-  const analytics = ga4Status();
+  const analyticsRetention = analyticsRetentionDays();
   const booking = {
     enabled: ai.bookingEnabled,
     timezone: getSetting("ai.booking_timezone") ?? "America/New_York",
@@ -97,13 +97,13 @@ export default async function AdminSettingsPage() {
         <section className="rounded-2xl border border-mist-200 bg-surface p-5">
           <h2 className="flex items-center gap-2 text-[0.9rem] font-extrabold text-ink-950"><BarChart3 className="h-4 w-4 text-brand-600" /> Analytics</h2>
           <dl className="mt-3 space-y-2 text-[0.76rem]">
-            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">GA4 reporting</dt><dd><StatusBadge ok={analytics.configured}>{analytics.configured ? "Connected" : "Not connected"}</StatusBadge></dd></div>
-            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">Public collection tag</dt><dd><StatusBadge ok={Boolean(process.env.NEXT_PUBLIC_GA_ID)}>{process.env.NEXT_PUBLIC_GA_ID ? "Configured" : "Not configured"}</StatusBadge></dd></div>
-            {analytics.configured ? <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">Property</dt><dd className="font-semibold text-ink-900">{maskIdentifier(analytics.propertyId)}</dd></div> : null}
+            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">First-party tracking</dt><dd><StatusBadge ok={status.available}>Active on public pages</StatusBadge></dd></div>
+            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">Data store</dt><dd className="font-semibold text-ink-900">SQLite · same application database</dd></div>
+            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">Retention</dt><dd className="font-semibold text-ink-900">{analyticsRetention} days</dd></div>
+            <div className="flex items-start justify-between gap-3"><dt className="text-ink-600/80">Privacy</dt><dd className="font-semibold text-ink-900">No raw IPs · no form contents · no PHI</dd></div>
           </dl>
-          {analytics.error && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-[0.72rem] leading-relaxed text-amber-800">{analytics.error}</p>}
           <p className="mt-3 text-[0.7rem] leading-relaxed text-ink-600/70">
-            {analytics.configured ? "Website traffic is read from your GA4 property by the server. Business data remains in SQLite." : <>Add <code className="rounded bg-surface px-1 py-0.5">GA4_PROPERTY_ID</code>, <code className="rounded bg-surface px-1 py-0.5">GA4_CLIENT_EMAIL</code> and <code className="rounded bg-surface px-1 py-0.5">GA4_PRIVATE_KEY</code> (or <code className="rounded bg-surface px-1 py-0.5">GA4_SERVICE_ACCOUNT_JSON</code>) on the server. No traffic data is fabricated while disconnected.</>}
+            Pageviews, sessions, sources and conversions are recorded by the first-party tracker. Set <code className="rounded bg-surface px-1 py-0.5">ANALYTICS_RETENTION_DAYS</code> to change retention. No third-party analytics account is required. <a href="/admin/traffic" className="font-bold text-brand-700 hover:text-brand-500">Open Live Traffic</a>.
           </p>
         </section>
 

@@ -48,14 +48,22 @@ The database is a single file, opened with `better-sqlite3`. There is no externa
 database, no connection string and no migration CLI.
 
 - `SQLITE_PATH` is resolved from the project root when relative; absolute paths are recommended
-  in production. The file, directories and tables are created automatically on first use.
+  in production. Use a path on a persistent volume outside `public/`.
+- Development creates the file on first use. Production **refuses to silently create a new
+  database** when the configured file is missing. For an intentional first boot only, set
+  `SQLITE_ALLOW_CREATE=1`, start once, run `npm run seed`, then unset it and set
+  `SQLITE_REQUIRE_EXISTING=1`; otherwise restore the existing database.
+  `SQLITE_REQUIRE_EXISTING=1` enforces the same guard in any environment.
 - Schema changes are applied at startup as `PRAGMA user_version` migrations; existing rows are
-  preserved.
+  preserved. Back up before a deploy that introduces a schema migration.
+- Blog media is stored beside the database at `<SQLITE_PATH directory>/blog-media/`; it must be
+  on the same persistent volume and included in every backup.
 - Runtime pragmas: `journal_mode = WAL`, `busy_timeout = 5000`, `foreign_keys = ON`,
   `synchronous = NORMAL`.
-- Tables: `submissions`, `settings`, `subscribers`, `roi_estimates` (plain-SQL helpers) and
+- Tables: `submissions`, `settings`, `subscribers`, `roi_estimates` (plain-SQL helpers),
   `leads`, `contact_messages`, `email_outbox`, `admin_audit`, `testimonials`, `specialties`,
-  `case_studies`, `articles`, `faqs` (Drizzle query builder on the same file).
+  `case_studies`, `articles`, `faqs` and the first-party analytics tables
+  (`analytics_sessions`, `analytics_pageviews`, `analytics_events`).
 
 API: `POST /api/submissions` (public, validated) · `GET /api/submissions` (admin) ·
 `POST /api/leads` and `POST /api/contact` (CRM copies written by the forms) ·
@@ -91,16 +99,18 @@ form submissions and contact details.
 **Safe online backup (WAL-safe, no downtime):**
 
 ```bash
-mkdir -p /var/backups/knight
-sqlite3 "${SQLITE_PATH:-./data/app.db}" ".backup '/var/backups/knight/app-$(date +%F-%H%M).db'"
+SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
 ```
 
-If the `sqlite3` CLI is not installed, stop the app process and copy the file together with its
-WAL companions — copying `app.db` alone while the app is running can miss committed pages:
+The script uses the SQLite online backup API, copies `blog-media`, writes a manifest and
+applies `BACKUP_KEEP_DAYS` retention (default 14). Run it from cron:
 
-```bash
-cp app.db app.db-wal app.db-shm /var/backups/knight/
+```cron
+15 2 * * * cd /srv/knight && SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup >> /var/log/knight-backup.log 2>&1
 ```
+
+Keep a copy off the host (object storage or another volume). Test a restore before relying on
+it. Do not copy only `app.db` while the app is running — WAL may contain committed pages.
 
 Keep backups off the host (object storage or another volume) and test a restore before you rely
 on it.
@@ -116,6 +126,24 @@ on it.
 
 **Routine:** back up before every deploy and keep at least one pre-migration copy so a failed
 import or upgrade can be rolled back by restoring the previous file.
+
+**Safe local-to-production migration:**
+
+```bash
+# 1. Stop writes / switch the production site to maintenance.
+# 2. Take a backup of the current production database first.
+SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
+# 3. Copy the local application DB + blog-media into the persistent volume.
+SOURCE_SQLITE_PATH="./data/app.db" \
+DEST_SQLITE_PATH="/var/data/app.db" \
+npm run db:migrate:production
+# 4. Point SQLITE_PATH at /var/data/app.db, set SQLITE_REQUIRE_EXISTING=1, redeploy.
+# 5. Verify /api/health reports sqlite.available true and make a test enquiry.
+```
+
+The copy script refuses to overwrite an existing destination unless
+`OVERWRITE_PRODUCTION=1` is explicitly set. Never run it while the production app is
+writing to the destination; stop the app or use the maintenance window first.
 
 ---
 
@@ -347,24 +375,16 @@ The admin console has a matching **SEO health** page (`/admin/seo`) that runs th
 kind of real crawl from the server. It fetches `NEXT_PUBLIC_SITE_URL`, so build with the
 public origin and make sure the site answers there.
 
-Optional analytics: set `NEXT_PUBLIC_GA_ID` at build time to enable the public GA4
-collection script (page views, phone/email clicks and lead/conversion events). When it is
-empty no analytics script is shipped.
+First-party analytics (default): the public site sends a small first-party
+pageview/engagement beacon to `/api/analytics`. Events are stored in the existing
+SQLite database; no third-party tag is required. Analytics data is
+visible in **Admin → Live Traffic**. Set `ANALYTICS_RETENTION_DAYS` (default 90)
+to control retention and `ANALYTICS_HASH_SALT` to use a stable analytics hash salt
+separate from the admin session secret. Raw IP addresses, form contents, passwords
+and patient information are never stored by the analytics system.
 
-The admin **Live Traffic** module additionally needs server-side GA4 Data API access:
-
-1. Enable the **Google Analytics Data API** in a Google Cloud project.
-2. Create a read-only service account.
-3. Grant the service-account email **Viewer** access to the GA4 property.
-4. Set `GA4_PROPERTY_ID` (numeric property ID, not the `G-` measurement ID),
-   `GA4_CLIENT_EMAIL` and `GA4_PRIVATE_KEY` in the server environment, or set
-   `GA4_SERVICE_ACCOUNT_JSON` with the complete JSON key.
-5. `NEXT_PUBLIC_GA_ID` is still required for the public site to collect the data.
-
-The admin deliberately shows **“Google Analytics is not connected”** and does not
-fabricate visitor numbers when these variables are absent or reporting fails. Business
-metrics (enquiries, AI leads, appointments, handoffs, email) continue to come from SQLite.
-
+For automated tests only, `ANALYTICS_ALLOW_TEST=1` disables the bot filter. Do not
+enable it in production.
 
 ## AI agent (chat + voice)
 
