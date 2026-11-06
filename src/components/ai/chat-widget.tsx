@@ -77,6 +77,7 @@ export function AiChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const voiceModeRef = useRef(false);
   const speechBufferRef = useRef("");
   const speechStartedRef = useRef(false);
@@ -172,6 +173,7 @@ export function AiChatWidget() {
   }, []);
 
   const stopEverything = useCallback(() => {
+    requestIdRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
@@ -184,6 +186,8 @@ export function AiChatWidget() {
   bargeHandlerRef.current = () => {
     if (bargeRef.current) return;
     bargeRef.current = true;
+    // Invalidate every callback from the interrupted answer before aborting it.
+    requestIdRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
@@ -210,6 +214,10 @@ export function AiChatWidget() {
       speechStartedRef.current = false;
       voice.interrupt();
     }
+    // Every request owns a generation. Aborts/barge-ins invalidate it so a
+    // delayed token, [DONE] event, or finally block cannot revive an old turn.
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestId === requestIdRef.current;
     setMessages((prev) => [...prev, { id: uid(), role: "user", text }]);
     const assistantId = uid();
     setMessages((prev) => [...prev, { id: assistantId, role: "assistant", text: "", pending: true }]);
@@ -235,6 +243,7 @@ export function AiChatWidget() {
       const decoder = new TextDecoder();
       let buffer = "";
       const appendToken = (token: string) => {
+        if (!isCurrent()) return;
         setMessages((prev) => prev.map((message) => (message.id === assistantId ? { ...message, text: message.text + token } : message)));
         if (voiceModeRef.current) {
           speechBufferRef.current += token;
@@ -242,6 +251,7 @@ export function AiChatWidget() {
         }
       };
       const handleEvent = (payload: string) => {
+        if (!isCurrent()) return;
         if (!payload || payload === "[DONE]") return;
         let event: Record<string, unknown>;
         try { event = JSON.parse(payload) as Record<string, unknown>; } catch { return; }
@@ -286,7 +296,10 @@ export function AiChatWidget() {
       }
     } catch (failure) {
       if ((failure as Error)?.name === "AbortError") {
-        // intentional stop/interruption: keep whatever was streamed
+        // Intentional stop/interruption. The barge/stop handler already cleared
+        // the voice buffer and invalidated this request.
+      } else if (!isCurrent()) {
+        // A newer turn has already replaced this one.
       } else {
         const message = failure instanceof Error ? failure.message : "The assistant is unavailable.";
         setError(message);
@@ -297,6 +310,7 @@ export function AiChatWidget() {
         setMessages((prev) => prev.map((item) => (item.id === assistantId && !item.text ? { ...item, text: "I'm sorry — I couldn't respond just now. You can try again, use the contact form, or ask me to arrange a human follow-up." } : item)));
       }
     } finally {
+      if (!isCurrent()) return;
       abortRef.current = null;
       setBusy(false);
       setMessages((prev) => prev.map((message) => (message.id === assistantId ? { ...message, pending: false } : message)));
@@ -382,7 +396,19 @@ export function AiChatWidget() {
   }
 
   const voiceActive = voice.state !== "off" && voice.state !== "unsupported";
-  const voiceStatus = voice.state === "listening" ? "Listening…" : voice.state === "thinking" ? "Thinking…" : voice.state === "speaking" ? "Speaking — interrupt me any time" : voice.state === "error" ? "Voice error" : "";
+  const voiceStatus = voice.state === "listening"
+    ? "Listening…"
+    : voice.state === "user-speaking"
+      ? "Listening to you…"
+      : voice.state === "thinking"
+        ? "Thinking…"
+        : voice.state === "speaking"
+          ? voice.audioMode === "half-duplex" ? "Speaking — tap Stop to interrupt" : "Speaking — interrupt me any time"
+          : voice.state === "interrupted"
+            ? "Interrupted — listening…"
+            : voice.state === "error"
+              ? "Voice error"
+              : "";
 
   return (
     <>
@@ -397,6 +423,7 @@ export function AiChatWidget() {
               role="dialog"
               aria-label={`Chat with ${config?.agentName ?? "the Knight Medical Billing assistant"}`}
               data-voice-state={voice.state}
+              data-voice-mode={voice.audioMode}
               className="flex max-h-[min(82vh,40rem)] w-[min(94vw,24.5rem)] flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface shadow-[0_40px_80px_-30px_rgba(4,20,31,0.45)]"
             >
               <div className="relative bg-night-soft px-4 py-4 text-white">
@@ -450,8 +477,18 @@ export function AiChatWidget() {
                 )}
                 {voiceActive && voiceStatus && (
                   <p className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.66rem] font-bold", voice.state === "error" ? "bg-rose-50 text-rose-700" : "bg-night-soft text-white")}>
-                    <span className={cn("h-1.5 w-1.5 rounded-full", voice.state === "speaking" ? "animate-pulse bg-mint-400" : voice.state === "listening" ? "bg-brand-300" : "bg-amber-300")} />
+                    <span className={cn("h-1.5 w-1.5 rounded-full", voice.state === "speaking" ? "animate-pulse bg-mint-400" : voice.state === "listening" || voice.state === "user-speaking" ? "bg-brand-300" : "bg-amber-300")} />
                     {voiceStatus}
+                  </p>
+                )}
+                {voiceActive && voice.audioMode === "half-duplex" && (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.68rem] leading-relaxed text-amber-900">
+                    This device reports limited echo cancellation. Riley uses a safer half-duplex mode here — tap <strong>Stop</strong> to interrupt and speak.
+                  </p>
+                )}
+                {voice.error && (
+                  <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.72rem] font-semibold text-rose-700">
+                    {voice.error}
                   </p>
                 )}
                 {error && (
