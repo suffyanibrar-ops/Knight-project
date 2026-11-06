@@ -347,8 +347,23 @@ The admin console has a matching **SEO health** page (`/admin/seo`) that runs th
 kind of real crawl from the server. It fetches `NEXT_PUBLIC_SITE_URL`, so build with the
 public origin and make sure the site answers there.
 
-Optional analytics: set `NEXT_PUBLIC_GA_ID` at build time to enable GA4 with phone/email
-click and lead-form conversion events. When it is empty no analytics script is shipped.
+Optional analytics: set `NEXT_PUBLIC_GA_ID` at build time to enable the public GA4
+collection script (page views, phone/email clicks and lead/conversion events). When it is
+empty no analytics script is shipped.
+
+The admin **Live Traffic** module additionally needs server-side GA4 Data API access:
+
+1. Enable the **Google Analytics Data API** in a Google Cloud project.
+2. Create a read-only service account.
+3. Grant the service-account email **Viewer** access to the GA4 property.
+4. Set `GA4_PROPERTY_ID` (numeric property ID, not the `G-` measurement ID),
+   `GA4_CLIENT_EMAIL` and `GA4_PRIVATE_KEY` in the server environment, or set
+   `GA4_SERVICE_ACCOUNT_JSON` with the complete JSON key.
+5. `NEXT_PUBLIC_GA_ID` is still required for the public site to collect the data.
+
+The admin deliberately shows **“Google Analytics is not connected”** and does not
+fabricate visitor numbers when these variables are absent or reporting fails. Business
+metrics (enquiries, AI leads, appointments, handoffs, email) continue to come from SQLite.
 
 
 ## AI agent (chat + voice)

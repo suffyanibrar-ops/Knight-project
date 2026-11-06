@@ -32,7 +32,7 @@ export default async function AdminAiAppointmentsPage() {
 
   return (
     <div className="space-y-5">
-      <AdminPageHeader title="AI appointments" description="Real 15-minute intro calls booked by the agent or the website calendar. All times are stored in UTC and shown in Eastern Time." />
+      <AdminPageHeader title="AI appointments" description="Real intro calls booked by the agent or the website calendar. Stored in UTC; shown in each appointment visitor&apos;s timezone." />
 
       <AiPanel title="Upcoming & recent appointments" description="Confirm or cancel bookings. Slot times remain protected against double-booking unless cancelled.">
         {upcoming.length === 0 ? <p className="rounded-xl border border-dashed border-mist-200 bg-mist-50 px-4 py-6 text-center text-[0.78rem] text-ink-600/70">No appointments booked yet.</p> : (

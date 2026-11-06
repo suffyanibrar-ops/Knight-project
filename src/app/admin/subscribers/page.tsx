@@ -1,4 +1,5 @@
-import { Download, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Download, Search, Trash2 } from "lucide-react";
 import { isSqliteAvailable, listSubscribers, parseSqliteDate } from "@/lib/sqlite";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
 import { deleteSubmissionAction } from "../actions";
@@ -27,10 +28,13 @@ function loadSubscribers(): SubscriberRecord[] {
   }));
 }
 
-export default async function SubscribersPage() {
+export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
   if (!isSqliteAvailable()) return <StorageNotice />;
-  const rows = loadSubscribers();
+  const { q } = await searchParams;
+  const query = (q ?? "").trim();
+  const allRows = loadSubscribers();
+  const rows = query ? allRows.filter((row) => row.email.toLowerCase().includes(query.toLowerCase())) : allRows;
 
   return (
     <div className="space-y-5">
@@ -45,9 +49,16 @@ export default async function SubscribersPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <StatCard label="Total subscribers" value={rows.length} tone="brand" />
-        <StatCard label="Latest opt-in" value={rows[0] ? formatDate(rows[0].createdAt) : "—"} hint="Most recent subscription" />
+        <StatCard label="Total subscribers" value={allRows.length} tone="brand" />
+        <StatCard label="Showing" value={rows.length} hint={query ? `Matching “${query}”` : "All subscribers"} />
+        <StatCard label="Latest opt-in" value={allRows[0] ? formatDate(allRows[0].createdAt) : "—"} hint="Most recent subscription" />
       </div>
+
+      <form action="/admin/subscribers" className="flex flex-col gap-2 rounded-2xl border border-mist-200 bg-surface p-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600/40" /><input name="q" defaultValue={query} placeholder="Search subscriber email…" aria-label="Search subscribers" className="w-full rounded-xl border border-mist-200 py-2.5 pl-9 pr-3 text-[0.8rem] outline-none focus:border-brand-400" /></div>
+        <button type="submit" className="rounded-xl bg-night-soft px-4 py-2.5 text-[0.76rem] font-bold text-white hover:bg-brand-600">Search</button>
+        {query && <Link href="/admin/subscribers" className="rounded-xl border border-mist-200 px-4 py-2.5 text-center text-[0.76rem] font-bold text-ink-700 hover:border-brand-300">Clear</Link>}
+      </form>
 
       {rows.length === 0 ? (
         <EmptyState title="No subscribers yet" description="When a visitor subscribes through the footer form, their email appears here." />

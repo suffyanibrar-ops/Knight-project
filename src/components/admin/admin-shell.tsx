@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, ChevronDown, Inbox, LayoutDashboard, Menu, Newspaper, PieChart, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, Bot, ChevronDown, Inbox, LayoutDashboard, Mail, Menu, Newspaper, PieChart, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -14,15 +14,41 @@ import { cn } from "@/lib/utils";
  * a deep-linked diagnostics page (dashboard surfaces failures) rather than a
  * primary module, because the owner does not manage it day to day.
  */
-const links = [
-  { label: "Overview", href: "/admin", icon: LayoutDashboard },
-  { label: "Blog", href: "/admin/blog", icon: Newspaper },
-  { label: "AI agent", href: "/admin/ai", icon: Bot },
-  { label: "SEO health", href: "/admin/seo", icon: SearchCheck },
-  { label: "Enquiries", href: "/admin/inbox", icon: Inbox },
-  { label: "Subscribers", href: "/admin/subscribers", icon: Users },
-  { label: "ROI estimates", href: "/admin/estimates", icon: PieChart },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
+type NavLink = { label: string; href: string; icon: typeof LayoutDashboard; match?: string[] };
+const navGroups: { label: string; links: NavLink[] }[] = [
+  {
+    label: "Command Center",
+    links: [
+      { label: "Overview", href: "/admin", icon: LayoutDashboard },
+      { label: "Live Traffic", href: "/admin/traffic", icon: Activity },
+    ],
+  },
+  {
+    label: "Business",
+    links: [
+      { label: "Enquiries", href: "/admin/inbox", icon: Inbox },
+      { label: "AI & Conversations", href: "/admin/ai", icon: Bot, match: ["/admin/ai"] },
+      { label: "ROI Opportunities", href: "/admin/estimates", icon: PieChart },
+    ],
+  },
+  {
+    label: "Content",
+    links: [
+      { label: "Content", href: "/admin/content", icon: Newspaper, match: ["/admin/content", "/admin/blog"] },
+      { label: "SEO", href: "/admin/seo", icon: SearchCheck },
+    ],
+  },
+  {
+    label: "Communication",
+    links: [
+      { label: "Email", href: "/admin/outbox", icon: Mail },
+      { label: "Subscribers", href: "/admin/subscribers", icon: Users },
+    ],
+  },
+  {
+    label: "System",
+    links: [{ label: "Settings", href: "/admin/settings", icon: Settings }],
+  },
 ];
 
 export function AdminShell({ children, email, logout }: { children: ReactNode; email: string; logout: ReactNode }) {
@@ -30,24 +56,32 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
   const [open, setOpen] = useState(false);
 
   const nav = (
-    <nav className="space-y-1">
-      {links.map((link) => {
-        const active = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.82rem] font-bold transition-colors",
-              active ? "bg-brand-500 text-white shadow-sm" : "text-white/60 hover:bg-white/10 hover:text-white",
-            )}
-          >
-            <link.icon className="h-4 w-4" strokeWidth={2} />
-            {link.label}
-          </Link>
-        );
-      })}
+    <nav className="space-y-5" aria-label="Admin modules">
+      {navGroups.map((group) => (
+        <div key={group.label}>
+          <p className="mb-1.5 px-3 text-[0.54rem] font-extrabold uppercase tracking-[0.2em] text-white/30">{group.label}</p>
+          <div className="space-y-0.5">
+            {group.links.map((link) => {
+              const matching = link.match?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false;
+              const active = pathname === link.href || matching || (link.href !== "/admin" && pathname.startsWith(`${link.href}/`));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.8rem] font-bold transition-colors",
+                    active ? "bg-brand-500 text-white shadow-sm" : "text-white/60 hover:bg-white/10 hover:text-white",
+                  )}
+                >
+                  <link.icon className="h-4 w-4" strokeWidth={2} />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 
@@ -60,7 +94,7 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
               <Image src="/images/knight-mark-white.png" alt="" width={36} height={36} className="h-9 w-9" />
               <span>
                 <span className="block text-[0.95rem] font-extrabold leading-none text-white">Knight</span>
-                <span className="mt-1 block text-[0.52rem] font-bold uppercase tracking-[0.22em] text-brand-300">Admin console</span>
+                <span className="mt-1 block text-[0.52rem] font-bold uppercase tracking-[0.22em] text-brand-300">Control center</span>
               </span>
             </Link>
             <div className="mt-6">{nav}</div>

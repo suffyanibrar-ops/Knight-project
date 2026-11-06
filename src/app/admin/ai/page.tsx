@@ -27,7 +27,7 @@ export default async function AdminAiOverviewPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        title="AI agent"
+        title="AI & Conversations"
         description="Conversations, qualified leads, appointments and human handoffs handled by the website assistant."
         actions={
           <form action={toggleAgentAction}>

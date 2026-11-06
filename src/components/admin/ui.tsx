@@ -14,7 +14,7 @@ export function AdminPageHeader({ title, description, actions }: { title: string
   );
 }
 
-export function StatCard({ label, value, hint, tone = "default" }: { label: string; value: string | number; hint?: string; tone?: "default" | "good" | "warn" | "brand" }) {
+export function StatCard({ label, value, hint, tone = "default" }: { label: string; value: string | number; hint?: ReactNode; tone?: "default" | "good" | "warn" | "brand" }) {
   const tones = {
     default: "border-mist-200 bg-surface text-ink-950",
     good: "border-mint-200 bg-mint-50/60 text-mint-700",

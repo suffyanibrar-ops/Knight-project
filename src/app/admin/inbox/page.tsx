@@ -14,23 +14,27 @@ export const dynamic = "force-dynamic";
  * Output is rendered through React, which escapes all text automatically.
  * No raw HTML is ever injected here.
  */
-export default async function InboxPage({ searchParams }: { searchParams: Promise<{ q?: string; id?: string }> }) {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<{ q?: string; id?: string; source?: string; email?: string }> }) {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
 
-  const { q, id } = await searchParams;
+  const { q, id, source, email } = await searchParams;
   const query = (q ?? "").trim();
+  const sourceFilter = (source ?? "").trim();
+  const emailFilter = (email ?? "").trim();
   const selectedId = Number(id);
-  const rows = listSubmissions({ query: query || undefined });
+  const allRows = listSubmissions({ query: query || undefined });
+  const sourceOptions = [...new Set(allRows.map((row) => row.source).filter(Boolean))].sort();
+  const rows = allRows.filter((row) => (!sourceFilter || row.source === sourceFilter) && (!emailFilter || row.email_status === emailFilter));
   const total = countSubmissions();
   const status = sqliteStatus();
-  const selected = rows.find((row) => row.id === selectedId);
+  const selected = allRows.find((row) => row.id === selectedId);
   const emailSent = rows.filter((row) => row.email_status === "sent").length;
 
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        title="Consultation inbox"
-        description="Every website form submission, stored in the embedded SQLite database (data/app.db). Newest first — search, open, or delete a row."
+        title="Enquiries"
+        description="Contact messages and consultation requests in one inbox. Stored in the embedded SQLite database. Search, open, reply, call, export or delete a record."
         actions={
           <a href="/api/admin/inbox-export" className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300">
             <Download className="h-3.5 w-3.5" /> Export CSV
@@ -58,10 +62,18 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             className="w-full rounded-xl border border-mist-200 py-2.5 pl-9 pr-3 text-[0.8rem] outline-none focus:border-brand-400"
           />
         </div>
+        <select name="source" defaultValue={sourceFilter} aria-label="Filter by source" className="rounded-xl border border-mist-200 bg-surface px-3 py-2.5 text-[0.76rem] font-semibold text-ink-800 outline-none focus:border-brand-400">
+          <option value="">All sources</option>
+          {sourceOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <select name="email" defaultValue={emailFilter} aria-label="Filter by email status" className="rounded-xl border border-mist-200 bg-surface px-3 py-2.5 text-[0.76rem] font-semibold text-ink-800 outline-none focus:border-brand-400">
+          <option value="">Any email status</option>
+          {["sent", "pending", "failed", "queued"].map((status) => <option key={status} value={status}>{status}</option>)}
+        </select>
         <button type="submit" className="rounded-xl bg-night-soft px-4 py-2.5 text-[0.76rem] font-bold text-white hover:bg-brand-600">
-          Search
+          Apply
         </button>
-        {query && (
+        {(query || sourceFilter || emailFilter) && (
           <Link href="/admin/inbox" className="rounded-xl border border-mist-200 px-4 py-2.5 text-center text-[0.76rem] font-bold text-ink-700 hover:border-brand-300">
             Clear
           </Link>
@@ -145,7 +157,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link href={`/admin/inbox?${new URLSearchParams({ ...(query ? { q: query } : {}), id: String(row.id) }).toString()}`} className="rounded-lg bg-brand-50 px-2.5 py-1 text-[0.64rem] font-bold text-brand-700 hover:bg-brand-500 hover:text-white">
+                      <Link href={`/admin/inbox?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(sourceFilter ? { source: sourceFilter } : {}), ...(emailFilter ? { email: emailFilter } : {}), id: String(row.id) }).toString()}`} className="rounded-lg bg-brand-50 px-2.5 py-1 text-[0.64rem] font-bold text-brand-700 hover:bg-brand-500 hover:text-white">
                         View
                       </Link>
                     </td>

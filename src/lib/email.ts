@@ -16,7 +16,7 @@ export const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? "admin@knightmedicalbillin
  * the subdomain is verified in Resend; until then the root-domain sender below
  * is the one that actually delivers.
  */
-const MAIL_FROM = process.env.MAIL_FROM ?? "Knight Medical Billing <website@knightmedicalbilling.com>";
+export const MAIL_FROM = process.env.MAIL_FROM ?? "Knight Medical Billing <website@knightmedicalbilling.com>";
 const ADMIN_APP_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com") + "/admin";
 
 /**

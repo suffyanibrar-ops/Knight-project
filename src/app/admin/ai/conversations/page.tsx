@@ -21,12 +21,13 @@ export default async function AdminAiConversationsPage() {
         ) : (
           <div className="overflow-x-auto"><table className="w-full text-left text-[0.76rem]">
             <thead><tr className="border-b border-mist-200 text-[0.58rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/60">
-              <th className="pb-2 pr-3">Started</th><th className="pb-2 pr-3">Channel</th><th className="pb-2 pr-3">Messages</th><th className="pb-2 pr-3">Visitor</th><th className="pb-2 pr-3">Qualified</th><th className="pb-2 pr-3">Appointment</th><th className="pb-2 pr-3">Handoff</th><th className="pb-2">Transcript</th>
+              <th className="pb-2 pr-3">Started</th><th className="pb-2 pr-3">Channel</th><th className="pb-2 pr-3">Status</th><th className="pb-2 pr-3">Messages</th><th className="pb-2 pr-3">Visitor</th><th className="pb-2 pr-3">Qualified</th><th className="pb-2 pr-3">Appointment</th><th className="pb-2 pr-3">Handoff</th><th className="pb-2">Transcript</th>
             </tr></thead>
             <tbody>{conversations.map((conversation) => (
               <tr key={conversation.id} className="border-b border-mist-100 last:border-0">
                 <td className="py-2 pr-3"><AiDate value={conversation.createdAt} /></td>
                 <td className="py-2 pr-3"><AiBadge tone={conversation.channel === "voice" ? "brand" : "default"}>{conversation.channel}</AiBadge></td>
+                <td className="py-2 pr-3"><AiBadge tone={conversation.status === "active" ? "good" : "default"}>{conversation.status}</AiBadge></td>
                 <td className="py-2 pr-3">{conversation.messageCount}</td>
                 <td className="py-2 pr-3">{conversation.visitorName ?? conversation.visitorEmail ?? "Anonymous"}</td>
                 <td className="py-2 pr-3">{conversation.leadId ? <AiBadge tone="good">lead</AiBadge> : "—"}</td>

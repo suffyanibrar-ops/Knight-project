@@ -18,13 +18,14 @@ export default async function AdminAiLeadsPage() {
         {leads.length === 0 ? <p className="rounded-xl border border-dashed border-mist-200 bg-mist-50 px-4 py-8 text-center text-[0.78rem] text-ink-600/70">No leads captured yet.</p> : (
           <div className="overflow-x-auto"><table className="w-full text-left text-[0.74rem]">
             <thead><tr className="border-b border-mist-200 text-[0.58rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/60">
-              <th className="pb-2 pr-3">Created</th><th className="pb-2 pr-3">Name</th><th className="pb-2 pr-3">Email</th><th className="pb-2 pr-3">Organization</th><th className="pb-2 pr-3">Specialty</th><th className="pb-2 pr-3">Challenge</th><th className="pb-2 pr-3">Interest</th><th className="pb-2">Status</th>
+              <th className="pb-2 pr-3">Created</th><th className="pb-2 pr-3">Name</th><th className="pb-2 pr-3">Email</th><th className="pb-2 pr-3">Phone</th><th className="pb-2 pr-3">Organization</th><th className="pb-2 pr-3">Specialty</th><th className="pb-2 pr-3">Challenge</th><th className="pb-2 pr-3">Interest</th><th className="pb-2">Status</th>
             </tr></thead>
             <tbody>{leads.map((lead) => (
               <tr key={lead.id} className="border-b border-mist-100 last:border-0 align-top">
                 <td className="py-2 pr-3 whitespace-nowrap"><AiDate value={lead.createdAt} /></td>
                 <td className="py-2 pr-3 font-bold text-ink-900">{lead.name ?? "—"}</td>
                 <td className="py-2 pr-3">{lead.email ?? "—"}</td>
+                <td className="py-2 pr-3">{lead.phone ?? "—"}</td>
                 <td className="py-2 pr-3">{lead.organization ?? "—"}</td>
                 <td className="py-2 pr-3">{lead.specialty ?? "—"}</td>
                 <td className="py-2 pr-3 max-w-[16rem]">{lead.challenge ?? "—"}</td>

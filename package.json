@@ -22,7 +22,9 @@
     "test:site": "node tests/site-fixes.e2e.mjs",
     "test:experience": "node tests/experience.e2e.mjs",
     "test:voice": "node tests/voice-natural.e2e.mjs",
-    "test:conversion": "node tests/conversion-upgrade.e2e.mjs"
+    "test:conversion": "node tests/conversion-upgrade.e2e.mjs",
+    "test:admin": "node tests/admin-command-center.e2e.mjs",
+    "test:admin:traffic": "node tests/admin-traffic-ui.e2e.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

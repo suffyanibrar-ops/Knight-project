@@ -48,8 +48,8 @@ export default async function EstimatesPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        title="ROI estimates"
-        description="Every calculator completion, including the visitor's inputs and modelled annual opportunity. Contacts captured here are also emailed to the owner inbox."
+        title="ROI Opportunities"
+        description="Calculator completions, visitor inputs and modelled annual opportunity. These are illustrative models, not guaranteed revenue. Contacts captured here are also emailed to the owner inbox."
         actions={
           <a href="/api/admin/export?type=estimates" className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300">
             <Download className="h-3.5 w-3.5" /> Export CSV
@@ -58,10 +58,12 @@ export default async function EstimatesPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Estimates created" value={rows.length} tone="brand" />
+        <StatCard label="Calculations" value={rows.length} tone="brand" />
         <StatCard label="With contact email" value={withEmail} hint="Follow-up ready" tone="good" />
-        <StatCard label="Average opportunity" value={money(avg)} hint="Modelled annual uplift" />
+        <StatCard label="Average modelled opportunity" value={money(avg)} hint="Illustrative annual uplift · not a guarantee" />
       </div>
+
+      <p className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-[0.72rem] leading-relaxed text-amber-900/80"><strong>Modeled / illustrative opportunity:</strong> the calculator applies assumptions to the visitor&apos;s inputs. Actual results depend on specialty, payer mix, claim volume, current processes and reimbursement. Nothing on this page is a guarantee of revenue.</p>
 
       {rows.length === 0 ? (
         <EmptyState title="No estimates yet" description="When a visitor completes the ROI calculator, the inputs appear here." />
