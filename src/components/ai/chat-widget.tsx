@@ -8,6 +8,7 @@ import { cn } from "@/components/ui";
 import { AppointmentModal, type BookedAppointment } from "./appointment-modal";
 import { MarkdownLite } from "./markdown-lite";
 import { useVoice } from "./use-voice";
+import { trackConversion } from "@/lib/tracking";
 
 interface AiConfig {
   enabled: boolean;
@@ -24,9 +25,11 @@ interface AiConfig {
 type Message = { id: string; role: "user" | "assistant" | "note"; text: string; pending?: boolean };
 
 const QUICK_PROMPTS = [
-  "What services do you offer?",
-  "How does onboarding work?",
-  "Can I book a 15-minute call?",
+  { label: "Improve A/R & collections", prompt: "We want to improve A/R and collections. Where should we start?" },
+  { label: "Reduce denials", prompt: "We are seeing too many denials. What should we look at first?" },
+  { label: "Billing & coding support", prompt: "We need help with billing and coding. What support fits our organization?" },
+  { label: "Credentialing & enrollment", prompt: "We need help with credentialing or payer enrollment. What should we prepare?" },
+  { label: "Not sure where to start", prompt: "I am not sure where the revenue-cycle problem is. Can you help me narrow it down?" },
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -77,6 +80,7 @@ export function AiChatWidget() {
   const voiceModeRef = useRef(false);
   const speechBufferRef = useRef("");
   const speechStartedRef = useRef(false);
+  const leadTrackedRef = useRef(false);
   const bargeRef = useRef(false);
   const sendRef = useRef<(text: string, fromVoice?: boolean) => void>(() => undefined);
   const bargeHandlerRef = useRef<() => void>(() => undefined);
@@ -256,6 +260,10 @@ export function AiChatWidget() {
             break;
           case "done":
             setToolStatus(null);
+            if (event.leadId && !leadTrackedRef.current) {
+              leadTrackedRef.current = true;
+              trackConversion("ai_lead", { surface: "chat" });
+            }
             break;
           default:
             break;
@@ -364,6 +372,7 @@ export function AiChatWidget() {
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Could not log the request.");
       setHandoffOpen(false);
       setHandoff({ name: "", email: "", phone: "", reason: "" });
+      trackConversion("ai_handoff", { surface: "chat" });
       setMessages((prev) => [...prev, { id: uid(), role: "note", text: "Request logged for the Knight Medical Billing team. A human will follow up during business hours — I can't confirm that someone is online right now." }]);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not log the request.");
@@ -485,8 +494,8 @@ export function AiChatWidget() {
                 {messages.length <= 1 && config?.knowledgeReady !== false && (
                   <div className="grid gap-1.5 pt-1">
                     {QUICK_PROMPTS.map((prompt) => (
-                      <button key={prompt} type="button" onClick={() => void send(prompt)} className="rounded-xl border border-brand-100 bg-surface px-3 py-2 text-left text-[0.76rem] font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50">
-                        {prompt}
+                      <button key={prompt.label} type="button" onClick={() => void send(prompt.prompt)} className="rounded-xl border border-brand-100 bg-surface px-3 py-2 text-left text-[0.76rem] font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50">
+                        {prompt.label}
                       </button>
                     ))}
                   </div>

@@ -23,6 +23,7 @@ const STATIC_ROUTES = [
   "/results",
   "/about",
   "/our-process",
+  "/switching-medical-billing",
   "/insights",
   "/faq",
   "/contact",

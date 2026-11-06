@@ -63,7 +63,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
         imageAlt={`Photograph representing ${specialty.name} medical billing`}
         badges={specialty.focus.slice(0, 3)}
         crumbs={[{ label: "Specialties", href: "/specialties" }, { label: specialty.name }]}
-        stat={{ value: "99.9%", label: "Claim acceptance rate" }}
+        stat={{ value: "Specialty", label: "Coding context" }}
       />
 
       <section className="bg-surface py-14 sm:py-20">
@@ -114,14 +114,14 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
                 </span>
                 <div>
                   <p className="text-[1.05rem] font-extrabold tracking-tight text-ink-950">What you can expect</p>
-                  <p className="mt-1.5 text-[0.85rem] leading-relaxed text-ink-600/80">Certified coders, clean claims filed within 24 hours, denial follow-up and reporting you can act on — with a dedicated account manager.</p>
+                  <p className="mt-1.5 text-[0.85rem] leading-relaxed text-ink-600/80">Certified coders, clean-claim review, denial follow-up and reporting you can act on — with a dedicated account manager.</p>
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2.5">
                 {[
-                  { value: "99.9%", label: "Clean claims" },
-                  { value: "24 hrs", label: "Claim filing" },
-                  { value: "24/5", label: "Support" },
+                  { value: "Every claim", label: "Reviewed before submission" },
+                  { value: "Daily", label: "Claim worklist" },
+                  { value: "Monthly", label: "Reporting" },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-xl border border-white bg-white/80 p-3">
                     <p className="text-lg font-extrabold text-ink-950">{stat.value}</p>
@@ -155,7 +155,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
                     ))}
                   </ul>
                   <Link href="/schedule-form" className="btn btn-primary mt-5 w-full">
-                    Schedule a consultation <ArrowRight className="h-4 w-4" />
+                    Talk With Knight <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link href="/our-process" className="btn btn-light mt-2 w-full">
                     How we start
@@ -189,7 +189,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
 
       <NextSteps />
 
-      <CtaBand title={`${specialty.name} billing, with the numbers to prove it.`} description={`Find out how much ${specialty.name.toLowerCase()} revenue is slipping through your current process. The consultation is free and there is no prepayment.`} />
+      <CtaBand title={`${specialty.name} billing, with a team that knows the codes.`} description={`Talk with us about where ${specialty.name.toLowerCase()} revenue slows down and how a dedicated team would take responsibility. The consultation is free and there is no prepayment.`} />
     </>
   );
 }

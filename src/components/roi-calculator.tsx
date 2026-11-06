@@ -18,6 +18,13 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
   const [daysInAr, setDaysInAr] = useState(48);
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [started, setStarted] = useState(false);
+
+  function markStarted() {
+    if (started) return;
+    setStarted(true);
+    trackConversion("calculator_started", { form: "roi" });
+  }
 
   const results = useMemo(() => {
     const annual = collections * 12;
@@ -53,6 +60,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
       if (!response.ok) throw new Error("failed");
       setState("done");
       trackConversion("roi_estimate", { form: "roi" });
+      trackConversion("calculator_completed", { form: "roi" });
     } catch {
       setState("error");
     }
@@ -73,7 +81,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
               max={1500000}
               step={10000}
               value={collections}
-              onChange={(event) => setCollections(Number(event.target.value))}
+              onChange={(event) => { markStarted(); setCollections(Number(event.target.value)); }}
               className={sliderClass}
               aria-label="Monthly collections"
             />
@@ -94,7 +102,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
               max={25}
               step={1}
               value={denialRate}
-              onChange={(event) => setDenialRate(Number(event.target.value))}
+              onChange={(event) => { markStarted(); setDenialRate(Number(event.target.value)); }}
               className={sliderClass}
               aria-label="Current denial rate"
             />
@@ -115,7 +123,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
               max={90}
               step={1}
               value={daysInAr}
-              onChange={(event) => setDaysInAr(Number(event.target.value))}
+              onChange={(event) => { markStarted(); setDaysInAr(Number(event.target.value)); }}
               className={sliderClass}
               aria-label="Days in accounts receivable"
             />
@@ -137,33 +145,33 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand-500/25 blur-3xl" />
         <div className="relative">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-brand-200">
-            <Sparkles className="h-3 w-3" /> Your estimate
+            <Sparkles className="h-3 w-3" /> Illustrative model
           </span>
 
           <div className="mt-5">
-            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-white/50">Annual revenue opportunity</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-white/50">Illustrative annual opportunity</p>
             <motion.p key={results.annualUplift} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-1 text-[clamp(2rem,5vw,2.9rem)] font-extrabold leading-none tracking-tight">
               {currency(results.annualUplift)}
             </motion.p>
-            <p className="mt-1.5 text-[0.72rem] text-white/50">≈ {currency(Math.round(results.annualUplift / 12))} per month, recovered and retained</p>
+            <p className="mt-1.5 text-[0.72rem] text-white/50">≈ {currency(Math.round(results.annualUplift / 12))} per month, modelled — not a guarantee</p>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3.5">
-              <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Cash accelerated</p>
+              <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Illustrative cash unlocked</p>
               <p className="mt-1 text-xl font-extrabold">{currency(results.cashUnlocked)}</p>
-              <p className="text-[0.6rem] text-white/40">within the first 60 days</p>
+              <p className="text-[0.6rem] text-white/40">based on the A/R assumption</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3.5">
-              <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Return multiple</p>
+              <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Illustrative return multiple</p>
               <p className="mt-1 text-xl font-extrabold text-mint-300">{results.roi.toFixed(1)}×</p>
-              <p className="text-[0.6rem] text-white/40">on managed billing</p>
+              <p className="text-[0.6rem] text-white/40">modelled, not a guarantee</p>
             </div>
           </div>
 
           <div className="mt-4 rounded-2xl bg-white/[0.04] p-3.5 text-[0.7rem] text-white/55">
             <span className="flex items-center justify-between">
-              <span>Estimated annual investment</span>
+              <span>Illustrative annual investment</span>
               <span className="font-bold text-white/80">{currency(results.investment)}</span>
             </span>
             <span className="mt-1 flex items-center justify-between">
@@ -171,6 +179,10 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
               <span className="font-bold text-white/80">{currency(results.annual)}</span>
             </span>
           </div>
+
+          <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[0.64rem] leading-relaxed text-white/40">
+            Illustrative only. Actual outcomes depend on specialty, payer mix, claim volume, current processes, reimbursement and other factors. This is not a guarantee of revenue or savings.
+          </p>
 
           {state === "done" ? (
             <div className="mt-5 flex items-start gap-2.5 rounded-2xl border border-mint-400/30 bg-mint-500/15 p-3.5">

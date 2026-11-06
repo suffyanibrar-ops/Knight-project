@@ -11,11 +11,11 @@ import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { billingSoftware, processSteps, rcmLifecycle, site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Our Process | Fast & Easy 5-Day Start', description: 'Our onboarding is a fast, easy five-day process: consultation, a dedicated billing team, revenue cycle stabilization and ongoing reporting. No prepayment required.', path: '/our-process', keywords: ['medical billing onboarding', 'revenue cycle management process'] });
+export const metadata: Metadata = pageMetadata({ title: 'Our Onboarding Process | Knight Medical Billing', description: 'A structured billing onboarding: consultation, scope and access, team assignment, account stabilization and ongoing reporting — planned around your organization.', path: '/our-process', keywords: ['medical billing onboarding', 'revenue cycle management process'] });
 
 const supportPoints = [
-  { icon: Timer, title: "Claims filed in 24 hours", detail: "Every claim is built clean and filed the next business day." },
-  { icon: Headphones, title: "24/5 multilingual support", detail: "Patients and staff get answers in the language they need." },
+  { icon: Timer, title: "Daily claim worklists", detail: "Claims are reviewed, submitted and tracked from a consistent queue." },
+  { icon: Headphones, title: "Direct account access", detail: "A named contact answers questions during business hours." },
   { icon: ShieldCheck, title: "HIPAA-compliant process", detail: "Secure data flow, strict quality control and confidentiality." },
 ];
 
@@ -27,17 +27,17 @@ export default function OurProcessPage() {
         eyebrow="Our process"
         title={
           <>
-            A fast, easy <span className="display-serif text-brand-600">5-day start.</span>
+            A structured start, <span className="display-serif text-brand-600">not a disruption.</span>
           </>
         }
         description="No prepayment, no hidden fees, no six-month implementation. We interview you about what you are looking for, then build a billing and coding team dedicated to your facility — and get to work."
         image={pageHeroVisuals.process}
         imageAlt="Photograph of a team presentation during onboarding"
-        badges={["5-day onboarding", "No prepayment", "24/5 support"]}
+        badges={["Structured onboarding", "No prepayment", "Business-hours support"]}
         crumbs={[{ label: "Our process" }]}
-        primaryCta={{ label: "Start with a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
-        stat={{ value: "5 days", label: "To a dedicated team" }}
+        stat={{ value: "Structured", label: "Onboarding plan" }}
       />
 
       <section className="bg-surface py-14 sm:py-20">
@@ -182,7 +182,20 @@ export default function OurProcessPage() {
         </div>
       </section>
 
-      <CtaBand title="Ready to start your 5-day onboarding?" />
+      <section className="bg-surface py-14 sm:py-16">
+        <div className="shell grid gap-6 rounded-3xl border border-mist-200 bg-mist-50 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+          <div>
+            <p className="text-[0.64rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">What shapes the proposal</p>
+            <h2 className="mt-2 text-[1.35rem] font-extrabold tracking-tight text-ink-950 sm:text-[1.55rem]">Pricing follows the work, not a generic package.</h2>
+            <p className="mt-2 max-w-2xl text-[0.86rem] leading-relaxed text-ink-600/80">Provider and facility count, claim volume, specialty complexity, current A/R, credentialing needs, payer mix and the services you want us to own all shape scope and fees. We review before quoting.</p>
+          </div>
+          <Link href="/switching-medical-billing" className="btn btn-primary w-fit">
+            See how a transition works <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      <CtaBand title="Ready to plan your transition?" description="Talk with us about what you need, what happens to existing A/R and what a realistic start looks like for your organization. No prepayment, no hidden fees." />
     </>
   );
 }

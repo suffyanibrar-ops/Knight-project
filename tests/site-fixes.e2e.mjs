@@ -30,8 +30,9 @@ ok("site name is present in the title exactly once", (title.match(/Knight Medica
 
 // ---------- hero claims removed ----------
 const heroText = await page.locator("[data-hero-reveal]").innerText();
-ok("hero no longer shows the check-mark claims", !/no long-term lock-in/i.test(heroText) && !/dedicated billing team/i.test(heroText) && !/No prepayment/.test(heroText), heroText.slice(0, 300));
-ok("hero still shows its primary actions", /Request a consultation/i.test(heroText) && /Explore our services/i.test(heroText));
+ok("hero avoids the old broad check-mark claims", !/no long-term lock-in/i.test(heroText) && !/dedicated billing team/i.test(heroText), heroText.slice(0, 300));
+ok("hero shows specific differentiators", /No prepayment/i.test(heroText) && /Your software|No rip-and-replace/i.test(heroText));
+ok("hero shows the new primary actions", /Talk With Knight/i.test(heroText) && /See how it works/i.test(heroText));
 
 // ---------- AI assistant launcher icon ----------
 const launcher = page.getByRole("button", { name: /open knight ai assistant/i });

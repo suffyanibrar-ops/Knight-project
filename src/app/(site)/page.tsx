@@ -19,14 +19,13 @@ import { CardShuffle } from "@/components/motion/card-shuffle";
 import { TestimonialsCarousel } from "@/components/testimonials";
 import { perspectives } from "@/lib/testimonials";
 import { ProcessTimeline } from "@/components/process-timeline";
-import { RoiCalculator } from "@/components/roi-calculator";
 import { SpecialtyExplorer } from "@/components/specialty-explorer";
 import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getArticles, getFaqs, getSpecialties } from "@/lib/data";
 import { audiences, benefits, billingSoftware, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
 
 const homeTitle = "Knight Medical Billing | Custom Tailored Medical Billing & RCM";
-const homeMetadata = pageMetadata({ title: homeTitle, description: 'Knight Medical Billing delivers custom tailored medical billing and revenue cycle management with a 99.9% claim acceptance rate, claims filed in 24 hours, no prepayment and 24/5 multilingual support.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'custom tailored medical billing'] });
+const homeMetadata = pageMetadata({ title: homeTitle, description: 'Knight Medical Billing provides medical billing, coding and revenue cycle management for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations. Dedicated teams, clear reporting, no prepayment.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'custom tailored medical billing'] });
 
 // Keep the brand first in the browser tab / search result title. The shared
 // title template appends the brand only when it is not already leading.
@@ -37,6 +36,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [specialties, articles, faqRows] = await Promise.all([getSpecialties(), getArticles(), getFaqs()]);
   const faqs = faqRows.length ? faqRows : staticFaqs;
+  const practiceAudiences = audiences.filter((audience) => audience.segment === "practices");
+  const facilityAudiences = audiences.filter((audience) => audience.segment === "facilities");
 
   return (
     <>
@@ -71,10 +72,10 @@ export default async function HomePage() {
                 className="mt-3 block text-[clamp(1.7rem,3.6vw,2.4rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-ink-950"
               />
               <p className="mt-3 text-[0.93rem] leading-relaxed text-ink-600/80">
-                These are the issues independent practices describe most often. Each one has a process cause — and a fix.
+                These are the issues healthcare organizations describe most often — from independent practices to multi-facility systems. Each one has a process cause and a place to start.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/schedule-form" className="btn btn-primary">Request a consultation <ArrowRight className="h-4 w-4" /></Link>
+                <Link href="/schedule-form" className="btn btn-primary">Talk With Knight <ArrowRight className="h-4 w-4" /></Link>
                 <Link href="/services" className="btn btn-light">Explore our services</Link>
               </div>
             </Reveal>
@@ -142,8 +143,8 @@ export default async function HomePage() {
                   id: "claims",
                   step: "03",
                   title: "Claims, scrubbing & submission",
-                  body: "Each claim is scrubbed against payer rules and filed within 24 hours, leaving room to correct anything rejected.",
-                  points: ["Payer-specific edits applied", "Filed within 24 hours", "Acknowledgements monitored daily"],
+                  body: "Each claim is checked against payer rules and submitted from a daily worklist, leaving room to correct anything rejected.",
+                  points: ["Payer-specific edits applied", "Daily submission worklist", "Acknowledgements monitored"],
                   image: photo.stethoscopeNotes,
                   alt: "Stethoscope resting on clinical notes during a documentation review",
                 },
@@ -159,33 +160,6 @@ export default async function HomePage() {
               ]}
             />
           </Reveal>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden bg-night py-16 text-white sm:py-24">
-        <ParallaxImage src={photo.deskCharts} alt="" className="opacity-70" distance={60} sizes="100vw" />
-        <div className="absolute inset-0 bg-gradient-to-r from-night via-night/85 to-night/25" />
-        <div className="shell relative">
-          <Reveal className="max-w-2xl">
-            <SectionLabel className="text-brand-200">Inside the revenue engine</SectionLabel>
-            <h2 className="mt-3 text-[clamp(1.85rem,4vw,2.75rem)] font-extrabold leading-[1.05] tracking-[-0.035em]">
-              Every claim tracked. <span className="display-serif text-brand-300">Every dollar accounted for.</span>
-            </h2>
-            <p className="mt-3 text-[0.94rem] leading-relaxed text-white/70">
-              Our team owns the whole cycle, so nothing sits unworked and you always know exactly where the revenue stands.
-            </p>
-          </Reveal>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {kpis.slice(0, 4).map((kpi, index) => (
-              <Reveal key={kpi.label} delay={index * 0.06}>
-                <div className="group h-full rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-sm transition-colors hover:border-brand-300/40 hover:bg-white/[0.09]">
-                  <p className="text-[1.9rem] font-extrabold leading-none tracking-tight text-white"><AnimatedMetric value={kpi.value} /></p>
-                  <p className="mt-2 text-[0.78rem] font-bold uppercase tracking-[0.08em] text-brand-200">{kpi.label}</p>
-                  <p className="mt-2 text-[0.78rem] leading-relaxed text-white/60">{kpi.detail}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -273,7 +247,7 @@ export default async function HomePage() {
             {[
               { step: "01", title: "Who we help", detail: "Hospitals, healthcare systems, emergency rooms, urgent cares and private practices across the United States.", href: "/who-we-serve", cta: "See who we serve" },
               { step: "02", title: "What we handle", detail: "Coding, claims, A/R, credentialing, out-of-network negotiation, authorizations and patient billing.", href: "/services", cta: "Explore services" },
-              { step: "03", title: "How fast we start", detail: "A free consultation, then a dedicated team assigned to your facility in as little as five days.", href: "/our-process", cta: "See the process" },
+              { step: "03", title: "How we start", detail: "A structured onboarding around your software, access and existing A/R — with scope and timing agreed first.", href: "/our-process", cta: "See the process" },
             ].map((item, index) => (
               <Reveal key={item.step} delay={index * 0.06}>
                 <Link href={item.href} className="group flex h-full flex-col rounded-3xl border border-mist-200 bg-gradient-to-b from-white to-mist-50/70 p-5 transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg">
@@ -291,10 +265,10 @@ export default async function HomePage() {
           <Reveal delay={0.1}>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-2xl bg-night px-4 py-3 text-white">
               {[
-                { label: "99.9% claim acceptance", icon: BadgeCheck },
-                { label: "Claims filed in 24 hours", icon: Clock },
+                { label: "Every claim reviewed before submission", icon: BadgeCheck },
+                { label: "Daily claim and denial worklists", icon: Clock },
                 { label: "No prepayment, no hidden fees", icon: ShieldCheck },
-                { label: "24/5 multilingual support", icon: Headphones },
+                { label: "Dedicated account team", icon: Headphones },
               ].map(({ label, icon: TrustIcon }) => (
                 <span key={label} className="flex items-center gap-1.5 text-[0.72rem] font-bold text-white/80">
                   <TrustIcon className="h-3.5 w-3.5 text-mint-300" /> {label}
@@ -317,7 +291,7 @@ export default async function HomePage() {
               <h2 className="mt-3 text-[clamp(1.85rem,4vw,2.75rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
                 Complete medical billing, <span className="display-serif text-brand-600">fully managed.</span>
               </h2>
-              <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-600/80">Twelve core services across the revenue cycle, plus specialised support — engage the full cycle or start with the stage that is costing you most.</p>
+              <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-600/80">A complete service line across the revenue cycle, plus specialist support — engage the full cycle or start with the stage that is costing you most.</p>
             </Reveal>
             <Reveal delay={0.1}>
               <ArrowLink href="/services">All services</ArrowLink>
@@ -362,9 +336,6 @@ export default async function HomePage() {
                   <p className="text-[0.72rem] font-extrabold leading-tight text-ink-900">No prepayment</p>
                 </div>
                 <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-600/70">No hidden fees. A dedicated account manager from day one.</p>
-                <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-mist-100">
-                  <div className="h-full w-[96%] rounded-full bg-gradient-to-r from-mint-500 to-brand-400" />
-                </div>
               </div>
               <div className="absolute -left-2 top-6 hidden items-center gap-2 rounded-full border border-white bg-surface px-3 py-2 shadow-lg sm:flex">
                 <ShieldCheck className="h-4 w-4 text-mint-600" />
@@ -436,27 +407,65 @@ export default async function HomePage() {
             </Reveal>
           </div>
 
-          <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {audiences.map((audience, index) => (
-              <Reveal key={audience.slug} delay={index * 0.05}>
-                <Link href={`/who-we-serve/${audience.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07]">
-                  <div className="relative aspect-[4/3] overflow-hidden">
-                    <Image src={audience.image} alt={audience.name} fill className="object-cover opacity-80 transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-night via-ink-950/30 to-transparent" />
-                    <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/10 text-white backdrop-blur">
-                      <Icon name={audience.icon} className="h-4 w-4" />
-                    </span>
+          <div className="mt-9 space-y-8">
+            <div>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-brand-300">Independent &amp; growing practices</p>
+                <Link href="/who-we-serve/private-practices" className="text-[0.72rem] font-bold text-brand-200 hover:text-white">Practice support →</Link>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {practiceAudiences.map((audience) => (
+                  <Link key={audience.slug} href={`/who-we-serve/${audience.slug}`} className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-400/25 bg-white/[0.06] transition-all hover:-translate-y-1 hover:border-brand-400/50 hover:bg-white/[0.09] sm:row-span-2">
+                    <div className="relative aspect-[16/9] overflow-hidden">
+                      <Image src={audience.image} alt={audience.name} fill className="object-cover opacity-80 transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, 50vw" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-night via-ink-950/30 to-transparent" />
+                      <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/10 text-white backdrop-blur">
+                        <Icon name={audience.icon} className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      <p className="text-[1rem] font-extrabold leading-tight text-white">{audience.name}</p>
+                      <p className="mt-1.5 flex-1 text-[0.76rem] leading-relaxed text-white/55">Independent, growing and multi-provider groups — with support that fits the stage you are in.</p>
+                      <span className="mt-3 inline-flex items-center gap-1 text-[0.72rem] font-bold text-brand-300">Explore practice support <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /></span>
+                    </div>
+                  </Link>
+                ))}
+                <Link href="/services/complete-rcm-services" className="group flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07]">
+                  <div>
+                    <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-300">Smaller or growing?</p>
+                    <p className="mt-2 text-[0.95rem] font-extrabold leading-snug text-white">Start with the stage that is costing you most.</p>
+                    <p className="mt-1.5 text-[0.76rem] leading-relaxed text-white/50">You do not need a full RCM handover to begin. Clean-up, A/R or credentialing support can be the first step.</p>
                   </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <p className="text-[0.92rem] font-extrabold leading-tight text-white">{audience.name}</p>
-                    <p className="mt-1.5 flex-1 text-[0.72rem] leading-relaxed text-white/50">{audience.eyebrow}</p>
-                    <span className="mt-3 inline-flex items-center gap-1 text-[0.7rem] font-bold text-brand-300">
-                      Learn more <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[0.72rem] font-bold text-brand-300">Explore services <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /></span>
                 </Link>
-              </Reveal>
-            ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-white/40">Hospitals, systems &amp; facilities</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {facilityAudiences.map((audience, index) => (
+                  <Reveal key={audience.slug} delay={index * 0.05}>
+                    <Link href={`/who-we-serve/${audience.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07]">
+                      <div className="relative aspect-[4/3] overflow-hidden">
+                        <Image src={audience.image} alt={audience.name} fill className="object-cover opacity-80 transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-night via-ink-950/30 to-transparent" />
+                        <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/10 text-white backdrop-blur">
+                          <Icon name={audience.icon} className="h-4 w-4" />
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col p-4">
+                        <p className="text-[0.92rem] font-extrabold leading-tight text-white">{audience.name}</p>
+                        <p className="mt-1.5 flex-1 text-[0.72rem] leading-relaxed text-white/50">{audience.eyebrow}</p>
+                        <span className="mt-3 inline-flex items-center gap-1 text-[0.7rem] font-bold text-brand-300">
+                          Learn more <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      </div>
+                    </Link>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -487,16 +496,16 @@ export default async function HomePage() {
             <Reveal>
               <SectionLabel>Our process</SectionLabel>
               <h2 className="mt-3 text-[clamp(1.85rem,4vw,2.75rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
-                A fast, easy <span className="display-serif text-brand-600">5-day start.</span>
+                A structured start <span className="display-serif text-brand-600">around your operation.</span>
               </h2>
               <p className="mt-4 text-[0.95rem] leading-relaxed text-ink-600/80">
-                We interview you about what you are looking for, then build a billing and coding team dedicated to your facility. No prepayment, no hidden fees, and no long implementation project.
+                We learn how your organization works, agree on scope and access, then build a billing and coding team around your facility. No prepayment, no hidden fees, and no long implementation project.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {[
                   { icon: Workflow, label: "Works in your software" },
                   { icon: ShieldCheck, label: "HIPAA-compliant handling" },
-                  { icon: Clock, label: "Claims filed in 24 hours" },
+                  { icon: Clock, label: "Daily claim worklists" },
                   { icon: Sparkles, label: "Dedicated account manager" },
                 ].map(({ icon: FeatureIcon, label }) => (
                   <div key={label} className="flex items-center gap-2.5 rounded-xl border border-mist-200 bg-surface px-3 py-3 text-[0.76rem] font-bold text-ink-800">
@@ -506,7 +515,7 @@ export default async function HomePage() {
                 ))}
               </div>
               <Link href="/schedule-form" className="btn btn-primary mt-6">
-                Schedule your consultation <ArrowRight className="h-4 w-4" />
+                Talk With Knight <ArrowRight className="h-4 w-4" />
               </Link>
             </Reveal>
             <Reveal delay={0.1}>
@@ -561,35 +570,44 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-mist-50 py-16 sm:py-24">
-        <div className="shell grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-          <Reveal>
-            <SectionLabel>Cost of doing nothing</SectionLabel>
-            <h2 className="mt-3 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
-              What is the gap <span className="display-serif text-brand-600">costing you?</span>
-            </h2>
-            <p className="mt-4 text-[0.94rem] leading-relaxed text-ink-600/80">
-              Move the sliders to model your practice. The estimate uses denial recovery, clean-claim recapture and underpayment recovery as an illustration — your free consultation replaces it with actuals.
-            </p>
-            <ul className="mt-6 space-y-3">
-              {[
-                "Routinely boosting client revenue by at least 10%",
-                "99.9% claim acceptance rate",
-                "Claims filed within 24 hours",
-                "No prepayment and no hidden fees",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.85rem] font-semibold text-ink-800">
-                  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700">
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <RoiCalculator compact />
-          </Reveal>
+      <section id="why-change" className="bg-mist-50 py-16 sm:py-24">
+        <div className="shell">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-14">
+            <Reveal>
+              <SectionLabel>Why organizations consider a change</SectionLabel>
+              <h2 className="mt-3 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
+                Busy is not the same as <span className="display-serif text-brand-600">in control.</span>
+              </h2>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="max-w-xl text-[0.94rem] leading-relaxed text-ink-600/80 lg:ml-auto">
+                Most organizations do not start by looking for a new billing company. They start by noticing that the current process is working harder than the visibility it provides.
+              </p>
+            </Reveal>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: "“The team is busy, but I cannot see what is stuck.”", detail: "Worklists are moving, yet leadership has no clear view of denials, aged A/R or the next action." },
+              { title: "“Denials get worked, but too late.”", detail: "The same reasons repeat because the front-end cause is never fixed." },
+              { title: "“A/R keeps getting older.”", detail: "Follow-up happens when someone has time, not on a consistent ownership cadence." },
+              { title: "“We are growing faster than the process.”", detail: "New providers and locations add volume without adding proportional control." },
+              { title: "“Reporting tells me what happened, not what to do.”", detail: "Monthly totals arrive without an owner, an explanation or a follow-up plan." },
+              { title: "“We need more accountability.”", detail: "Questions go to a queue instead of a named person who knows the account." },
+            ].map((item) => (
+              <Reveal key={item.title}>
+                <div className="h-full rounded-2xl border border-mist-200 bg-surface p-5">
+                  <p className="text-[0.9rem] font-extrabold leading-snug tracking-tight text-ink-950">{item.title}</p>
+                  <p className="mt-2 text-[0.79rem] leading-relaxed text-ink-600/75">{item.detail}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link href="/switching-medical-billing" className="btn btn-primary">
+              Compare your current process <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/results" className="btn btn-light">See how we measure the work</Link>
+          </div>
         </div>
       </section>
 
@@ -686,7 +704,7 @@ export default async function HomePage() {
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href="/schedule-form" className="btn btn-primary">
-                  Schedule a consultation <ArrowRight className="h-4 w-4" />
+                  Talk With Knight <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a href={site.phoneHref} className="btn btn-light">
                   <Phone className="h-4 w-4" /> {site.phone}
@@ -701,10 +719,10 @@ export default async function HomePage() {
                   <span className="bg-brand-50/70 px-3 py-3 text-center text-brand-800">Knight</span>
                 </div>
                 {[
-                  ["Claim acceptance rate", "Variable", "99.9%"],
-                  ["Claims filed within 24 hours", "Often delayed", "Standard"],
+                  ["Claim review", "Depends on capacity", "Every claim checked"],
+                  ["Submission cadence", "Often delayed", "Daily worklist"],
                   ["Upfront cost", "Salaries + benefits", "No prepayment"],
-                  ["Sick days & turnover", "Paid time off", "Never a gap"],
+                  ["Sick days & turnover", "Paid time off", "Covered by the team"],
                   ["Coding certifications", "Per hire", "CPC & CIC team"],
                   ["Out-of-network negotiation", "Rarely", "Specialist team"],
                   ["Dedicated account manager", "—", "Included"],
@@ -811,7 +829,7 @@ export default async function HomePage() {
               </p>
               <div className="mt-5">
                 <Link href="/schedule-form" className="btn btn-primary">
-                  Request a consultation <ArrowRight className="h-4 w-4" />
+                  Talk With Knight <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </Reveal>

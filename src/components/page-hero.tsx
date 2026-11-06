@@ -15,7 +15,7 @@ export function PageHero({
   badges = [],
   crumbs = [],
   path,
-  primaryCta = { label: "Schedule a consultation", href: "/schedule-form" },
+  primaryCta = { label: "Talk With Knight", href: "/schedule-form" },
   secondaryCta,
   aside,
   stat,

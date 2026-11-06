@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     "Knight Medical Billing",
   ],
   openGraph: {
-    title: "Knight Medical Billing | 99.9% Claim Acceptance Rate",
+    title: "Knight Medical Billing | Medical Billing & Revenue Cycle Management",
     description: site.description,
     url: site.url,
     siteName: site.name,

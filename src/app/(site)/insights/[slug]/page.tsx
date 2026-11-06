@@ -119,7 +119,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     ))}
                   </ul>
                   <Link href="/schedule-form" className="btn btn-primary mt-4 w-full">
-                    Schedule a consultation <ArrowRight className="h-4 w-4" />
+                    Talk With Knight <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               </div>

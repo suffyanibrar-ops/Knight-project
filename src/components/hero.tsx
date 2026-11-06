@@ -14,10 +14,10 @@ import { Magnetic } from "./motion/magnetic";
 const typePhrases = ["managed end to end.", "protected from denials.", "reported clearly.", "audit ready."];
 
 const promises = [
-  { title: "5 Days Process", detail: "Fast & easy", icon: "Zap" },
-  { title: "No Prepayment", detail: "No hidden fees", icon: "Wallet" },
-  { title: "24/5 Support", detail: "Multilingual", icon: "Headphones" },
-  { title: "99.9%", detail: "Claim acceptance", icon: "BadgeCheck" },
+  { title: "Your software", detail: "No rip-and-replace", icon: "Workflow" },
+  { title: "No prepayment", detail: "No hidden fees", icon: "Wallet" },
+  { title: "Dedicated team", detail: "Named owner", icon: "Headphones" },
+  { title: "Clear reporting", detail: "Monthly review", icon: "LineChart" },
 ];
 
 const fadeUp = {
@@ -67,19 +67,19 @@ export function Hero() {
           </motion.h1>
 
           <motion.p initial="hidden" animate="show" custom={2} variants={fadeUp} className="mt-6 max-w-xl text-[1rem] leading-relaxed text-ink-600/85 sm:text-[1.06rem]">
-            Knight Medical Billing is a US medical billing and revenue cycle management partner for independent practices, clinics and specialty groups. From eligibility checks to final payment posting, we run the administrative side of your revenue — in your existing software, with your own dedicated team.
+            Knight Medical Billing is a US medical billing and revenue cycle management partner for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations. From eligibility checks to final payment posting, we run the administrative side of revenue — in your existing software, with a dedicated team.
           </motion.p>
 
           <motion.div initial="hidden" animate="show" custom={3} variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Magnetic strength={7}>
               <Link href="/schedule-form" className="btn btn-primary group px-6 py-4 text-[0.95rem]">
-                Request a consultation
+                Talk With Knight
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2.4} />
               </Link>
             </Magnetic>
             <Magnetic strength={5}>
               <Link href="/services" className="btn btn-light group px-6 py-4 text-[0.95rem]">
-                Explore our services
+                See how it works
                 <ArrowRight className="h-4 w-4 text-brand-600 transition-transform group-hover:translate-x-1" strokeWidth={2.2} />
               </Link>
             </Magnetic>

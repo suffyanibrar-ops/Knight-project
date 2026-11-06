@@ -88,7 +88,7 @@ export function BlogSidebar({
           <p className="mt-2 text-[1.02rem] font-extrabold leading-snug tracking-tight">See what this looks like in your facility.</p>
           <p className="mt-2 text-[0.78rem] leading-relaxed text-white/60">We review your billing process, claim acceptance and outstanding A/R — no prepayment required.</p>
           <Link href="/schedule-form" className="btn btn-accent mt-4 w-full px-4 py-3 text-[0.8rem]">
-            Schedule a consultation <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            Talk With Knight <ArrowRight aria-hidden className="h-3.5 w-3.5" />
           </Link>
         </div>
       </section>

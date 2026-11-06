@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CtaBand } from "@/components/cta-band";
+import { TrackedLink } from "@/components/tracked-link";
 import { NextSteps } from "@/components/next-steps";
 import { Icon } from "@/components/icon";
 import { PageHero } from "@/components/page-hero";
@@ -131,16 +132,16 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                 </div>
                 <div className="p-5">
                   <ul className="space-y-2.5">
-                    {["99.9% claim acceptance rate", "Claims filed within 24 hours", "Dedicated account manager", "24/5 multilingual support"].map((item) => (
+                    {["Clean-claim review before submission", "Daily claim and denial worklists", "Dedicated account manager", "Business-hours support"].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-[0.8rem] font-semibold text-ink-800">
                         <Check className="h-3.5 w-3.5 shrink-0 text-mint-600" strokeWidth={3} />
                         {item}
                       </li>
                     ))}
                   </ul>
-                  <Link href="/schedule-form" className="btn btn-primary mt-5 w-full">
-                    Schedule a consultation <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <TrackedLink href="/schedule-form" conversion="service_cta" conversionParams={{ surface: "service_detail", service: service.slug }} className="btn btn-primary mt-5 w-full">
+                    Talk With Knight about {service.short.toLowerCase()} <ArrowRight className="h-4 w-4" />
+                  </TrackedLink>
                   <a href={site.phoneHref} className="btn btn-light mt-2 w-full">
                     <Phone className="h-4 w-4" /> {site.phone}
                   </a>
@@ -173,7 +174,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
       <NextSteps currentService={service.slug} />
 
-      <CtaBand title={`Put ${service.short.toLowerCase()} in expert hands.`} description="We will review your current process, show you where revenue is leaking and explain exactly how a dedicated Knight team would take over. No prepayment required." />
+      <CtaBand title={`Put ${service.short.toLowerCase()} in expert hands.`} description="We will review your current process, show you where the revenue cycle loses momentum and explain how a dedicated Knight team would take responsibility. No prepayment required." />
     </>
   );
 }

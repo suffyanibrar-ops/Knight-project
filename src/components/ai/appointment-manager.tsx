@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CalendarClock, Check, Loader2, X } from "lucide-react";
+import { trackConversion } from "@/lib/tracking";
 
 interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; dateISO: string; timeISO: string }
 
@@ -35,6 +36,7 @@ export function AppointmentManager({ token, timezone }: { token: string; timezon
       const data = (await response.json()) as { ok?: boolean; error?: string; dateLabel?: string; timeLabel?: string };
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Could not update the appointment.");
       setMessage(action === "cancel" ? "Your appointment has been cancelled." : `Moved to ${data.dateLabel} at ${data.timeLabel}. A confirmation email is on its way.`);
+      trackConversion(action === "cancel" ? "ai_appointment_cancelled" : "ai_appointment_rescheduled", { surface: "manage" });
       setShowSlots(false);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not update the appointment.");

@@ -97,7 +97,7 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
                 Notes from the <span className="display-serif text-brand-300">revenue front line.</span>
               </h1>
               <p className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed text-white/65">
-                Practical guides on medical billing, coding and revenue cycle management — written by the people who run the work every day, not a content agency.
+                Longer-form field notes, analysis and detailed guides on medical billing and revenue cycle management — written by the people who run the work every day, not a content agency.
               </p>
             </div>
             <div>

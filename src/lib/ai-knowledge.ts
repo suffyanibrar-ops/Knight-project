@@ -75,7 +75,7 @@ function websiteSources(): SourceDraft[] {
     site.description,
     `Phone: ${site.phone}. Email: ${site.email}. Address: 585 Grove St Ste 145, Herndon, VA 20170, United States.`,
     "Business hours: Monday to Friday, 8:00am to 5:00pm Eastern Time.",
-    "Published service standards: 99.9% claim acceptance rate, claims filed within 24 hours, no prepayment and no hidden fees, 5-day onboarding.",
+    "Service commitments: clean-claim review before submission, daily claim and denial worklists, monthly performance reporting, no prepayment and no hidden fees. Do not promise acceptance rates, revenue gains or onboarding timelines.",
     `Leadership: ${leadership.map((person) => `${person.name} (${person.role})`).join("; ")}.`,
     "Service areas and facilities: hospitals, healthcare systems, emergency rooms, free-standing emergency rooms, urgent cares, private practices, clinics and specialty groups across the United States.",
   ].join("\n\n");

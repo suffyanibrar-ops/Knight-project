@@ -11,7 +11,7 @@ import { ProcessTimeline } from "@/components/process-timeline";
 import { pageHeroVisuals, serviceVisuals } from "@/components/sections/visuals";
 import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getFaqs } from "@/lib/data";
-import { benefits, services } from "@/lib/site";
+import { benefits, serviceGroups, services } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({ title: 'Medical Billing Services | Knight Medical Billing', description: 'Complete medical billing services: medical billing and coding, accounts receivable management, credentialing and contracting, out-of-network negotiation, eligibility verification and full RCM.', path: '/services', keywords: ['medical billing services', 'medical coding services'] });
 
@@ -33,11 +33,11 @@ export default async function ServicesPage() {
         description="We offer complete medical billing services spanning coding, accounts receivable, credentialing, out-of-network negotiation, eligibility verification and full revenue cycle management — delivered by a dedicated team built around your facility."
         image={pageHeroVisuals.services}
         imageAlt="Photograph of two healthcare professionals reviewing billing information on a tablet"
-        badges={["99.9% claim acceptance", "Filed within 24 hours", "No prepayment"]}
+        badges={["Every service under one team", "Daily worklists", "No prepayment"]}
         crumbs={[{ label: "Services" }]}
-        primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: "Who we serve", href: "/who-we-serve" }}
-        stat={{ value: "24 hrs", label: "Claim filing window" }}
+        stat={{ value: "One team", label: "Across the revenue cycle" }}
       />
 
       <section className="border-b border-mist-200 bg-mist-50 py-4">
@@ -53,8 +53,17 @@ export default async function ServicesPage() {
 
       <section className="bg-surface py-16 sm:py-20">
         <div className="shell">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((service, index) => (
+          <div className="space-y-12">
+            {serviceGroups.map((group) => {
+              const groupServices = services.filter((service) => (group.slugs as readonly string[]).includes(service.slug));
+              return (
+                <div key={group.title}>
+                  <div className="mb-4 max-w-2xl">
+                    <p className="text-[0.64rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">{group.title}</p>
+                    <p className="mt-1.5 text-[0.88rem] leading-relaxed text-ink-600/80">{group.description}</p>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {groupServices.map((service, index) => (
               <Reveal key={service.slug} delay={Math.min(index * 0.05, 0.3)} className="h-full">
                 <TiltCard className="group h-full">
                   <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-300 hover:shadow-[0_32px_64px_-40px_rgba(4,20,31,0.45)]">
@@ -86,8 +95,12 @@ export default async function ServicesPage() {
                     </div>
                   </article>
                 </TiltCard>
-              </Reveal>
-            ))}
+                      </Reveal>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -119,8 +132,8 @@ export default async function ServicesPage() {
           <Reveal delay={0.1}>
             <div className="rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft">
               <p className="eyebrow text-brand-700">Onboarding</p>
-              <h3 className="mt-2 text-xl font-extrabold tracking-tight text-ink-950">Fast & easy process</h3>
-              <p className="mt-2 text-[0.88rem] leading-relaxed text-ink-600/80">A dedicated team, built around your facility, live in five days.</p>
+              <h3 className="mt-2 text-xl font-extrabold tracking-tight text-ink-950">A structured handover</h3>
+              <p className="mt-2 text-[0.88rem] leading-relaxed text-ink-600/80">A dedicated team built around your facility, with scope and timing agreed around your operation.</p>
               <div className="mt-5">
                 <ProcessTimeline />
               </div>
@@ -146,7 +159,7 @@ export default async function ServicesPage() {
           <Reveal delay={0.1}>
             <Accordion items={faqs.slice(0, 8)} />
             <div className="mt-6">
-              <ArrowLink href="/our-process">See our 5-day process</ArrowLink>
+              <ArrowLink href="/our-process">See our onboarding process</ArrowLink>
             </div>
           </Reveal>
         </div>

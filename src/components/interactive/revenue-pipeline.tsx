@@ -3,8 +3,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { TrackedLink } from "@/components/tracked-link";
 import { useRef, useState } from "react";
 import { DURATION, EASE, usePrefersReducedMotion } from "@/lib/motion";
+import { trackConversion } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { SectionLabel } from "@/components/ui";
 
@@ -22,6 +24,7 @@ export interface RevenueStage {
   leak: string;
   impact: string;
   fix: string;
+  monitor: string;
   service: string;
   serviceHref: string;
 }
@@ -32,6 +35,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Coverage or benefits are confirmed late — sometimes after the visit has already happened.",
     impact: "A claim can be denied for coverage or authorization reasons, and the patient can receive an unexpected balance.",
     fix: "We verify eligibility and benefits before the visit, document what was confirmed and flag authorization requirements early.",
+    monitor: "Monitor eligibility-related denials and the share of visits with unverified coverage.",
     service: "Eligibility & benefits verification", serviceHref: "/services/eligibility-and-benefits-verification",
   },
   {
@@ -39,6 +43,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Codes, modifiers or supporting documentation do not fully match the encounter.",
     impact: "The payer may reject the claim or pay a different amount, creating rework before revenue can post.",
     fix: "Certified coders review documentation, apply the right modifiers and look for preventable errors before submission.",
+    monitor: "Watch coding and modifier denials, documentation queries and the rework rate by coder or provider.",
     service: "Medical billing & coding", serviceHref: "/services/medical-billing-and-coding",
   },
   {
@@ -46,13 +51,15 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Charges are entered late, missed or disconnected from the correct encounter.",
     impact: "Services that were delivered may never be billed, or may fall outside timely-filing limits.",
     fix: "We reconcile encounters and charges, work the exception list and keep the path from visit to claim complete.",
+    monitor: "Track charge lag, missing encounters and charges entered after the encounter closes.",
     service: "Billing clean-up", serviceHref: "/services/clean-up-billing",
   },
   {
     id: "submission", label: "Submission", short: "Clean claims reach the payer",
     leak: "Claims sit in a queue, carry correctable errors or miss the payer's filing window.",
     impact: "Delayed submission ages the claim before it has a chance to pay and adds avoidable denial work.",
-    fix: "Claims are scrubbed, corrected and filed within our stated 24-hour window, with submission status tracked.",
+    fix: "Claims are scrubbed, corrected and submitted from a daily worklist, with acknowledgement and payment status tracked.",
+    monitor: "Review submission lag, payer rejections and claims sitting without an acknowledgement.",
     service: "Claims management", serviceHref: "/services/claims-management",
   },
   {
@@ -60,6 +67,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Denials are logged but never owned, or appealed without fixing the upstream cause.",
     impact: "The same denial reasons recur, and collectible revenue expires while the backlog rebuilds.",
     fix: "We work denials inside payer deadlines, correct the cause and feed the pattern back to coding and front-end teams.",
+    monitor: "Trend denial reasons by payer and specialty; check appeal volume and overturned appeals.",
     service: "Denial management", serviceHref: "/services/denial-management",
   },
   {
@@ -67,6 +75,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Receivables age without a segmented worklist, clear ownership or timely-filing tracking.",
     impact: "Collectible balances become write-offs simply because nobody reached them in time.",
     fix: "We segment A/R by payer, age and filing deadline, then work the highest-value, most collectible accounts first.",
+    monitor: "Watch days in A/R, aging buckets, follow-up attempts and balances approaching a filing deadline.",
     service: "Accounts receivable management", serviceHref: "/services/accounts-receivable-management",
   },
   {
@@ -74,6 +83,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Patient responsibility is unclear, statements are delayed or questions have nowhere to go.",
     impact: "Patient balances age quietly and the front office absorbs avoidable calls and confusion.",
     fix: "Statements, payment posting and patient questions are handled by a team that can explain the balance.",
+    monitor: "Track patient balance aging, statement delivery and call volume per open balance.",
     service: "Patient billing", serviceHref: "/services/complete-patient-billing",
   },
   {
@@ -81,6 +91,7 @@ export const REVENUE_STAGES: RevenueStage[] = [
     leak: "Payments post without a contracted-rate check, so underpayments are adjusted away.",
     impact: "The claim looks closed, but the practice may have been paid less than the agreement allows.",
     fix: "ERAs are posted and reconciled, variances are flagged and underpayments become follow-up work rather than silent leakage.",
+    monitor: "Reconcile underpayment variance, unapplied cash and payments below the contracted rate.",
     service: "Payment posting", serviceHref: "/services/payment-posting",
   },
 ];
@@ -89,12 +100,28 @@ export function RevenuePipeline() {
   const [active, setActive] = useState(0);
   const reduced = usePrefersReducedMotion();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const visitedRef = useRef<Set<string>>(new Set());
+  const startedRef = useRef(false);
+  const completedRef = useRef(false);
   const stage = REVENUE_STAGES[active];
   const progress = (active / (REVENUE_STAGES.length - 1)) * 100;
 
+  const selectStage = (index: number) => {
+    if (!startedRef.current) {
+      startedRef.current = true;
+      trackConversion("revenue_diagnostic_started", { surface: "home" });
+    }
+    visitedRef.current.add(REVENUE_STAGES[index].id);
+    if (visitedRef.current.size === REVENUE_STAGES.length && !completedRef.current) {
+      completedRef.current = true;
+      trackConversion("revenue_diagnostic_completed", { stages: visitedRef.current.size });
+    }
+    setActive(index);
+  };
+
   const move = (next: number) => {
     const index = (next + REVENUE_STAGES.length) % REVENUE_STAGES.length;
-    setActive(index);
+    selectStage(index);
     tabRefs.current[index]?.focus();
   };
 
@@ -113,7 +140,7 @@ export function RevenuePipeline() {
             </p>
           </div>
           <Link href="/schedule-form" className="btn btn-light w-fit">
-            Review your pipeline <ArrowRight className="h-4 w-4" />
+            Explore my revenue bottleneck <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -142,7 +169,7 @@ export function RevenuePipeline() {
                         aria-selected={isActive}
                         aria-controls="revenue-stage-panel"
                         tabIndex={isActive ? 0 : -1}
-                        onClick={() => setActive(index)}
+                        onClick={() => selectStage(index)}
                         onKeyDown={(event) => {
                           if (event.key === "ArrowDown" || event.key === "ArrowRight") { event.preventDefault(); move(active + 1); }
                           else if (event.key === "ArrowUp" || event.key === "ArrowLeft") { event.preventDefault(); move(active - 1); }
@@ -200,13 +227,17 @@ export function RevenuePipeline() {
                         <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-mint-200/70">How Knight closes it</p>
                         <p className="mt-2 text-[0.8rem] leading-relaxed text-white/80">{stage.fix}</p>
                       </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:col-span-2">
+                        <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-white/40">What to monitor</p>
+                        <p className="mt-2 text-[0.8rem] leading-relaxed text-white/65">{stage.monitor}</p>
+                      </div>
                     </div>
                     <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <Link href={stage.serviceHref} className="group inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-brand-200 transition-colors hover:text-white">
+                      <TrackedLink href={stage.serviceHref} conversion="service_cta" conversionParams={{ surface: "revenue_diagnostic", service: stage.service }} className="group inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-brand-200 transition-colors hover:text-white">
                         Explore {stage.service} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </Link>
+                      </TrackedLink>
                       <Link href="/schedule-form" className="text-[0.72rem] font-semibold text-white/40 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/80">
-                        Talk through your pipeline
+                        Talk With Knight about this stage
                       </Link>
                     </div>
 

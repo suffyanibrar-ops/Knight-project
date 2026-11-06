@@ -16,24 +16,20 @@ import { DURATION, EASE, usePrefersReducedMotion } from "@/lib/motion";
 const stages = [
   { id: "eligibility", label: "Eligibility verified", icon: ShieldCheck, detail: "Coverage and benefits are confirmed before the claim exists." },
   { id: "coded", label: "Coded & reviewed", icon: FileCheck2, detail: "Certified coders check documentation, codes and modifiers before submission." },
-  { id: "filed", label: "Filed to payer", icon: Clock3, detail: "Clean claims are filed within our stated 24-hour window and tracked." },
+  { id: "filed", label: "Filed to payer", icon: Clock3, detail: "Claims are checked against payer edits, submitted from a daily worklist and tracked to payment." },
   { id: "posted", label: "Payment posted", icon: TrendingUp, detail: "Payments are reconciled against contracted rates so variances become work." },
 ] as const;
 
 export function HeroPanel() {
   const reduced = usePrefersReducedMotion();
   const [active, setActive] = useState(0);
-  const [cycle, setCycle] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (reduced || paused) return;
     const timer = window.setInterval(() => {
       setActive((value) => {
-        if (value === stages.length - 1) {
-          setCycle((count) => count + 1);
-          return 0;
-        }
+        if (value === stages.length - 1) return 0;
         return value + 1;
       });
     }, 3400);
@@ -114,9 +110,9 @@ export function HeroPanel() {
       {/* Illustrative metrics */}
       <div className="relative mt-4 grid grid-cols-3 gap-2">
         {[
-          { label: "Filed in", value: "24h" },
-          { label: "Clean claims", value: "99.9%" },
-          { label: "Cycles run", value: String(1200 + cycle).replace(/\B(?=(\d{3})+(?!\d))/g, ",") },
+          { label: "Claim review", value: "Every" },
+          { label: "Worklist", value: "Daily" },
+          { label: "Reporting", value: "Monthly" },
         ].map((metric) => (
           <div key={metric.label} className="rounded-xl border border-mist-200 bg-surface/70 p-2.5">
             <p className="text-[0.92rem] font-extrabold leading-none tracking-tight text-ink-950">{metric.value}</p>
@@ -147,7 +143,7 @@ export function HeroPanel() {
       </div>
 
       <p className="relative mt-2.5 text-[0.58rem] leading-relaxed text-ink-600/70">
-        Interactive workflow · figures reflect our stated service standards, not client results.
+        Interactive workflow · illustrates the process, not client results.
       </p>
     </div>
   );

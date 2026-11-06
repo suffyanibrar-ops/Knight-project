@@ -34,8 +34,8 @@ const br = await chromium.launch();
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   const labels = await page.locator("header nav[aria-label='Primary'] > div > a").allInnerTexts();
   const clean = labels.map((t) => t.trim()).filter(Boolean);
-  rec("five top-level nav items", clean.length === 5, clean.join(" | "));
-  rec("nav labels correct", JSON.stringify(clean) === JSON.stringify(["Services", "Specialties", "Resources", "Company", "Contact"]), clean.join(", "));
+  rec("six top-level nav items", clean.length === 6, clean.join(" | "));
+  rec("nav labels correct", JSON.stringify(clean) === JSON.stringify(["Services", "Specialties", "Who We Serve", "Results", "Resources", "Company"]), clean.join(", "));
   rec("no phone number text in header", !(await page.locator("header").innerText()).includes("812"));
   rec("call icon button present", (await page.locator('header a[href^="tel:"]').count()) === 1);
   // icon size parity
@@ -57,7 +57,7 @@ const br = await chromium.launch();
   const ctx = await br.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
-  for (const [label, expectHref] of [["Services", "/services/claims-management"], ["Specialties", "/who-we-serve/hospitals"], ["Resources", "/faq"]]) {
+  for (const [label, expectHref] of [["Services", "/services/claims-management"], ["Specialties", "/who-we-serve/hospitals"], ["Who We Serve", "/who-we-serve/private-practices"], ["Resources", "/faq"]]) {
     await page.locator("header nav[aria-label='Primary'] a").filter({ hasText: new RegExp(`^${label}$`) }).first().hover();
     await page.waitForTimeout(450);
     const visible = await page.locator(`header a[href="${expectHref}"]:visible`).count();

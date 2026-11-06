@@ -9,6 +9,7 @@ const br = await chromium.launch();
 // 1. Sticky header stays visible after scrolling (desktop + mobile)
 for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390, h: 844 }]) {
   const ctx = await br.newContext({ viewport: { width: vp.w, height: vp.h }, isMobile: vp.name === "mobile", hasTouch: vp.name === "mobile" });
+  await ctx.addInitScript(() => { try { sessionStorage.setItem("kmb-intro-seen", "1"); } catch { /* ignore */ } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   await page.evaluate(() => window.scrollTo({ top: 2200, behavior: "instant" }));
@@ -171,12 +172,8 @@ for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390
   const ctx = await br.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/contact", { waitUntil: "networkidle" });
-  const mapBtn = page.getByRole("button", { name: /load the interactive google map/i });
-  record("map placeholder present", (await mapBtn.count()) === 1);
-  await mapBtn.scrollIntoViewIfNeeded();
-  await mapBtn.click();
-  await page.waitForTimeout(1200);
-  record("map iframe loads on opt-in", (await page.locator('iframe[title*="Map showing Knight Medical Billing"]').count()) === 1);
+  await page.waitForTimeout(3000);
+  record("map iframe loads automatically", (await page.locator('iframe[title*="Map showing Knight Medical Billing"]').count()) === 1);
   await ctx.close();
 }
 

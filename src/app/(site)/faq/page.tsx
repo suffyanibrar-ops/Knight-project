@@ -12,7 +12,7 @@ import { Accordion, Reveal, SectionLabel } from "@/components/ui";
 import { getFaqs } from "@/lib/data";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Frequently Asked Questions | Knight Medical Billing', description: 'Answers about services, five-day onboarding, claim acceptance, supported billing software, out-of-network negotiation, HIPAA security and how to contact our team.', path: '/faq', keywords: ['medical billing faq'] });
+export const metadata: Metadata = pageMetadata({ title: 'Frequently Asked Questions | Knight Medical Billing', description: 'Answers about our services, structured onboarding, claim review, supported billing software, out-of-network negotiation, HIPAA security and how to contact our team.', path: '/faq', keywords: ['medical billing faq'] });
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function FaqPage() {
         image={pageHeroVisuals.faq}
         imageAlt="Photograph of a support specialist ready to answer questions"
         crumbs={[{ label: "FAQ" }]}
-        primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: "Contact us", href: "/contact" }}
       />
 
@@ -58,7 +58,7 @@ export default async function FaqPage() {
                 </a>
               </div>
               <div className="mt-5 rounded-2xl border border-mist-200 bg-mist-50 p-4 text-[0.78rem] leading-relaxed text-ink-600/75">
-                <span className="font-extrabold text-ink-900">Work hours:</span> {site.hours}. Client support is available 24/5 in multiple languages.
+                <span className="font-extrabold text-ink-900">Work hours:</span> {site.hours}. Client support is available during business hours.
               </div>
             </Reveal>
           </aside>

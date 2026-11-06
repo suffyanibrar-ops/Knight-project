@@ -32,7 +32,7 @@ export default async function SpecialtiesPage() {
         description="We provide medical billing services to providers across specialties. Our certified coders hold CPC and CIC credentials with hands-on exposure in specialty clinics, emergency rooms, urgent cares, hospitals and healthcare systems."
         image={pageHeroVisuals.specialties}
         imageAlt="Photograph of a physician reviewing clinical information"
-        badges={["CPC & CIC certified", "ICD-10-CM, CPT & E/M", "99.9% acceptance"]}
+        badges={["CPC & CIC certified", "ICD-10-CM, CPT & E/M", "Specialty-matched coding"]}
         crumbs={[{ label: "Specialties" }]}
         primaryCta={{ label: "Ask about my specialty", href: "/schedule-form" }}
         secondaryCta={{ label: "See our services", href: "/services" }}

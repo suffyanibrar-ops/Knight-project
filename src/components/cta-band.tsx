@@ -5,8 +5,8 @@ import { Logo } from "./logo";
 
 export function CtaBand({
   eyebrow = "Let's get started",
-  title = "Ready to collect more, faster?",
-  description = "Start with a free consultation. We will review your billing process, identify where revenue is leaking and show you exactly how a dedicated Knight team would take it from there. No prepayment, no hidden fees.",
+  title = "Ready for a clearer revenue cycle?",
+  description = "Start with a conversation. We will review your current process, the questions that matter and where a dedicated Knight team could take responsibility. No prepayment, no hidden fees.",
 }: {
   eyebrow?: string;
   title?: string;
@@ -32,14 +32,14 @@ export function CtaBand({
           <p className="mt-4 max-w-xl text-[0.95rem] leading-relaxed text-white/65">{description}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link href="/schedule-form" className="btn btn-accent group px-6 py-4">
-              Schedule a consultation <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2.4} />
+              Talk With Knight <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2.4} />
             </Link>
             <a href={site.phoneHref} className="btn btn-ghost-light px-6 py-4">
               <Phone className="h-4 w-4" /> {site.phone}
             </a>
           </div>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[0.72rem] font-semibold text-white/50">
-            {["No prepayment", "No hidden fees", "24/5 support"].map((item) => (
+            {["No prepayment", "No hidden fees", "Works in your software"].map((item) => (
               <span key={item} className="flex items-center gap-1.5">
                 <Check className="h-3.5 w-3.5 text-mint-300" strokeWidth={3} /> {item}
               </span>

@@ -11,12 +11,12 @@ import { photo } from "@/lib/photos";
 import { Reveal } from "@/components/ui";
 import { kpis, site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Schedule a Free Consultation | Knight Medical Billing', description: 'Schedule a free medical billing consultation. We review your billing process, identify revenue leakage and build a dedicated team around your facility.', path: '/schedule-form', keywords: ['medical billing consultation'] });
+export const metadata: Metadata = pageMetadata({ title: 'Request a Consultation | Knight Medical Billing', description: 'Request a medical billing consultation. Tell us about your organization and what you need help with. We will review it and follow up to arrange the conversation.', path: '/schedule-form', keywords: ['medical billing consultation'] });
 
 const promises = [
-  { icon: Clock3, title: "Fast, easy process", detail: "Most facilities are live with a dedicated team within five days." },
+  { icon: Clock3, title: "A clear next step", detail: "We review your information first, then agree on scope, access and a realistic start plan." },
   { icon: WalletIcon, title: "No prepayment", detail: "No prepayment and no hidden fees to get started. Ever." },
-  { icon: ShieldCheck, title: "HIPAA compliant", detail: "Complete data and document security from the first conversation." },
+  { icon: ShieldCheck, title: "Security from the start", detail: "We discuss data handling and access requirements before any work begins." },
 ];
 
 function WalletIcon(props: React.ComponentProps<typeof BadgeCheck>) {
@@ -26,20 +26,20 @@ function WalletIcon(props: React.ComponentProps<typeof BadgeCheck>) {
 export default function SchedulePage() {
   return (
     <>
-      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Schedule a consultation", path: "/schedule-form" }])} />
+      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Request a consultation", path: "/schedule-form" }])} />
       <PageHero
 
-        eyebrow="Schedule a consultation"
+        eyebrow="Request a consultation"
         title={
           <>
-            Let&apos;s build your <span className="display-serif text-brand-600">billing team.</span>
+            Tell us what is <span className="display-serif text-brand-600">not working yet.</span>
           </>
         }
-        description="Tell us about your facility and current billing process. We will review it with you, identify the problem areas in your revenue cycle and show you how a dedicated Knight team would take over — with no prepayment required."
+        description="Tell us about your organization and what you need help with. We will review the information and follow up during business hours to arrange the conversation — with no prepayment required."
         image={pageHeroVisuals.schedule}
         imageAlt="Photograph of a clinician in a video consultation at a desk"
-        badges={["Free · no obligation", "No hidden fees", "24/5 support"]}
-        crumbs={[{ label: "Schedule a consultation" }]}
+        badges={["Free · no obligation", "No hidden fees", "Business-hours follow-up"]}
+        crumbs={[{ label: "Request a consultation" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
         secondaryCta={{ label: "Email us", href: `mailto:${site.email}` }}
       />
@@ -81,7 +81,7 @@ export default function SchedulePage() {
                     ))}
                   </div>
                   <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-                    {["Claims filed within 24 hours", "99.9% claim acceptance rate", "A dedicated account manager"].map((item) => (
+                    {["A clean-claim review process", "A daily claim and denial worklist", "A dedicated account manager"].map((item) => (
                       <p key={item} className="flex items-center gap-2 text-[0.76rem] font-semibold text-white/70">
                         <Check className="h-3.5 w-3.5 text-mint-300" strokeWidth={3} /> {item}
                       </p>
@@ -118,6 +118,29 @@ export default function SchedulePage() {
               <p className="mt-3 text-center text-[0.68rem] text-ink-600/75">We respond during business hours, Monday–Friday 8:00 AM – 5:00 PM ET.</p>
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-mist-200 bg-mist-50 py-12 sm:py-16">
+        <div className="shell">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">What happens next</p>
+            <h2 className="mt-2 text-[clamp(1.5rem,3vw,2.1rem)] font-extrabold tracking-[-0.03em] text-ink-950">A request, a review, then a conversation.</h2>
+            <p className="mt-2 text-[0.88rem] leading-relaxed text-ink-600/80">This form requests a consultation. It does not instantly book a confirmed appointment.</p>
+          </div>
+          <ol className="mx-auto mt-7 grid max-w-4xl gap-3 sm:grid-cols-3">
+            {[
+              { step: "01", title: "Tell us about your organization", detail: "Share your setting, specialty, size and the revenue-cycle problem you want to solve." },
+              { step: "02", title: "We review your needs", detail: "The team reads the details and identifies the most useful starting point." },
+              { step: "03", title: "We arrange the conversation", detail: "We follow up during business hours to agree on a time and prepare for the call." },
+            ].map((item) => (
+              <li key={item.step} className="rounded-2xl border border-mist-200 bg-surface p-5">
+                <span className="grid h-8 w-8 place-items-center rounded-xl bg-night-soft text-[0.68rem] font-extrabold text-white">{item.step}</span>
+                <p className="mt-3 text-[0.9rem] font-extrabold text-ink-950">{item.title}</p>
+                <p className="mt-1.5 text-[0.78rem] leading-relaxed text-ink-600/75">{item.detail}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
     </>

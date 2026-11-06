@@ -32,10 +32,10 @@ export default function ContactPage() {
         description="Call, email or send us a message. Tell us about your facility, your specialty and roughly what you collect each month — we will respond with a clear next step. No prepayment, no hidden fees, no pressure."
         image={pageHeroVisuals.contact}
         imageAlt="Photograph of a welcoming medical office reception desk"
-        badges={["HIPAA compliant", "24/5 multilingual support", "Free consultation"]}
+        badges={["HIPAA compliant", "Business-hours support", "Free consultation"]}
         crumbs={[{ label: "Contact" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
-        secondaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        secondaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
       />
 
       <section className="bg-surface py-12 sm:py-16">
@@ -76,7 +76,7 @@ export default function ContactPage() {
                 <p className="mt-2 text-[0.86rem] font-semibold leading-relaxed text-ink-800">Mon – Fri: 08:00 AM – 05:00 PM ET</p>
                 <p className="text-[0.8rem] text-ink-600/70">Sat – Sun: Closed</p>
                 <p className="mt-3 flex items-center gap-2 text-[0.72rem] font-semibold text-mint-700">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Client support available 24/5 in multiple languages
+                  <ShieldCheck className="h-3.5 w-3.5" /> Client support available during business hours
                 </p>
               </div>
             </Reveal>

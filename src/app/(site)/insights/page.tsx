@@ -34,7 +34,7 @@ export default async function InsightsPage() {
         imageAlt="Photograph of a billing specialist working at a laptop with documentation"
         badges={["Updated monthly", "Written by operators", "Free to use"]}
         crumbs={[{ label: "Insights" }]}
-        primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: "Talk to our team", href: "/contact" }}
       />
 

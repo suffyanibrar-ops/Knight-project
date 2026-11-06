@@ -6,17 +6,15 @@ export const site = {
   logoWhite: "/images/knight-mark-white.png",
   tagline: "Custom tailored medical billing services.",
   description:
-    "Knight Medical Billing is a custom tailored medical billing and revenue cycle management company serving hospitals, healthcare systems, emergency rooms, urgent cares and private practices. 99.9% claim acceptance rate, 24-hour claim filing, no prepayment and no hidden fees.",
+    "Knight Medical Billing is a medical billing and revenue cycle management partner for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations. Dedicated teams, clean-claim discipline, transparent reporting, no prepayment and no hidden fees.",
   phone: "(812) 994-0046",
   phoneRaw: "8129940046",
   phoneHref: "tel:+18129940046",
   email: "admin@knightmedicalbilling.com",
-  support: "24/5 multilingual support",
+  support: "Direct access to your dedicated team during business hours",
   address: "585 Grove St Ste 145, Herndon, VA 20170-4790, USA",
   addressShort: "Herndon, Virginia",
   hours: "Mon – Fri: 8:00 AM – 5:00 PM ET · Sat–Sun: Closed",
-  claimAcceptance: "99.9%",
-  filingWindow: "24 hours",
   founded: 2023,
   experience: "25 years",
   socials: {
@@ -100,15 +98,25 @@ export const primaryNav: NavItem[] = [
     ],
   },
   {
+    label: "Who We Serve",
+    href: "/who-we-serve",
+    children: [
+      { label: "Independent & growing practices", href: "/who-we-serve/private-practices", description: "New, established and multi-provider practices", icon: "Stethoscope" },
+      { label: "Hospitals", href: "/who-we-serve/hospitals", description: "Hospital billing and A/R", icon: "Cross" },
+      { label: "Healthcare systems", href: "/who-we-serve/healthcare-systems", description: "Multi-facility revenue operations", icon: "Building2" },
+      { label: "Emergency rooms", href: "/who-we-serve/emergency-rooms", description: "High-acuity ED billing", icon: "Siren" },
+      { label: "Urgent cares", href: "/who-we-serve/urgent-cares", description: "Volume and speed", icon: "Activity" },
+    ],
+  },
+  { label: "Results", href: "/results" },
+  {
     label: "Resources",
     href: "/insights",
     children: [
       { label: "Insights & guides", href: "/insights", description: "Billing playbooks from our team", icon: "Newspaper" },
-      { label: "Results & performance", href: "/results", description: "How we measure the work", icon: "LineChart" },
+      { label: "Blog", href: "/blog", description: "Long-form editorial and updates", icon: "Newspaper" },
       { label: "Frequently asked questions", href: "/faq", description: "Answers before you switch", icon: "CircleDollarSign" },
-      { label: "Why pay for paid", href: "/services/complete-rcm-services", description: "How engagement pricing works", icon: "ReceiptText" },
       { label: "HIPAA & data security", href: "/hipaa-compliance", description: "Safeguards and agreements", icon: "ShieldCheck" },
-      { label: "Patient billing rights", href: "/services/complete-patient-billing", description: "Statements and support", icon: "Wallet" },
     ],
   },
   {
@@ -116,30 +124,27 @@ export const primaryNav: NavItem[] = [
     href: "/about",
     children: [
       { label: "About us", href: "/about", description: "Mission, values and leadership", icon: "Building2" },
-      { label: "Who we serve", href: "/who-we-serve", description: "Facilities we support", icon: "Building2" },
       { label: "Our process", href: "/our-process", description: "Onboarding and workflow", icon: "Workflow" },
-      { label: "Results", href: "/results", description: "Metrics we report monthly", icon: "BarChart3" },
+      { label: "Switching billing partners", href: "/switching-medical-billing", description: "A transition without losing the thread", icon: "Workflow" },
       { label: "Contact", href: "/contact", description: "Talk to our team", icon: "Phone" },
     ],
   },
-  { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/contact" },
 ];
 
 export const heroPromises = [
-  { title: "5 Days Process", detail: "Fast & easy onboarding", icon: "Zap" },
-  { title: "No Prepayment", detail: "No hidden fees", icon: "Wallet" },
-  { title: "24/5 Support", detail: "Multilingual support", icon: "Headphones" },
-  { title: "99.9% Acceptance", detail: "Claim acceptance rate", icon: "BadgeCheck" },
+  { title: "Your software", detail: "No rip-and-replace", icon: "Workflow" },
+  { title: "No prepayment", detail: "No hidden fees", icon: "Wallet" },
+  { title: "Dedicated team", detail: "Named account owner", icon: "Headphones" },
+  { title: "Clear reporting", detail: "Monthly, payer-level", icon: "LineChart" },
 ];
 
 export const kpis = [
-  { value: "99.9%", label: "Claim acceptance rate", detail: "Clean claims built carefully, looking for errors before submission." },
-  { value: "24 hrs", label: "Claim filing window", detail: "All claims filed within 24 hours of charge entry." },
-  { value: "10%", label: "Revenue uplift", detail: "We routinely boost client revenue by at least 10%." },
-  { value: "20%", label: "Higher reimbursements", detail: "Hospitals and systems we support raise reimbursement by 20%+." },
-  { value: "5 days", label: "Go-live process", detail: "A fast, easy onboarding with no prepayment required." },
-  { value: "25 yrs", label: "Combined experience", detail: "Certified billers and coders across every major specialty." },
+  { value: "Every claim", label: "Reviewed before submission", detail: "Payer-edit checks, coding review and a documented handoff before a claim leaves the team." },
+  { value: "Daily", label: "Worklist discipline", detail: "Claims, denials and aged balances are assigned on a consistent operating cadence." },
+  { value: "Monthly", label: "Performance reporting", detail: "Collections, denial trends, days in A/R and charge lag explained with a follow-up plan." },
+  { value: "Payer-level", label: "Revenue visibility", detail: "Reporting that shows where money is moving, where it is stuck and what happens next." },
+  { value: "Dedicated", label: "Account team", detail: "A named owner for questions, escalation and the monthly performance review." },
+  { value: "25 yrs", label: "Combined experience", detail: "Certified billers and coders across major specialties and practice settings." },
 ];
 
 export type Service = {
@@ -157,6 +162,39 @@ export type Service = {
   faqs: { q: string; a: string }[];
 };
 
+export const serviceGroups = [
+  {
+    title: "Revenue cycle",
+    description: "The day-to-day work of turning encounters into paid claims: billing, coding, submission, posting, denials and patient balances.",
+    slugs: [
+      "medical-billing-and-coding",
+      "complete-rcm-services",
+      "claims-management",
+      "payment-posting",
+      "accounts-receivable-management",
+      "denial-management",
+      "complete-patient-billing",
+      "clean-up-billing",
+    ],
+  },
+  {
+    title: "Access & enrollment",
+    description: "The front-end controls that determine whether a claim can be paid cleanly: eligibility, authorization, credentialing, contracting and electronic connectivity.",
+    slugs: [
+      "eligibility-and-benefits-verification",
+      "prior-and-retro-authorization",
+      "credentialing-and-contracting",
+      "contracting-and-enrollment",
+      "eft-era-edi-support",
+    ],
+  },
+  {
+    title: "Performance & specialist support",
+    description: "Specialist work for the problems that sit across the revenue cycle: reporting, out-of-network negotiation and clinical documentation review.",
+    slugs: ["revenue-performance-reporting", "out-of-network-negotiation", "chart-auditing-and-drg-review"],
+  },
+] as const;
+
 export const services: Service[] = [
   {
     slug: "medical-billing-and-coding",
@@ -166,18 +204,18 @@ export const services: Service[] = [
     icon: "ReceiptText",
     image: "/images/photos/documents-team.jpg",
     intro:
-      "The single most important element to guarantee reimbursements is proper medical billing and coding. Even the smallest mistake can delay payment. Our dedicated team of billers and coders makes sure patients and payers reimburse your facility for the services you deliver.",
-    bullets: ["Certified billers and coders", "CPT, ICD-10-CM and E/M coding", "Claims filed within 24 hours", "Denials and appeals handled"],
+      "The single most important element in protecting reimbursements is proper medical billing and coding. Even the smallest mistake can delay payment. Our dedicated team of billers and coders makes sure patients and payers reimburse your facility for the services you deliver.",
+    bullets: ["Certified billers and coders", "CPT, ICD-10-CM and E/M coding", "Daily claim worklists and submission checks", "Denials and appeals handled"],
     metrics: [
-      { value: "99.9%", label: "Claim acceptance" },
-      { value: "24 hrs", label: "Claim filing" },
+      { value: "Every claim", label: "Reviewed before submission" },
+      { value: "Daily", label: "Claim worklist" },
       { value: "25 yrs", label: "Combined experience" },
     ],
     highlights: [
       {
         title: "Choose us to keep your billing on track",
         detail:
-          "We provide cutting-edge medical billing and coding services to medical offices and facilities of all sizes. We routinely boost client revenue by at least 10% while making the billing process efficient, compliant and stress-free.",
+          "We provide medical billing and coding services to medical offices and facilities of all sizes. Our focus is an efficient, compliant billing process with clear ownership at every step — from charge entry to final payment.",
       },
       {
         title: "Certified coding across specialties",
@@ -195,16 +233,16 @@ export const services: Service[] = [
       "ICD-10-CM, CPT and E/M level coding",
       "Charge entry and demographics accuracy",
       "Claim scrubbing before submission",
-      "Claims filed within 24 hours",
+      "Claims submitted on a consistent daily worklist",
       "Denial management and appeals",
       "Accounts receivable follow-up",
-      "Real-time reporting",
+      "Reporting on a consistent schedule",
       "HIPAA-compliant data handling",
       "Specialty-specific coding support",
     ],
     faqs: [
       { q: "What certifications do your coders hold?", a: "Our team includes Certified Professional Coders (CPC) and Certified Inpatient Coders (CIC), with coding experience across specialty clinics, emergency rooms, urgent cares, hospitals and healthcare systems." },
-      { q: "How quickly are claims filed?", a: "Claims for practices are filed within 24 hours. Our claim acceptance rate is 99.9%." },
+      { q: "How quickly are claims filed?", a: "Claims are worked from a daily submission queue against payer filing requirements. We review coding and payer edits before submission and escalate anything that risks a timely-filing limit." },
       { q: "Do you work in my billing software?", a: "Yes. We work in Collaborated, Medisoft, Medical Manager, DocuTap-Experity, eClinicalWorks, NextGen, AdvancedMD, Kareo, GoRev, Elligence and other major platforms." },
     ],
   },
@@ -269,9 +307,9 @@ export const services: Service[] = [
       "Knight Medical Billing offers complete revenue cycle management, from the moment your patient walks in the door until payment for your services is received. We can manage and educate your staff on compliance, streamline workflow and maximize productivity.",
     bullets: ["Staff training in scheduling and registration", "Clean claim construction", "Patient statements and calls", "Reporting that tells the truth"],
     metrics: [
-      { value: "99.9%", label: "Claim acceptance" },
-      { value: "24 hrs", label: "Claim filing" },
-      { value: "24/5", label: "Support coverage" },
+      { value: "Every claim", label: "Reviewed before submission" },
+      { value: "Daily", label: "Claim worklist" },
+      { value: "Direct", label: "Team access" },
     ],
     highlights: [
       {
@@ -287,7 +325,7 @@ export const services: Service[] = [
       {
         title: "Process discipline that raises revenue",
         detail:
-          "Our RCM approach pairs accurate eligibility verification and authorization with coding accuracy and clean claim construction. That is how we hold a 99.9% claim acceptance rate and help clients lift revenue by at least 10%.",
+          "Our RCM approach pairs accurate eligibility verification and authorization with coding accuracy and clean claim construction. We track acceptance, denials and A/R so the team can correct root causes instead of repeatedly reworking the same claims.",
       },
     ],
     included: [
@@ -296,7 +334,7 @@ export const services: Service[] = [
       "Copay and deductible collection support",
       "Charting best-practice coaching",
       "Coding and clean claim construction",
-      "Claim submission within 24 hours",
+      "Claim submission on a consistent daily worklist",
       "Denial management and appeals",
       "Patient statements and phone support",
       "Refunds and credit balance handling",
@@ -305,7 +343,7 @@ export const services: Service[] = [
     faqs: [
       { q: "What does complete RCM include?", a: "Scheduling and registration support, eligibility and authorization, coding, clean claim construction, submission, payment posting, denials, appeals, patient statements, refunds and reporting." },
       { q: "Will you train our front office?", a: "Yes. We train on scheduling, registration, eligibility, copay and deductible collection and charting practices as part of the engagement." },
-      { q: "How do we track performance?", a: "You receive accessible, real-time data on your revenue cycle so you always know what is happening and where changes can be made." },
+      { q: "How do we track performance?", a: "You receive accessible reporting on your revenue cycle so you can see what is happening and where changes can be made." },
     ],
   },
   {
@@ -387,7 +425,7 @@ export const services: Service[] = [
       {
         title: "Pre-payment and post-payment",
         detail:
-          "We handle settlement offers received before reimbursement, and we re-open claims that were priced by a vendor after payment. Over 10 years of pre- and post-payment negotiation built our proprietary OON database that flags underpaid claims.",
+          "We handle settlement offers received before reimbursement, and we re-open claims that were priced by a vendor after payment. Our pre- and post-payment negotiation experience built the OON database we use to flag potentially underpaid claims.",
       },
     ],
     included: [
@@ -717,9 +755,9 @@ export const services: Service[] = [
     image: "/images/photos/team-tablet.jpg",
     intro:
       "A claim only earns money if it is clean at submission and followed until the payer pays. We manage the full claim lifecycle in your existing software — from charge entry and scrubbing to submission, payer acknowledgement and final adjudication.",
-    bullets: ["Pre-submission claim scrubbing", "24-hour filing standard", "Payer acknowledgement monitoring", "Claim-level status tracking"],
+    bullets: ["Pre-submission claim scrubbing", "Daily submission worklist", "Payer acknowledgement monitoring", "Claim-level status tracking"],
     metrics: [
-      { value: "24 hrs", label: "Filing turnaround" },
+      { value: "Daily", label: "Filing worklist" },
       { value: "Claim-level", label: "Status visibility" },
       { value: "Clean-first", label: "Submission standard" },
     ],
@@ -754,7 +792,7 @@ export const services: Service[] = [
     ],
     faqs: [
       { q: "Do you use our clearinghouse?", a: "Yes. We work with your existing clearinghouse wherever possible, or help configure one if yours cannot support the automation needed." },
-      { q: "How fast are claims filed?", a: "Our standard is filing within 24 hours of charge entry, so there is room to correct errors before filing deadlines are at risk." },
+      { q: "How fast are claims filed?", a: "Claims are worked from a daily queue with payer filing deadlines in view. We build in time to correct errors before a timely-filing limit is at risk." },
       { q: "Can you take over a claim backlog?", a: "Yes. We review open claims, prioritise by collectability and timely-filing risk, then work the backlog while keeping new claims current." },
     ],
   },
@@ -963,6 +1001,7 @@ export const services: Service[] = [
 export type Audience = {
   slug: string;
   name: string;
+  segment: "practices" | "facilities";
   eyebrow: string;
   title: string;
   short: string;
@@ -977,6 +1016,7 @@ export type Audience = {
 export const audiences: Audience[] = [
   {
     slug: "healthcare-systems",
+    segment: "facilities",
     name: "Healthcare Systems",
     eyebrow: "Multi-facility support",
     title: "Billing support built for healthcare systems",
@@ -994,10 +1034,11 @@ export const audiences: Audience[] = [
       "Dedicated account manager",
     ],
     services: ["Complete RCM Services", "Accounts Receivable Management", "Credentialing & Contracting", "Out-of-Network Negotiation"],
-    stat: { value: "20%+", label: "Higher reimbursements" },
+    stat: { value: "Payer-level", label: "Revenue reporting" },
   },
   {
     slug: "hospitals",
+    segment: "facilities",
     name: "Hospitals",
     eyebrow: "Hospital billing services",
     title: "Hassle-free hospital billing, fewer costly errors",
@@ -1015,10 +1056,11 @@ export const audiences: Audience[] = [
       "Provider credentialing and OON negotiation",
     ],
     services: ["Medical Billing & Coding", "Accounts Receivable Management", "Complete RCM Services", "Chart Auditing & DRG Review"],
-    stat: { value: "99.9%", label: "Claim acceptance rate" },
+    stat: { value: "Daily", label: "Claim worklist" },
   },
   {
     slug: "emergency-rooms",
+    segment: "facilities",
     name: "Emergency Rooms",
     eyebrow: "ER & free-standing ER billing",
     title: "High-volume ER billing without the revenue leaks",
@@ -1026,20 +1068,21 @@ export const audiences: Audience[] = [
     icon: "Siren",
     image: "/images/photos/corridor-bright.jpg",
     intro:
-      "Emergency billing moves fast and out-of-network exposure is high. We keep claims clean, file within 24 hours and negotiate aggressively with out-of-network pricing vendors on your behalf.",
+      "Emergency billing moves fast and out-of-network exposure is high. We review claims before submission, work denials and negotiate with out-of-network pricing vendors on your behalf.",
     points: [
       "Emergency department and free-standing ER billing",
       "Eligibility and benefits verification",
       "Coding accuracy for high-acuity visits",
       "Denial management and appeals",
       "Out-of-network negotiation and settlement",
-      "24/5 multilingual patient support",
+      "Patient support during business hours",
     ],
     services: ["Medical Billing & Coding", "Out-of-Network Negotiation", "Accounts Receivable Management", "Eligibility & Benefits Verification"],
-    stat: { value: "24 hrs", label: "Claim filing" },
+    stat: { value: "Monthly", label: "Performance review" },
   },
   {
     slug: "urgent-cares",
+    segment: "facilities",
     name: "Urgent Cares",
     eyebrow: "Urgent care billing",
     title: "Urgent care billing that keeps up with your volume",
@@ -1047,20 +1090,21 @@ export const audiences: Audience[] = [
     icon: "Activity",
     image: "/images/photos/doctors-discussing.jpg",
     intro:
-      "Urgent care runs on volume and speed. Our team works in your software, files claims within 24 hours and follows up on every unpaid balance so front-desk momentum becomes revenue.",
+      "Urgent care runs on volume and speed. Our team works in your software, maintains a daily claim and denial worklist and follows up on unpaid balances so front-desk momentum becomes revenue.",
     points: [
       "Charge entry and demographics accuracy",
       "Insurance eligibility verification",
       "Copay and deductible collection support",
       "Coding for E/M and procedure visits",
       "Denial follow-up and appeals",
-      "Real-time reporting",
+      "Reporting on a consistent schedule",
     ],
     services: ["Medical Billing & Coding", "Eligibility & Benefits Verification", "Complete Patient Billing", "Complete RCM Services"],
-    stat: { value: "24/5", label: "Support coverage" },
+    stat: { value: "Direct", label: "Team access" },
   },
   {
     slug: "private-practices",
+    segment: "practices",
     name: "Private Practices",
     eyebrow: "Independent practice support",
     title: "An extension of your staff for private practices",
@@ -1068,17 +1112,17 @@ export const audiences: Audience[] = [
     icon: "Stethoscope",
     image: "/images/photos/doctor-doorway.jpg",
     intro:
-      "Private practices often see revenue decline from limited RCM knowledge and documentation errors. We supplement your business practices, train your team and keep claims clean and filed on time.",
+      "Independent, growing and multi-provider practices often see revenue pressure from limited RCM bandwidth and documentation errors. We supplement your team, share practical feedback and keep claims moving on a consistent schedule.",
     points: [
       "Documentation training and feedback",
       "Code and compliance updates",
-      "Claims filed within 24 hours",
+      "Claims submitted on a consistent daily worklist",
       "Denial correction and resubmission",
       "Patient statements and patient calls",
       "Eligibility and benefits verification",
     ],
     services: ["Medical Billing & Coding", "Accounts Receivable Management", "Credentialing & Contracting", "Complete Patient Billing"],
-    stat: { value: "99.9%", label: "Claim acceptance" },
+    stat: { value: "Dedicated", label: "Account team" },
   },
 ];
 
@@ -1138,12 +1182,12 @@ export const specialtyGroups = ["All", "Primary care", "Specialty medicine", "Su
 export const benefits = [
   { title: "More focus on patient care", detail: "Your clinicians stay with patients while billing runs in the background.", icon: "HeartHandshake" },
   { title: "Reduced administrative duties", detail: "Charge entry, follow-up, statements and payer calls move off your desk.", icon: "ClipboardCheck" },
-  { title: "Enhanced cash flow", detail: "Clean claims filed within 24 hours and follow-up on every open balance.", icon: "TrendingUp" },
+  { title: "Enhanced cash flow", detail: "Clean-claim review and disciplined follow-up on open balances.", icon: "TrendingUp" },
   { title: "Reduced billing errors", detail: "Certified coders and error checks before submission protect reimbursements.", icon: "ShieldCheck" },
   { title: "Improved patient satisfaction", detail: "Accurate eligibility means fewer overcharges, refunds and frustrated patients.", icon: "Smile" },
   { title: "Secured patient data", detail: "HIPAA-compliant processes, secure data flow and confidentiality built in.", icon: "Lock" },
   { title: "Billing compliance", detail: "Coding follows payer rules and current regulations, with audits to prove it.", icon: "Gavel" },
-  { title: "Faster claim processing", detail: "Claims filed within 24 hours with a 99.9% acceptance rate.", icon: "Zap" },
+  { title: "Faster claim processing", detail: "A daily submission worklist with payer-edit checks before claims leave the team.", icon: "Zap" },
 ];
 
 export const coreValues = [
@@ -1158,7 +1202,7 @@ export const processSteps = [
   {
     step: "01",
     title: "Free consultation",
-    duration: "Day 1",
+    duration: "First step",
     detail:
       "We interview you about what you are looking for in a medical billing company, review your current setup, payers and software, and confirm where revenue is leaking.",
     points: ["Discovery call and practice review", "Software and workflow check", "No prepayment required", "Scope and team assigned"],
@@ -1166,7 +1210,7 @@ export const processSteps = [
   {
     step: "02",
     title: "Team built around you",
-    duration: "Days 2–3",
+    duration: "Scope + access",
     detail:
       "We build a billing and coding team dedicated to your facility, aligned to your specialty, your payers and the software you already use — no new system to learn.",
     points: ["Dedicated billers and coders", "Software access and setup", "Payer and credentialing review", "Documentation standards agreed"],
@@ -1174,7 +1218,7 @@ export const processSteps = [
   {
     step: "03",
     title: "Clean-up and stabilization",
-    duration: "Days 4–5",
+    duration: "Stabilize",
     detail:
       "We audit and stabilize the revenue cycle, work the outstanding A/R, correct the root causes we find and rebuild the claim workflow.",
     points: ["Revenue cycle audit", "A/R follow-up and recovery", "Denial correction and appeals", "Process fixes documented"],
@@ -1184,8 +1228,8 @@ export const processSteps = [
     title: "Ongoing RCM and reporting",
     duration: "Ongoing",
     detail:
-      "Claims filed within 24 hours, denials worked, patients supported and reports delivered in real time — with your dedicated account manager available 24/5.",
-    points: ["Claims filed within 24 hours", "Denial management and appeals", "Patient statements and calls", "Real-time reporting and reviews"],
+      "Claims reviewed and submitted on a daily worklist, denials worked, patients supported and reporting delivered on a consistent schedule — with a dedicated account manager as your point of contact.",
+    points: ["Daily claim submission worklist", "Denial management and appeals", "Patient statements and calls", "Monthly and on-request reporting"],
   },
 ];
 
@@ -1237,7 +1281,7 @@ export const articles: Article[] = [
       { heading: "Verify eligibility before the visit", paragraphs: ["Confirm coverage, member ID, group ID, coverage dates, copay, deductible and coinsurance before the patient is seen. Eligibility and benefits verification is the first and most critical step in the billing process."] },
       { heading: "Confirm authorization and referral requirements", paragraphs: ["Match the authorization to the scheduled service and to the CPT codes billed. Flag any variance before charge entry rather than discovering it in a denial."] },
       { heading: "Check diagnosis support and modifiers", paragraphs: ["Load payer-specific medical-necessity policies for your highest-volume codes, and review bundling and modifier use against the actual documentation."] },
-      { heading: "Watch the clock", paragraphs: ["Timely filing is unforgiving. Every claim should be filed within 24 hours of charge entry so there is room to correct and resubmit without risking the filing limit."] },
+      { heading: "Watch the clock", paragraphs: ["Timely filing is unforgiving. Claims should move through a daily submission queue with enough time to correct and resubmit before the filing limit is at risk."] },
       { heading: "Measure what you catch", paragraphs: ["Track how many errors each check catches each week. If a check stops catching anything, something upstream changed — your checks are the early warning system for the whole revenue cycle."] },
     ],
   },
@@ -1331,9 +1375,9 @@ export const articles: Article[] = [
 ];
 
 export const faqs = [
-  { q: "What makes Knight Medical Billing different from other billing companies?", a: "Two qualities our clients cite most: accessibility and knowledge. Every client gets a dedicated, highly knowledgeable team member who answers questions promptly — you are never just another number. Our claim acceptance rate is 99.9% and claims are filed within 24 hours." },
+  { q: "What makes Knight Medical Billing different from other billing companies?", a: "The combination of direct access and billing knowledge: every client gets a dedicated team member who knows the account, answers questions during business hours and can explain what is happening in the revenue cycle. We use clean-claim review, daily worklists and transparent reporting rather than vague promises." },
   { q: "Do you require prepayment or setup fees?", a: "No. Our process starts with no prepayment and no hidden fees. We begin with a consultation, confirm scope, and build a dedicated team around your facility." },
-  { q: "How fast can we get started?", a: "Our onboarding is a fast, easy 5-day process: consultation, team assignment, clean-up and stabilization, then ongoing RCM. Support is available 24/5 in multiple languages." },
+  { q: "How fast can we get started?", a: "Onboarding is a structured process: consultation, scope and access, team assignment, account clean-up and stabilization, then ongoing RCM. Timing depends on your software access, payer mix and the state of the existing A/R; we agree on a plan before work begins." },
   { q: "Which facilities do you serve?", a: "Hospitals, healthcare systems, emergency rooms, free-standing emergency rooms, urgent cares, private practices and clinics across the United States." },
   { q: "Which specialties do you bill for?", a: "Cardiology, anesthesia, pediatrics, internal medicine, radiology, neurology, chiropractic, orthopedic, physical therapy, pathology, dermatology, oncology, gastroenterology, nephrology, mental health, podiatry, urology, family practice, Ob/Gyn, occupational therapy, ophthalmology, pain management, home health, hospitalists, emergency rooms, urgent care and more." },
   { q: "What billing software do you work in?", a: "We work in CollaborateMD, Medisoft, Medical Manager, DocuTap/Experity, eClinicalWorks, NextGen, AdvancedMD, Kareo, GoRev, Elligence and other major platforms — we adapt to your system rather than asking you to change." },
@@ -1341,7 +1385,7 @@ export const faqs = [
   { q: "Is my patient data secure?", a: "Yes. We follow HIPAA requirements with complete data and document security, strict quality control and information security policies, and secure data flow between Knight Medical Billing and our partners." },
   { q: "What happens if a claim is denied?", a: "Our accounts receivable team determines the reason, corrects the cause and resubmits within the timely filing limit. If information was missing, we close the gap immediately and track the denial trend to prevent repetition." },
   { q: "Can you train our existing staff?", a: "Yes. We train staff on scheduling and registration, insurance eligibility checks, copayment and deductible collection and better charting practices, and we can educate your team on compliance and workflow." },
-  { q: "How will I know what is happening with my revenue cycle?", a: "You receive real-time reporting on your revenue cycle along with a dedicated account manager. We keep you informed on performance and the changes that can improve it." },
+  { q: "How will I know what is happening with my revenue cycle?", a: "You receive consistent performance reporting along with a dedicated account manager. We keep you informed on what changed, what is stuck and what can improve." },
   { q: "How do I contact Knight Medical Billing?", a: "Call (812) 994-0046 or email admin@knightmedicalbilling.com. Our office is at 585 Grove St Ste 145, Herndon, VA 20170-4790, and we are open Monday to Friday, 8:00 AM to 5:00 PM ET." },
 ];
 
@@ -1357,10 +1401,10 @@ export const leadership = [
 ];
 
 export const stats = [
-  { value: "99.9%", label: "Claim acceptance rate" },
-  { value: "24 hrs", label: "Claim filing window" },
+  { value: "Every claim", label: "Reviewed before submission" },
+  { value: "Daily", label: "Claim worklist" },
   { value: "25 yrs", label: "Combined experience" },
-  { value: "24/5", label: "Support availability" },
+  { value: "Business hours", label: "Direct team access" },
 ];
 
 export const collectionBands = ["Under $25k", "$25k – $50k", "$50k – $100k", "$100k – $250k", "$250k – $500k", "$500k+"];

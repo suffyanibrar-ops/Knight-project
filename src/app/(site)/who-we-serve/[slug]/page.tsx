@@ -54,6 +54,8 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
         badges={audience.points.slice(0, 3)}
         crumbs={[{ label: "Who we serve", href: "/who-we-serve" }, { label: audience.name }]}
         stat={audience.stat}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
+        secondaryCta={{ label: "See how we work", href: "/our-process" }}
       />
 
       <section className="bg-surface py-14 sm:py-20">
@@ -80,6 +82,21 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
               ))}
             </div>
 
+            {audience.slug === "private-practices" && (
+              <Reveal className="mt-6">
+                <div className="rounded-2xl border border-brand-200 bg-brand-50/50 p-5">
+                  <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-700">Right-sized for your stage</p>
+                  <p className="mt-2 text-[0.9rem] font-extrabold text-ink-950">New, growing, established or multi-provider — the starting point is different.</p>
+                  <p className="mt-1.5 text-[0.82rem] leading-relaxed text-ink-600/80">You can begin with clean-up, A/R or credentialing support instead of a full revenue-cycle handover. We scope the work around your current team and software.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {["New practice", "Growing practice", "Established practice", "Multi-provider group"].map((item) => (
+                      <span key={item} className="rounded-full border border-brand-200 bg-surface px-2.5 py-1 text-[0.68rem] font-bold text-brand-800">{item}</span>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+            )}
+
             <Reveal className="mt-9">
               <h2 className="text-[clamp(1.4rem,2.8vw,1.85rem)] font-extrabold tracking-[-0.03em] text-ink-950">Recommended services</h2>
               <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
@@ -98,13 +115,13 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
             </Reveal>
 
             <Reveal className="mt-9">
-              <h2 className="text-[clamp(1.4rem,2.8vw,1.85rem)] font-extrabold tracking-[-0.03em] text-ink-950">Why facilities choose Knight</h2>
+              <h2 className="text-[clamp(1.4rem,2.8vw,1.85rem)] font-extrabold tracking-[-0.03em] text-ink-950">Why organizations choose Knight</h2>
               <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                 {[
                   "A dedicated billing and coding team assigned to your facility",
-                  "Claims filed within 24 hours with a 99.9% acceptance rate",
+                  "Claims reviewed before submission and worked from a daily queue",
                   "HIPAA-compliant data and document security",
-                  "Real-time reporting and transparent communication",
+                  "Consistent reporting and transparent communication",
                   "Works inside your existing billing software",
                   "No prepayment and no hidden fees",
                 ].map((item) => (
@@ -115,7 +132,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
                 ))}
               </div>
               <div className="mt-5">
-                <ArrowLink href="/our-process">See the 5-day onboarding process</ArrowLink>
+                <ArrowLink href="/our-process">See the onboarding process</ArrowLink>
               </div>
             </Reveal>
           </div>
@@ -135,7 +152,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
                 </div>
                 <div className="p-5">
                   <ul className="space-y-2.5">
-                    {["Dedicated account manager", "24/5 multilingual support", "Certified coders", "Real-time reporting"].map((item) => (
+                    {["Dedicated account manager", "Business-hours support", "Certified coders", "Consistent performance reporting"].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-[0.8rem] font-semibold text-ink-800">
                         <Check className="h-3.5 w-3.5 shrink-0 text-mint-600" strokeWidth={3} />
                         {item}
@@ -143,7 +160,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
                     ))}
                   </ul>
                   <Link href="/schedule-form" className="btn btn-primary mt-5 w-full">
-                    Schedule a consultation <ArrowRight className="h-4 w-4" />
+                    Talk With Knight <ArrowRight className="h-4 w-4" />
                   </Link>
                   <a href={site.phoneHref} className="btn btn-light mt-2 w-full">
                     <Phone className="h-4 w-4" /> {site.phone}
@@ -174,7 +191,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
 
       <NextSteps />
 
-      <CtaBand title={`Let's get your ${audience.short.toLowerCase()} billing under control.`} description="We will review your current workflow, claim acceptance and outstanding A/R, then show you how a dedicated team would take it from there." />
+      <CtaBand title={`Let's get your ${audience.short.toLowerCase()} billing under control.`} description="We will review your current workflow, claim and denial patterns and outstanding A/R, then show you how a dedicated team would take it from there." />
     </>
   );
 }

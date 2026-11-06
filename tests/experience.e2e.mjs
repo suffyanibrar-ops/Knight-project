@@ -67,7 +67,7 @@ await measureHeading.scrollIntoViewIfNeeded();
 await page.waitForTimeout(1500);
 const measureSection = page.locator("section").filter({ has: measureHeading });
 const measureText = await measureSection.innerText();
-ok("verified metrics display their final values", /99\.9%/.test(measureText) && /24 hrs/.test(measureText) && /25 yrs/.test(measureText), measureText.slice(0, 220));
+ok("process metrics display their final values", /Every claim/i.test(measureText) && /Daily/i.test(measureText) && /25 yrs/.test(measureText), measureText.slice(0, 220));
 ok("counter animation never renders NaN or empty values", !/NaN|undefined/.test(measureText));
 
 // ---------- appointment progress UI ----------
@@ -117,7 +117,7 @@ await reducedPage.locator("#revenue-leak").getByRole("tab", { name: /Submission/
 ok("reduced motion keeps the diagnostic usable", /Claims sit in a queue/i.test(await reducedPage.locator("#revenue-stage-panel").innerText()));
 await reducedPage.getByRole("heading", { name: /Custom tailored billing, measurable results/i }).scrollIntoViewIfNeeded();
 await reducedPage.waitForTimeout(200);
-ok("reduced motion shows final metric values immediately", /99\.9%/.test(await reducedPage.locator("section").filter({ has: reducedPage.getByRole("heading", { name: /Custom tailored billing, measurable results/i }) }).innerText()));
+ok("reduced motion shows final metric values immediately", /Every claim|Daily/.test(await reducedPage.locator("section").filter({ has: reducedPage.getByRole("heading", { name: /Custom tailored billing, measurable results/i }) }).innerText()));
 
 const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 await skipIntro(mobileContext);

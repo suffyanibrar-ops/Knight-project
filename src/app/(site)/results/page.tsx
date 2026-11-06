@@ -1,5 +1,5 @@
 import { pageMetadata } from "@/lib/seo";
-import { ArrowRight, BadgeCheck, BarChart3, Check, Clock, FileCheck2, TrendingUp } from "lucide-react";
+import { ArrowRight, BadgeCheck, BarChart3, Check, Clock, FileCheck2, Info, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CtaBand } from "@/components/cta-band";
@@ -10,36 +10,62 @@ import { ParallaxImage } from "@/components/motion/parallax";
 import { pageHeroVisuals } from "@/components/sections/visuals";
 import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
-import { benefits, kpis, site } from "@/lib/site";
+import { benefits, site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Results & Performance | 99.9% Claim Acceptance', description: 'See how Knight Medical Billing measures performance: 99.9% claim acceptance, claims filed within 24 hours, revenue uplift of at least 10% and 20%+ reimbursement gains.', path: '/results', keywords: ['medical billing results', 'claim acceptance rate'] });
+export const metadata: Metadata = pageMetadata({
+  title: "Results & Performance | How We Measure Billing",
+  description:
+    "See how Knight Medical Billing makes the revenue cycle visible: clean-claim review, daily submission worklists, denial follow-up, A/R aging and monthly reporting. Use the illustrative opportunity model to frame a conversation.",
+  path: "/results",
+  keywords: ["medical billing results", "revenue cycle reporting", "medical billing performance"],
+});
 
 const measures = [
-  { icon: FileCheck2, title: "Claim acceptance rate", detail: "We build a clean claim, carefully looking for any errors. Our claim acceptance rate is 99.9%.", value: "99.9%" },
-  { icon: Clock, title: "Claim filing window", detail: "All claims for practices are filed within 24 hours of charge entry.", value: "24 hrs" },
-  { icon: TrendingUp, title: "Revenue growth", detail: "We routinely boost our clients' revenue by at least 10% while making billing efficient and compliant.", value: "10%+" },
-  { icon: BarChart3, title: "Reimbursement uplift", detail: "Healthcare systems and hospitals we support can raise reimbursement by more than 20%.", value: "20%+" },
+  {
+    icon: FileCheck2,
+    title: "Claim review",
+    detail: "Coding, modifiers and payer edits are checked before a claim is submitted. The goal is fewer correctable errors leaving the team.",
+    value: "Every claim",
+  },
+  {
+    icon: Clock,
+    title: "Submission worklist",
+    detail: "Claims move through a daily queue with payer filing deadlines visible, rather than waiting for someone to have time.",
+    value: "Daily",
+  },
+  {
+    icon: TrendingUp,
+    title: "Denial ownership",
+    detail: "Denials are assigned, worked inside payer deadlines and fed back to the front end so the same reason does not keep returning.",
+    value: "Root causes",
+  },
+  {
+    icon: BarChart3,
+    title: "A/R visibility",
+    detail: "Outstanding balances are aged by payer and owner, with a next action attached — not just a total on a monthly slide.",
+    value: "Payer-level",
+  },
 ];
 
 export default function ResultsPage() {
   return (
     <>
-      <PageHero path={"/results"}
-
+      <PageHero
+        path={"/results"}
         eyebrow="Results & performance"
         title={
           <>
-            Numbers we are <span className="display-serif text-brand-600">glad to be asked about.</span>
+            Performance you can see, <span className="display-serif text-brand-600">not just numbers to trust.</span>
           </>
         }
-        description="We would rather show you how we measure performance than make promises. These are the metrics we track, report on and hold ourselves to for every client."
+        description="We would rather show you the work we measure, report and own than make outcome promises. This page explains the operating discipline behind a healthier revenue cycle — and gives you a model to frame the conversation."
         image={pageHeroVisuals.results}
         imageAlt="Photograph of a specialist reviewing revenue reports on a laptop"
-        badges={["99.9% acceptance", "24-hour filing", "Real-time reporting"]}
+        badges={["Every claim reviewed", "Daily worklists", "Monthly reporting"]}
         crumbs={[{ label: "Results" }]}
-        primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Review your billing opportunity", href: "/schedule-form" }}
         secondaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
-        stat={{ value: "99.9%", label: "Claim acceptance rate" }}
+        stat={{ value: "Monthly", label: "Performance review" }}
       />
 
       <section className="bg-surface py-14 sm:py-20">
@@ -47,20 +73,23 @@ export default function ResultsPage() {
           <Reveal className="max-w-2xl">
             <SectionLabel>What we measure</SectionLabel>
             <h2 className="mt-3 text-[clamp(1.75rem,3.6vw,2.5rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
-              Four numbers that matter <span className="display-serif text-brand-600">to every facility.</span>
+              Four things that make the work <span className="display-serif text-brand-600">visible.</span>
             </h2>
+            <p className="mt-3 text-[0.93rem] leading-relaxed text-ink-600/80">
+              These are operating measures, not a promise of a specific client outcome. They tell you whether the process is being run — and where it needs attention.
+            </p>
           </Reveal>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {measures.map((measure, index) => (
               <Reveal key={measure.title} delay={index * 0.05} className="h-full">
                 <TiltCard className="group h-full">
-                  <div className="group flex h-full gap-4 rounded-3xl border border-mist-200 bg-gradient-to-b from-white to-mist-50/60 p-5 transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg">
+                  <div className="flex h-full gap-4 rounded-3xl border border-mist-200 bg-gradient-to-b from-white to-mist-50/60 p-5 transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-500 group-hover:text-white">
                       <measure.icon className="h-5 w-5" />
                     </span>
                     <div>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-extrabold tracking-tight text-ink-950">{measure.value}</p>
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <p className="text-xl font-extrabold tracking-tight text-ink-950">{measure.value}</p>
                         <p className="text-[0.8rem] font-extrabold text-ink-800">{measure.title}</p>
                       </div>
                       <p className="mt-1.5 text-[0.82rem] leading-relaxed text-ink-600/75">{measure.detail}</p>
@@ -70,6 +99,10 @@ export default function ResultsPage() {
               </Reveal>
             ))}
           </div>
+          <p className="mt-5 flex items-start gap-2 rounded-2xl border border-mist-200 bg-mist-50 p-4 text-[0.76rem] leading-relaxed text-ink-600/75">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+            We do not publish client outcome statistics without a verified basis. Ask us during a consultation what we can measure in your specific billing system and payer mix.
+          </p>
         </div>
       </section>
 
@@ -83,14 +116,16 @@ export default function ResultsPage() {
               Every number traces back to a <span className="display-serif text-brand-300">process.</span>
             </h2>
             <p className="mt-4 text-[0.92rem] leading-relaxed text-white/60">
-              We do not chase metrics directly. We fix the steps that produce them: eligibility before the visit, clean claim construction, 24-hour filing, payment posting accuracy and persistent A/R follow-up.
+              We do not chase metrics directly. We fix the steps that produce them: eligibility before the visit, clean-claim review, disciplined submission, accurate posting and persistent A/R follow-up.
             </p>
             <div className="mt-6 space-y-2.5">
               {[
-                "Front-end denials reduced by 20% for our clients",
-                "Faster account receivable process and on-time follow-up",
-                "Improved accuracy of fees and collections",
-                "Payment posting and refunds adjusted to improve cash flow",
+                "Eligibility and authorization checked before the visit where possible",
+                "Coding and documentation reviewed before submission",
+                "Claims submitted and acknowledged from a daily worklist",
+                "Payments reconciled against contracted rates",
+                "Denials worked inside payer deadlines with root-cause feedback",
+                "A/R aged by payer and owner, with a next action",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2.5 text-[0.84rem] font-semibold text-white/80">
                   <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-mint-500/20 text-mint-300">
@@ -110,34 +145,30 @@ export default function ResultsPage() {
           <Reveal delay={0.08}>
             <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-sm sm:p-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-300">Performance snapshot</p>
+                <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-300">Monthly review</p>
                 <span className="flex items-center gap-1.5 rounded-full bg-mint-500/15 px-2.5 py-1 text-[0.6rem] font-bold text-mint-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-mint-400" /> Monthly
+                  <span className="h-1.5 w-1.5 rounded-full bg-mint-400" /> Reported consistently
                 </span>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
-                {kpis.slice(0, 4).map((kpi) => (
-                  <div key={kpi.label} className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5">
-                    <p className="text-lg font-extrabold leading-none">{kpi.value}</p>
-                    <p className="mt-1.5 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-white/45">{kpi.label}</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  "Collections and payer mix",
+                  "Claim review and submission status",
+                  "Denial reasons and appeal status",
+                  "Days in A/R and aged balances",
+                  "Charge lag and documentation issues",
+                  "What changed, why it changed and who owns the next action",
+                ].map((item, index) => (
+                  <div key={item} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-500/20 text-[0.6rem] font-extrabold text-brand-200">{String(index + 1).padStart(2, "0")}</span>
+                    <p className="text-[0.8rem] font-semibold text-white/75">{item}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-xl border border-white/10 bg-night-soft/60 p-4">
-                <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/40">Claims filed on time</p>
-                <div className="mt-3 flex h-20 items-end gap-1.5">
-                  {[72, 84, 88, 93, 96, 98, 99, 99.9].map((value, index) => (
-                    <div key={index} className="group relative flex h-full flex-1 items-end">
-                      <div style={{ height: `${value}%` }} className="w-full rounded-t-sm bg-gradient-to-t from-brand-600/60 to-brand-300 transition-all group-hover:from-mint-500 group-hover:to-mint-300" />
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 flex justify-between text-[0.58rem] font-semibold text-white/30">
-                  <span>Q1</span>
-                  <span>Now</span>
-                </div>
-              </div>
-              <p className="mt-3 text-[0.66rem] leading-relaxed text-white/35">Illustrative trend of the metric we manage to — 99.9% claim acceptance, with claims filed within 24 hours.</p>
+              <p className="mt-4 flex items-start gap-2 rounded-xl border border-white/10 bg-night-soft/60 p-3.5 text-[0.68rem] leading-relaxed text-white/45">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                This is the structure of the review. The figures come from your billing system — not from a generic benchmark.
+              </p>
             </div>
           </Reveal>
         </div>
@@ -168,8 +199,11 @@ export default function ResultsPage() {
           <Reveal delay={0.08}>
             <div className="rounded-3xl border border-mist-200 bg-mist-50 p-1">
               <div className="rounded-[1.35rem] bg-surface p-5 sm:p-6">
-                <SectionLabel>Model your potential</SectionLabel>
-                <h3 className="mt-2 text-xl font-extrabold tracking-tight text-ink-950">Estimate your revenue opportunity</h3>
+                <SectionLabel>Illustrative model</SectionLabel>
+                <h3 className="mt-2 text-xl font-extrabold tracking-tight text-ink-950">Frame the revenue opportunity</h3>
+                <p className="mt-2 text-[0.78rem] leading-relaxed text-ink-600/75">
+                  Use the sliders to explore a modelled opportunity. Actual outcomes depend on specialty, payer mix, claim volume, current processes, reimbursement and other factors.
+                </p>
                 <div className="mt-4">
                   <RoiCalculator compact />
                 </div>
@@ -179,7 +213,10 @@ export default function ResultsPage() {
         </div>
       </section>
 
-      <CtaBand title="Let's find out what your revenue cycle is missing." description="Schedule a free consultation. We will review your billing process, claim acceptance and outstanding A/R, and tell you honestly where the money is." />
+      <CtaBand
+        title="Review your billing opportunity with a real conversation."
+        description="We will review your current process, what is visible, what is not and where a dedicated Knight team could take responsibility. No prepayment, no hidden fees."
+      />
     </>
   );
 }

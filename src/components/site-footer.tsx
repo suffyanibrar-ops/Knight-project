@@ -8,6 +8,7 @@ import { ThemeToggle } from "./theme/theme-toggle";
 const companyLinks = [
   { label: "About us", href: "/about" },
   { label: "Our process", href: "/our-process" },
+  { label: "Switching billing partners", href: "/switching-medical-billing" },
   { label: "Results", href: "/results" },
   { label: "Resources", href: "/insights" },
   { label: "Blog", href: "/blog" },
@@ -166,7 +167,7 @@ export function SiteFooter() {
 
               <div className="mt-4">
                 <Link href="/schedule-form" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-[0.74rem] font-bold text-white transition-colors hover:bg-brand-500">
-                  Request a consultation <ArrowRight className="h-3 w-3" />
+                  Talk With Knight <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
 

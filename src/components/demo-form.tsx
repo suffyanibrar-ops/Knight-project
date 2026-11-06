@@ -149,7 +149,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
     <form onSubmit={onSubmit} className="relative overflow-hidden rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft sm:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">Free consultation</p>
+          <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">Consultation request</p>
           <p className="mt-1 text-[1.05rem] font-extrabold tracking-tight text-ink-950">Step {step + 1} of {steps.length} · {steps[step]}</p>
         </div>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-50 text-brand-700">

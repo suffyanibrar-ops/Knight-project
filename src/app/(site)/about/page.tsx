@@ -38,7 +38,7 @@ export default function AboutPage() {
         imageAlt="Photograph of the Knight Medical Billing team in a modern office"
         badges={["25 years combined experience", "Clinician-led", "Herndon, Virginia"]}
         crumbs={[{ label: "About" }]}
-        primaryCta={{ label: "Schedule a consultation", href: "/schedule-form" }}
+        primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: "Talk to our team", href: "/contact" }}
         stat={{ value: "25 yrs", label: "Combined experience" }}
       />
@@ -89,8 +89,8 @@ export default function AboutPage() {
               </div>
             </ParallaxFrame>
             <div className="animate-float absolute -right-3 top-6 rounded-2xl border border-mist-200 bg-surface p-3.5 shadow-lg">
-              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/75">Claim acceptance</p>
-              <p className="mt-1 text-xl font-extrabold text-ink-950">99.9%</p>
+              <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-ink-600/75">Clean-claim review</p>
+              <p className="mt-1 text-xl font-extrabold text-ink-950">Every claim</p>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarCheck, Check, Loader2, X } from "lucide-react";
+import { trackConversion } from "@/lib/tracking";
 
 interface Slot { startsAtUtc: number; iso: string; dateLabel: string; timeLabel: string; timezone: string; timezoneLabel: string; dateISO: string; timeISO: string }
 
@@ -44,6 +45,10 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
   ];
 
   useEffect(() => {
+    trackConversion("ai_appointment_started", { surface: "chat" });
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -80,6 +85,7 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
       const data = (await response.json()) as { ok?: boolean; appointment?: BookedAppointment; error?: string };
       if (!response.ok || !data.ok || !data.appointment) throw new Error(data.error ?? "Booking failed. Please try another time.");
       setBooked(data.appointment);
+      trackConversion("ai_appointment_confirmed", { surface: "chat" });
       onBooked(data.appointment);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Booking failed.");

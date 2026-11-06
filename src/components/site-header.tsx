@@ -70,7 +70,10 @@ export function SiteHeader() {
           <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Primary">
             {primaryNav.map((item) => {
               const hasMenu = Boolean(item.columns || item.children);
-              const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              const childLinks = [...(item.children ?? []), ...(item.columns?.flatMap((column) => column.items) ?? [])];
+              const active = pathname === item.href
+                || (item.href !== "/" && pathname.startsWith(`${item.href}/`))
+                || childLinks.some((child) => pathname === child.href || pathname.startsWith(`${child.href}/`));
               return (
                 <div
                   key={item.label}
@@ -122,7 +125,7 @@ export function SiteHeader() {
               </div>
             </div>
             <Link href="/schedule-form" className="btn btn-primary hidden lg:inline-flex whitespace-nowrap px-4 py-2.5 text-[0.84rem]">
-              Free consultation
+              Talk With Knight
               <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
             </Link>
             <button
@@ -195,10 +198,10 @@ export function SiteHeader() {
                           <div className="dot-grid absolute inset-0 opacity-30" />
                           <div className="relative">
                             <span className="text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-brand-300">No risk, no prepayment</span>
-                            <p className="mt-3 text-lg font-extrabold leading-tight tracking-tight">Request a free consultation.</p>
+                            <p className="mt-3 text-lg font-extrabold leading-tight tracking-tight">Talk with a billing partner who will own the detail.</p>
                             <p className="mt-2 text-xs leading-relaxed text-white/65">No prepayment, no hidden fees, and a dedicated team from day one.</p>
                             <span className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-brand-200">
-                              Schedule a consultation <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                              Talk With Knight <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                             </span>
                           </div>
                         </Link>
@@ -297,7 +300,7 @@ export function SiteHeader() {
               </motion.div>
               <div className="space-y-3 border-t border-mist-200 px-5 py-5">
                 <Link href="/schedule-form" className="btn btn-primary w-full">
-                  Request a consultation <ArrowRight className="h-4 w-4" />
+                  Talk With Knight <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a href={site.phoneHref} className="btn btn-light w-full">
                   <Phone className="h-4 w-4" /> {site.phone}
