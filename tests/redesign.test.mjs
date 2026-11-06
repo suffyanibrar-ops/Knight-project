@@ -12,6 +12,11 @@ for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390
   await ctx.addInitScript(() => { try { sessionStorage.setItem("kmb-intro-seen", "1"); } catch { /* ignore */ } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  // The brief intro is intentionally 1.3s now; wait for its scroll lock to clear.
+  await page.waitForFunction(() => {
+    const intro = document.querySelector("[data-site-intro]");
+    return !intro || getComputedStyle(intro).display === "none" || getComputedStyle(intro).visibility === "hidden";
+  }, undefined, { timeout: 4000 }).catch(() => {});
   await page.evaluate(() => window.scrollTo({ top: 2200, behavior: "instant" }));
   await page.waitForTimeout(500);
   const header = page.locator("header").first();

@@ -59,10 +59,18 @@ async function waitForIntroEnd(page, minMs = 0) {
   ok("revenue-flow line draws across", lineScale > 0.5, String(lineScale));
   ok("flow nodes are present", await page.locator(".site-intro__node").count() === 4);
   ok("tagline fades in", Number(await page.locator(".site-intro__tagline").evaluate((el) => getComputedStyle(el).opacity)) > 0.5);
+  await page.waitForFunction(
+    () => Number(getComputedStyle(document.querySelector(".site-intro__progress")).opacity) > 0.4,
+    undefined,
+    { timeout: 3400 },
+  ).catch(() => {});
+  ok("readiness stage appears", Number(await page.locator(".site-intro__progress").evaluate((el) => getComputedStyle(el).opacity)) > 0.4);
+  const readinessText = await page.locator(".site-intro__status").innerText();
+  ok("readiness uses a status, not a fake percentage", !/\d+\s*%/.test(readinessText), readinessText);
 
   await waitForIntroEnd(page);
   const totalIntroMs = Date.now() - domReadyAt;
-  ok("intro finishes in the target window (2.2–3.6s after DOM ready)", totalIntroMs >= 2200 && totalIntroMs <= 3600, `${totalIntroMs}ms`);
+  ok("intro finishes in the target window (2.5–3.7s after DOM ready)", totalIntroMs >= 2500 && totalIntroMs <= 3700, `${totalIntroMs}ms`);
   ok("overlay is removed from interaction", !(await page.locator("[data-site-intro]").isVisible()));
   ok("hero becomes interactive", await page.locator("[data-hero-reveal]").isVisible());
   ok("scroll lock is released", !(await page.evaluate(() => document.documentElement.classList.contains("intro-open"))));
@@ -84,7 +92,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   const returnMode = await page.evaluate(() => document.documentElement.dataset.intro);
   ok("return visit uses the brief mode", returnMode === "brief", String(returnMode));
   const returnElapsed = await waitForIntroEnd(page);
-  ok("return visit is much shorter (< 900ms)", returnElapsed >= 0 && returnElapsed < 900, `${returnElapsed}ms`);
+  ok("return visit stays in the 1–2s compact window", returnElapsed >= 950 && returnElapsed <= 2000, `${returnElapsed}ms`);
   await context.close();
 }
 

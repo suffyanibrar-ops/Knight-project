@@ -538,9 +538,10 @@ html[data-motion="reduced"] *::after {
 }
 
 /* ==========================================================================
-   SITE INTRO — premium first-visit "revenue flow"
-   Fixed, server-rendered overlay. Only transform/opacity animate. JS upgrades
-   the hand-off into the homepage flow rail; CSS alone dismisses it if JS fails.
+   SITE INTRO — a five-stage branded opening
+   Brand emergence → logo assembly → revenue-flow activity → readiness line →
+   clip-path hand-off into the hero. The server-rendered overlay keeps the site
+   hidden only while the intro is active; CSS auto-dismisses it if JS never runs.
    ========================================================================== */
 .site-intro {
   position: fixed;
@@ -554,6 +555,8 @@ html[data-motion="reduced"] *::after {
   isolation: isolate;
   opacity: 1;
   visibility: visible;
+  clip-path: circle(150% at 50% 45%);
+  will-change: clip-path, opacity;
 }
 
 .site-intro__atmosphere {
@@ -563,6 +566,20 @@ html[data-motion="reduced"] *::after {
   background:
     radial-gradient(115% 70% at 50% 38%, rgba(15, 105, 136, 0.22) 0%, rgba(4, 20, 31, 0) 62%),
     linear-gradient(180deg, #061a26 0%, #04141f 55%, #020d14 100%);
+}
+
+.site-intro__atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(124, 215, 242, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 215, 242, 0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: radial-gradient(ellipse 65% 50% at 50% 46%, #000 10%, transparent 78%);
+  mask-image: radial-gradient(ellipse 65% 50% at 50% 46%, #000 10%, transparent 78%);
+  opacity: 0;
+  animation: site-intro-grid-in 900ms ease 120ms forwards;
 }
 
 .site-intro__content {
@@ -575,20 +592,42 @@ html[data-motion="reduced"] *::after {
   text-align: center;
 }
 
+/* Stage 1 — brand emergence: blur to sharp, restrained rise and scale. */
 .site-intro__brand {
   display: flex;
   align-items: center;
   gap: 0.95rem;
   opacity: 0;
-  transform: translate3d(0, 12px, 0);
-  animation: site-intro-brand-in 620ms cubic-bezier(0.22, 1, 0.36, 1) 100ms forwards;
+  transform: translate3d(0, 12px, 0) scale(0.985);
+  filter: blur(8px);
+  animation: site-intro-brand-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 20ms forwards;
 }
 
 .site-intro__mark {
+  position: relative;
   display: grid;
   place-items: center;
   width: 64px;
   height: 64px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.site-intro__mark img {
+  clip-path: inset(0 100% 0 0);
+  filter: blur(7px);
+  transform: scale(0.94);
+  animation: site-intro-mark-assemble 720ms cubic-bezier(0.22, 1, 0.36, 1) 560ms forwards;
+}
+
+.site-intro__mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translate3d(-150%, 0, 0);
+  animation: site-intro-mark-sweep 760ms cubic-bezier(0.22, 1, 0.36, 1) 560ms forwards;
+  pointer-events: none;
 }
 
 .site-intro__wordmark {
@@ -597,6 +636,10 @@ html[data-motion="reduced"] *::after {
   align-items: flex-start;
   line-height: 1;
   text-align: left;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  transform: translate3d(-4px, 0, 0);
+  animation: site-intro-wordmark-in 640ms cubic-bezier(0.22, 1, 0.36, 1) 620ms forwards;
 }
 
 .site-intro__name {
@@ -616,13 +659,14 @@ html[data-motion="reduced"] *::after {
   color: rgba(179, 231, 248, 0.72);
 }
 
+/* Stage 3 — abstract revenue flow: a line draws, nodes settle, a quiet pulse scans. */
 .site-intro__flow {
   position: relative;
   width: clamp(17rem, 48vw, 31rem);
   height: 14px;
   margin-top: 2.5rem;
   opacity: 0;
-  animation: site-intro-flow-in 500ms ease 300ms forwards;
+  animation: site-intro-flow-in 400ms ease 1250ms forwards;
 }
 
 .site-intro__line {
@@ -640,7 +684,20 @@ html[data-motion="reduced"] *::after {
   );
   transform: scaleX(0);
   transform-origin: left center;
-  animation: site-intro-line-draw 1000ms cubic-bezier(0.22, 1, 0.36, 1) 500ms forwards;
+  animation: site-intro-line-draw 700ms cubic-bezier(0.22, 1, 0.36, 1) 1300ms forwards;
+}
+
+.site-intro__flow-scan {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 22%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(236, 252, 255, 0.78), transparent);
+  opacity: 0;
+  transform: translate3d(-120%, 0, 0);
+  animation: site-intro-scan 1050ms cubic-bezier(0.4, 0, 0.2, 1) 1450ms forwards;
+  pointer-events: none;
 }
 
 .site-intro__node {
@@ -651,15 +708,27 @@ html[data-motion="reduced"] *::after {
   border-radius: 999px;
   transform: translate3d(-50%, -50%, 0) scale(0.5);
   opacity: 0;
-  animation: site-intro-node-in 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: site-intro-node-in 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.site-intro__node::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  opacity: 0;
+  animation: site-intro-node-pulse 900ms ease 1900ms forwards;
 }
 
 .site-intro__node--brand {
+  color: #7cd7f2;
   background: #7cd7f2;
   box-shadow: 0 0 0 3px rgba(124, 215, 242, 0.07);
 }
 
 .site-intro__node--mint {
+  color: #7ee0c1;
   background: #7ee0c1;
   box-shadow: 0 0 0 3px rgba(126, 224, 193, 0.07);
 }
@@ -673,7 +742,63 @@ html[data-motion="reduced"] *::after {
   color: rgba(226, 240, 247, 0.34);
   opacity: 0;
   transform: translate3d(0, 4px, 0);
-  animation: site-intro-tagline-in 620ms cubic-bezier(0.22, 1, 0.36, 1) 650ms forwards;
+  animation: site-intro-tagline-in 560ms cubic-bezier(0.22, 1, 0.36, 1) 1700ms forwards;
+}
+
+/* Stage 4 — readiness: a hairline, not a fake percentage. */
+.site-intro__progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  width: clamp(12rem, 32vw, 20rem);
+  margin-top: 1.5rem;
+  opacity: 0;
+  transform: translate3d(0, 5px, 0);
+  animation: site-intro-progress-in 400ms cubic-bezier(0.22, 1, 0.36, 1) 1950ms forwards;
+}
+
+.site-intro__progress-track {
+  display: block;
+  width: 100%;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(235, 250, 255, 0.13);
+}
+
+.site-intro__progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(124, 215, 242, 0.75), rgba(126, 224, 193, 0.9));
+  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-intro.is-progress .site-intro__progress-fill {
+  transform: scaleX(0.62);
+}
+
+.site-intro.is-ready .site-intro__progress-fill {
+  transform: scaleX(1);
+}
+
+.site-intro.is-waiting .site-intro__progress-fill {
+  animation: site-intro-progress-wait 1100ms ease-in-out infinite;
+}
+
+.site-intro__status {
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(226, 240, 247, 0.38);
+  transition: color 240ms ease;
+}
+
+.site-intro.is-ready .site-intro__status {
+  color: rgba(179, 231, 248, 0.68);
 }
 
 .site-intro__skip {
@@ -688,7 +813,7 @@ html[data-motion="reduced"] *::after {
   color: rgba(255, 255, 255, 0.42);
   opacity: 0;
   pointer-events: none;
-  animation: site-intro-skip-in 350ms ease 1000ms forwards;
+  animation: site-intro-skip-in 350ms ease 900ms forwards;
   transition: color 200ms ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
@@ -702,26 +827,81 @@ html[data-motion="reduced"] *::after {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Stage 5 — the overlay becomes a closing aperture as the homepage is revealed. */
 .site-intro.is-leaving {
   pointer-events: none;
+  animation: site-intro-shell-out 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .site-intro.is-leaving .site-intro__atmosphere {
-  animation: site-intro-veil-out 700ms cubic-bezier(0.22, 1, 0.36, 1) 40ms forwards;
+  animation: site-intro-veil-out 760ms cubic-bezier(0.22, 1, 0.36, 1) 40ms forwards;
 }
 
-.site-intro.is-leaving .site-intro__tagline,
+.site-intro.is-leaving .site-intro__content {
+  animation: site-intro-content-out 460ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.site-intro.is-leaving .site-intro__progress,
 .site-intro.is-leaving .site-intro__skip {
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 160ms ease;
 }
 
 .site-intro[data-mode="brief"] .site-intro__skip {
   display: none;
 }
 
-.site-intro[data-mode="brief"] .site-intro__content {
-  animation: site-intro-content-out 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.site-intro[data-mode="brief"] .site-intro__brand {
+  animation-duration: 380ms;
+  animation-delay: 0ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__mark img {
+  animation-duration: 420ms;
+  animation-delay: 120ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__mark::after {
+  animation-duration: 460ms;
+  animation-delay: 120ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__wordmark {
+  animation-duration: 420ms;
+  animation-delay: 160ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__flow {
+  animation-duration: 300ms;
+  animation-delay: 320ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__line {
+  animation-duration: 500ms;
+  animation-delay: 360ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__flow-scan {
+  animation-duration: 600ms;
+  animation-delay: 500ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__node {
+  animation-delay: 500ms !important;
+}
+
+.site-intro[data-mode="brief"] .site-intro__tagline {
+  animation-duration: 420ms;
+  animation-delay: 620ms;
+}
+
+.site-intro[data-mode="brief"] .site-intro__progress {
+  animation-duration: 300ms;
+  animation-delay: 720ms;
+}
+
+.site-intro[data-mode="brief"].is-leaving {
+  animation-duration: 340ms;
 }
 
 html[data-intro="full"] .site-intro,
@@ -744,9 +924,30 @@ html.intro-open body {
   animation: site-intro-fallback 420ms ease 2600ms forwards;
 }
 
+@keyframes site-intro-grid-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes site-intro-brand-in {
-  from { opacity: 0; transform: translate3d(0, 10px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.985); filter: blur(8px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+
+@keyframes site-intro-mark-assemble {
+  from { clip-path: inset(0 100% 0 0); filter: blur(7px); transform: scale(0.94); }
+  to { clip-path: inset(0 0 0 0); filter: blur(0); transform: scale(1); }
+}
+
+@keyframes site-intro-mark-sweep {
+  0% { transform: translate3d(-150%, 0, 0); opacity: 0; }
+  25% { opacity: 0.7; }
+  100% { transform: translate3d(150%, 0, 0); opacity: 0; }
+}
+
+@keyframes site-intro-wordmark-in {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-4px, 0, 0); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
 }
 
 @keyframes site-intro-flow-in {
@@ -759,9 +960,22 @@ html.intro-open body {
   to { transform: scaleX(1); }
 }
 
+@keyframes site-intro-scan {
+  0% { opacity: 0; transform: translate3d(-120%, 0, 0); }
+  18% { opacity: 0.8; }
+  82% { opacity: 0.65; }
+  100% { opacity: 0; transform: translate3d(520%, 0, 0); }
+}
+
 @keyframes site-intro-node-in {
   from { opacity: 0; transform: translate3d(-50%, -50%, 0) scale(0.5); }
   to { opacity: 0.8; transform: translate3d(-50%, -50%, 0) scale(1); }
+}
+
+@keyframes site-intro-node-pulse {
+  0% { opacity: 0; transform: scale(0.8); }
+  30% { opacity: 0.28; }
+  100% { opacity: 0; transform: scale(1.8); }
 }
 
 @keyframes site-intro-tagline-in {
@@ -769,9 +983,25 @@ html.intro-open body {
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
+@keyframes site-intro-progress-in {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes site-intro-progress-wait {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
 @keyframes site-intro-skip-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes site-intro-shell-out {
+  0% { clip-path: circle(150% at 50% 45%); opacity: 1; }
+  58% { clip-path: circle(108% at 50% 45%); opacity: 1; }
+  100% { clip-path: circle(0% at 50% 45%); opacity: 0; }
 }
 
 @keyframes site-intro-veil-out {
