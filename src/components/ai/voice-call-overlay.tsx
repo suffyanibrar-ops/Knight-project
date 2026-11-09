@@ -143,7 +143,19 @@ export function VoiceCallOverlay(props: VoiceCallOverlayProps) {
 
               <p className="mt-7 text-[0.66rem] font-extrabold uppercase tracking-[0.22em] text-brand-200">{agentName} · Knight Medical Billing</p>
               <h1 className="mt-2 text-[clamp(2rem,6vw,3.3rem)] font-extrabold leading-[1.02] tracking-[-0.04em]">
-                {ended ? "Thanks for calling." : voiceError ? "Let’s get you connected." : voiceState === "speaking" ? "Riley is speaking." : voiceState === "thinking" ? "One moment." : muted ? "You’re muted." : "You’re connected."}
+                {ended
+                  ? "Thanks for calling."
+                  : voiceError
+                    ? "Let’s get you connected."
+                    : voiceState === "speaking"
+                      ? "Riley is speaking."
+                      : voiceState === "thinking"
+                        ? "One moment."
+                        : muted
+                          ? "You’re muted."
+                          : voiceState === "off" || voiceState === "starting"
+                            ? "Connecting you to Riley."
+                            : "You’re connected."}
               </h1>
 
               <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 backdrop-blur-sm" aria-live="polite" aria-atomic="true">
