@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
-import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, ANALYTICS_SCHEMA, BLOG_SCHEMA, CONTENT_AND_SECURITY_SCHEMA, RATE_LIMIT_SCHEMA, SCHEMA } from "./sqlite-schema";
+import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, ANALYTICS_SCHEMA, BLOG_SCHEMA, CONTENT_AND_SECURITY_SCHEMA, RATE_LIMIT_SCHEMA, SCHEMA, SEO_AUTOMATION_SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -118,7 +118,7 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
@@ -148,6 +148,8 @@ const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 9, statements: CONTENT_AND_SECURITY_SCHEMA },
   // v10: persistent rate-limit buckets for auth/reset/admin write protection.
   { version: 10, statements: RATE_LIMIT_SCHEMA },
+  // v11: SEO automation opportunities, task/audit history and settings.
+  { version: 11, statements: SEO_AUTOMATION_SCHEMA },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {

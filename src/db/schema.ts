@@ -442,6 +442,56 @@ export const adminPasswordResets = sqliteTable("admin_password_resets", {
 export type ContentWorkflowRow = typeof contentWorkflows.$inferSelect;
 export type AdminPasswordResetRow = typeof adminPasswordResets.$inferSelect;
 
+export const seoOpportunities = sqliteTable("seo_opportunities", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  topic: text("topic").notNull(),
+  primaryKeyword: text("primary_keyword"),
+  intent: text("intent"),
+  cluster: text("cluster"),
+  targetPath: text("target_path"),
+  contentType: text("content_type"),
+  evidenceJson: text("evidence_json").notNull().default("{}"),
+  score: integer("score").notNull().default(0),
+  status: text("status").notNull().default("new"),
+  workflowId: integer("workflow_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const seoAutomationRuns = sqliteTable("seo_automation_runs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  executionId: text("execution_id").notNull().unique(),
+  taskType: text("task_type").notNull(),
+  status: text("status").notNull().default("running"),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  durationMs: integer("duration_ms"),
+  error: text("error"),
+  retryCount: integer("retry_count").notNull().default(0),
+  metaJson: text("meta_json").notNull().default("{}"),
+});
+
+export const seoAuditRuns = sqliteTable("seo_audit_runs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  status: text("status").notNull().default("running"),
+  summaryJson: text("summary_json").notNull().default("{}"),
+  issuesJson: text("issues_json").notNull().default("[]"),
+  pagesChecked: integer("pages_checked").notNull().default(0),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  error: text("error"),
+});
+
+export const seoSettings = sqliteTable("seo_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export type SeoOpportunityRow = typeof seoOpportunities.$inferSelect;
+export type SeoAutomationRunRow = typeof seoAutomationRuns.$inferSelect;
+export type SeoAuditRunRow = typeof seoAuditRuns.$inferSelect;
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull().default(0),

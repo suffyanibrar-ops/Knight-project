@@ -1,6 +1,7 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { jiroSearch } from "./jiro-client";
 
 /**
  * Optional, explicitly configured research providers.
@@ -75,6 +76,17 @@ async function fetchJson(url: string, options: RequestInit, timeoutMs = 15_000):
 export async function fetchLiveSearch(query: string): Promise<LiveSearch> {
   const cleaned = query.trim().slice(0, 220);
   try {
+    const jiro = await jiroSearch(cleaned, { limit: 10 });
+    if (jiro.available) {
+      return {
+        available: true,
+        provider: "jiro",
+        query: cleaned,
+        results: jiro.results.map((result) => ({ title: result.title, url: result.url, snippet: result.snippet, position: result.position })),
+        note: jiro.note,
+        fetchedAt: jiro.fetchedAt,
+      };
+    }
     if (process.env.SERPER_API_KEY) {
       const body = await fetchJson("https://google.serper.dev/search", {
         method: "POST",

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { SeoAudit } from "@/components/admin/seo/seo-audit";
+import { SeoControlCenter } from "@/components/admin/seo/seo-control-center";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,10 @@ export default async function SeoHealthPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        title="SEO health"
-        description="Run a real technical crawl of the public site and review genuine findings: HTTP status, titles, descriptions, canonicals, indexability, headings, alt text, internal links, images and JSON-LD."
+        title="SEO Control Center"
+        description="Live research opportunities, scheduled automation, technical audits and performance readiness in one admin area."
       />
+      <SeoControlCenter />
       <SeoAudit />
     </div>
   );

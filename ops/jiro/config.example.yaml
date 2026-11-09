@@ -1,0 +1,33 @@
+server:
+  host: 127.0.0.1
+  port: 8010
+  workers: 1
+  insecure: false
+  cors: {enabled: false, origins: [], allow_credentials: false}
+scraping:
+  default_engine: duckduckgo
+  engines: [duckduckgo, bing, brave, google]
+  fallback_order: [duckduckgo, bing, brave, google]
+  timeout: 15
+  retries: 2
+  max_results: 10
+  browser_fallback: false
+  robots_txt:
+    enabled: true
+    strict_mode: true
+    user_agent: "KnightSEOBot/1.0 (+https://www.knightmedicalbilling.com)"
+cache:
+  type: sqlite
+  path: /home/knight/jiro/data/cache.db
+  ttl_seconds: 3600
+  max_size_mb: 256
+db:
+  path: /home/knight/jiro/data/jiro.db
+auth:
+  enabled: false
+logging:
+  level: info
+  file: /home/knight/jiro/logs/jiro.log
+privacy:
+  log_queries: false
+  log_payloads: false

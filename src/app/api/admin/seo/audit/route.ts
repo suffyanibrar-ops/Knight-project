@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { limitAdmin, requireAdmin } from "@/lib/api-admin";
 import { listCategoriesWithCounts, listPublicPosts, listTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/seo";
+import { recordFullAudit } from "@/lib/seo-automation";
 import { audiences, services, specialties } from "@/lib/site";
 
 /**
@@ -603,6 +604,9 @@ export async function POST(request: Request) {
     fetchErrors: issues.fetchErrors.length,
     auditBaseUrl: SITE_URL,
   };
+
+  const issueCount = Object.values(issues).reduce((total, rows) => total + rows.length, 0) + duplicateTitles.length + duplicateDescriptions.length;
+  await recordFullAudit(summary, issueCount, pages.length, { issues, duplicateTitles, duplicateDescriptions }).catch(() => {});
 
   return NextResponse.json(
     {

@@ -639,3 +639,61 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 );
 CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits (reset_at);
 `;
+
+/* -------------------------------------------------------------------------
+ * v11 — SEO automation opportunities, task history, audit history and settings.
+ * Additive only: existing blog, workflow and production content are untouched.
+ * ---------------------------------------------------------------------- */
+
+export const SEO_AUTOMATION_SCHEMA = `
+CREATE TABLE IF NOT EXISTS seo_opportunities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic TEXT NOT NULL,
+  primary_keyword TEXT,
+  intent TEXT,
+  cluster TEXT,
+  target_path TEXT,
+  content_type TEXT,
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  score INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'new',
+  workflow_id INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_seo_opportunities_status ON seo_opportunities (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_seo_opportunities_created ON seo_opportunities (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS seo_automation_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  execution_id TEXT NOT NULL UNIQUE,
+  task_type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',
+  started_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  completed_at INTEGER,
+  duration_ms INTEGER,
+  error TEXT,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  meta_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_seo_runs_task_started ON seo_automation_runs (task_type, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_seo_runs_status ON seo_automation_runs (status);
+
+CREATE TABLE IF NOT EXISTS seo_audit_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  status TEXT NOT NULL DEFAULT 'running',
+  summary_json TEXT NOT NULL DEFAULT '{}',
+  issues_json TEXT NOT NULL DEFAULT '[]',
+  pages_checked INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  completed_at INTEGER,
+  error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_seo_audits_started ON seo_audit_runs (started_at DESC);
+
+CREATE TABLE IF NOT EXISTS seo_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+`;
