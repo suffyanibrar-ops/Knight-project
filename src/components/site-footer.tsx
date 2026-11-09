@@ -41,7 +41,7 @@ const socials = [
  */
 export function SiteFooter() {
   return (
-    <footer className="relative overflow-hidden bg-night text-white">
+    <footer className="relative overflow-hidden bg-night pb-[calc(4.75rem+env(safe-area-inset-bottom))] text-white md:pb-0">
       <div aria-hidden className="pointer-events-none absolute -left-32 top-0 h-80 w-80 rounded-full bg-brand-600/15 blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-mint-600/10 blur-3xl" />
 

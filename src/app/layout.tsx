@@ -71,7 +71,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             __html: `(function(){try{
   var p=JSON.parse(localStorage.getItem("kmb-prefs")||"{}");
   var r=document.documentElement;
-  var dark=p.theme==="dark"||(!p.theme&&window.matchMedia("(prefers-color-scheme: dark)").matches);
+  var dark=p.theme==="dark";
   if(dark)r.classList.add("dark");
   r.style.colorScheme=dark?"dark":"light";
   if(p.contrast)r.dataset.contrast=p.contrast;

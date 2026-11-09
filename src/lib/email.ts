@@ -25,7 +25,7 @@ const ADMIN_APP_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "
  */
 export const BUSINESS_CONTACT = "Knight Medical Billing · 585 Grove St Ste 145, Herndon, VA 20170-4790 · (812) 994-0046 · admin@knightmedicalbilling.com";
 
-export type MailKind = "consultation" | "contact" | "subscriber" | "roi" | "test" | "appointment" | "handoff" | "ai_lead";
+export type MailKind = "consultation" | "contact" | "subscriber" | "roi" | "test" | "appointment" | "handoff" | "ai_lead" | "password_reset";
 
 export type MailPayload = {
   kind: MailKind;
@@ -36,6 +36,11 @@ export type MailPayload = {
   relatedType?: string;
   relatedId?: number;
   to?: string;
+  /**
+   * Reset links are deliberately not persisted in the outbox: only the hashed
+   * token belongs in SQLite. A reset can be re-requested if delivery fails.
+   */
+  persist?: boolean;
 };
 
 type DeliveryResult = { status: "sent" | "failed" | "queued"; provider?: string; error?: string; messageId?: string; outboxId?: number };
@@ -271,6 +276,52 @@ export function buildVisitorConfirmationEmail(
   };
 }
 
+/** Professional admin security email. Never includes the existing password. */
+export function buildPasswordResetEmail(input: { email: string; resetUrl: string; expiresMinutes: number }) {
+  const rows = [
+    { label: "Admin account", value: input.email },
+    { label: "Link expires", value: `${input.expiresMinutes} minutes from this email` },
+  ];
+  const text = [
+    "A password reset was requested for the Knight Medical Billing admin console.",
+    "",
+    "Open this single-use link to choose a new password:",
+    input.resetUrl,
+    "",
+    `This link expires in ${input.expiresMinutes} minutes and can only be used once.`,
+    "If you did not request this, no action is needed — your current password has not changed.",
+    "",
+    BUSINESS_CONTACT,
+  ].join("\n");
+  return {
+    subject: "Reset your Knight Medical Billing admin password",
+    text,
+    html: shell(
+      "Reset your admin password",
+      rows,
+      BUSINESS_CONTACT,
+      {
+        eyebrow: "Admin security",
+        intro: "A password reset was requested for the Knight Medical Billing admin console. Use the single-use button below to choose a new password. If you did not request this, no action is needed — your current password has not changed.",
+        cta: { label: "Choose a new password", href: input.resetUrl },
+      },
+    ),
+  };
+}
+
+/** Send a password-reset link without storing the link/token in the outbox. */
+export async function sendPasswordResetEmail(input: { email: string; resetUrl: string; expiresMinutes: number }) {
+  const built = buildPasswordResetEmail(input);
+  return sendOwnerNotification({
+    kind: "password_reset",
+    to: input.email,
+    subject: built.subject,
+    text: built.text,
+    html: built.html,
+    persist: false,
+  });
+}
+
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Delivery timed out")), ms))]);
 }
@@ -382,7 +433,7 @@ export async function sendOwnerNotification(payload: MailPayload): Promise<Deliv
   let outboxId: number | undefined;
   const recipient = payload.to ?? OWNER_EMAIL;
   const suppressed = isEmailSuppressed(recipient);
-  const persist = isSqliteAvailable();
+  const persist = payload.persist !== false && isSqliteAvailable();
   if (persist) try {
     const [row] = await db
       .insert(emailOutbox)

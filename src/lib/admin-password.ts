@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { getSetting, setSetting } from "./sqlite";
+import { deleteAdminPasswordResets, getSetting, setSetting } from "./sqlite";
 
 /**
  * Admin password storage.
@@ -47,6 +47,7 @@ export function saveAdminPassword(plain: string): { ok: boolean; error?: string 
   if (plain.length < 8) return { ok: false, error: "Use at least 8 characters." };
   if (plain.length > 128) return { ok: false, error: "Password is too long (128 characters maximum)." };
   const saved = setSetting(SETTING_KEY, hashPassword(plain));
+  if (saved) deleteAdminPasswordResets();
   return saved ? { ok: true } : { ok: false, error: "Could not save the new password — the local database is unavailable." };
 }
 

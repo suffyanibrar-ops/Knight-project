@@ -534,7 +534,7 @@ export default async function HomePage() {
             </h2>
             <div className="mt-5 space-y-3.5 text-[0.92rem] leading-relaxed text-ink-600/85">
               <p>
-                Lawrence Fianko, CEO and founder of Knight Medical Billing, is a visionary leader driven by a commitment to improving healthcare. With a background as a mental health and addiction therapist, he brings over five years of clinical experience and a deep understanding of the challenges providers face.
+                Dr. Fianko, CEO and founder of Knight Medical Billing, is a visionary leader driven by a commitment to improving healthcare. With a background as a mental health and addiction therapist, he brings over five years of clinical experience and a deep understanding of the challenges providers face.
               </p>
               <p>
                 As the founder of Limelight Recovery, he experienced firsthand the financial burdens and administrative complexity that hinder quality care — which led him to revolutionize revenue cycle management.
@@ -554,10 +554,10 @@ export default async function HomePage() {
           <Reveal delay={0.1} className="relative">
             <div className="relative overflow-hidden rounded-3xl border border-mist-200 bg-surface p-3 shadow-[0_36px_70px_-45px_rgba(4,20,31,0.5)]">
               <div className="relative aspect-[4/4.4] overflow-hidden rounded-2xl">
-                <Image src="/images/ceo-lawrence-fianko.jpg" alt="Lawrence Fianko, CEO and Founder of Knight Medical Billing" fill className="object-cover object-top" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                <Image src="/images/ceo-dr-fianko.jpg" alt="Dr. Fianko, CEO and Founder of Knight Medical Billing" fill className="object-cover object-top" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950/70 via-transparent to-transparent" />
                 <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/25 bg-white/15 p-3 backdrop-blur-md">
-                  <p className="text-[0.95rem] font-extrabold text-white">Lawrence Fianko</p>
+                  <p className="text-[0.95rem] font-extrabold text-white">Dr. Fianko</p>
                   <p className="text-[0.68rem] font-semibold text-white/70">CEO & Founder, Knight Medical Billing</p>
                 </div>
               </div>

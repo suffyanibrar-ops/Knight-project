@@ -18,14 +18,35 @@ export function SiteHeader() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [mobileSection, setMobileSection] = useState<string | null>("Services");
+  // No submenu is expanded on open. The previous "Services" default hid every
+  // other primary item and made the drawer look broken.
+  const [mobileSection, setMobileSection] = useState<string | null>(null);
+
+  const closeMobile = () => {
+    setMobileOpen(false);
+    setMobileSection(null);
+    setOpenMenu(null);
+  };
 
   // Menus close on navigation via the link handlers below; this effect keeps
-  // them closed if the route changes from anywhere else (e.g. browser back).
+  // them closed if the route changes from anywhere else (e.g. browser back,
+  // forward, or a programmatic redirect).
+  useEffect(() => {
+    // Defer one tick so the route change commits before we collapse the drawer;
+    // this also avoids a cascading synchronous state update during hydration.
+    const timer = window.setTimeout(() => {
+      setOpenMenu(null);
+      setMobileOpen(false);
+      setMobileSection(null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
+
   useEffect(() => {
     const close = () => {
       setOpenMenu(null);
       setMobileOpen(false);
+      setMobileSection(null);
     };
     window.addEventListener("popstate", close);
     return () => window.removeEventListener("popstate", close);
@@ -43,6 +64,7 @@ export function SiteHeader() {
       if (event.key === "Escape") {
         setOpenMenu(null);
         setMobileOpen(false);
+        setMobileSection(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -55,6 +77,16 @@ export function SiteHeader() {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  // A resize out of the mobile breakpoint must not leave the drawer and body
+  // scroll lock active behind a desktop layout.
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 1280) closeMobile();
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -130,10 +162,11 @@ export function SiteHeader() {
             </Link>
             <button
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => { setMobileSection(null); setMobileOpen(true); }}
               className="grid h-11 w-11 place-items-center rounded-full border border-mist-200 text-ink-900 lg:hidden"
               aria-label="Open menu"
               aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
             >
               <Menu className="h-5 w-5" strokeWidth={2.2} />
             </button>
@@ -215,28 +248,27 @@ export function SiteHeader() {
       </div>
 
       <Portal>
-      <AnimatePresence>
-        {mobileOpen && (
+      {mobileOpen && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
               className="fixed inset-0 z-40 bg-night/50 backdrop-blur-sm xl:hidden"
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMobile}
             />
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              transition={{ type: "spring", stiffness: 420, damping: 36 }}
+              id="mobile-navigation"
               className="fixed inset-y-0 right-0 z-50 flex w-[min(92vw,26rem)] flex-col bg-surface xl:hidden"
             >
               <div className="flex items-center justify-between border-b border-mist-200 px-5 py-4">
                 <Logo markSize={36} />
                 <button
                   type="button"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeMobile}
                   className="grid h-10 w-10 place-items-center rounded-full border border-mist-200 text-ink-900"
                   aria-label="Close menu"
                 >
@@ -260,7 +292,7 @@ export function SiteHeader() {
                       className="border-b border-mist-100 py-1"
                     >
                       <div className="flex items-center justify-between">
-                        <Link href={item.href} className="py-3 text-base font-extrabold text-ink-900">
+                        <Link href={item.href} onClick={closeMobile} className="py-3 text-base font-extrabold text-ink-900">
                           {item.label}
                         </Link>
                         {hasChildren && (
@@ -285,7 +317,7 @@ export function SiteHeader() {
                           >
                             {children.map((child) => (
                               <li key={child.href}>
-                                <Link href={child.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2.5 rounded-xl px-2 py-2.5 text-sm font-semibold text-ink-700 hover:bg-brand-50 hover:text-brand-700">
+                                <Link href={child.href} onClick={closeMobile} className="flex items-center gap-2.5 rounded-xl px-2 py-2.5 text-sm font-semibold text-ink-700 hover:bg-brand-50 hover:text-brand-700">
                                   <Icon name={child.icon} className="h-4 w-4 text-brand-600" />
                                   {child.label}
                                 </Link>
@@ -299,10 +331,10 @@ export function SiteHeader() {
                 })}
               </motion.div>
               <div className="space-y-3 border-t border-mist-200 px-5 py-5">
-                <Link href="/schedule-form" className="btn btn-primary w-full">
+                <Link href="/schedule-form" onClick={closeMobile} className="btn btn-primary w-full">
                   Talk With Knight <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a href={site.phoneHref} className="btn btn-light w-full">
+                <a href={site.phoneHref} onClick={closeMobile} className="btn btn-light w-full">
                   <Phone className="h-4 w-4" /> {site.phone}
                 </a>
                 <div className="flex items-center justify-between gap-2 pt-1">
@@ -316,7 +348,6 @@ export function SiteHeader() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
       </Portal>
     </header>
   );

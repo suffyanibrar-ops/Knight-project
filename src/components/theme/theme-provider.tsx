@@ -45,7 +45,6 @@ function readPrefs(): Prefs {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) return { ...DEFAULTS, ...(JSON.parse(stored) as Partial<Prefs>) };
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return { ...DEFAULTS, theme: "dark" };
   } catch {
     /* malformed storage — fall back to defaults */
   }

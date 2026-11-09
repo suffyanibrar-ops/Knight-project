@@ -454,3 +454,27 @@ server on port 3101) verifies honest calendar-failure handling.
 **Admin:** `/admin/ai` (overview), `/admin/ai/conversations`, `/leads`, `/appointments`,
 `/handoffs`, `/knowledge`, `/settings`. Google Calendar sync is intentionally not part of v1; the
 appointments table already has an `external_event_id` column for a future adapter.
+
+## AI Content Studio and admin password recovery (schema v9)
+
+Schema v9 adds two additive tables without rewriting existing content or auth rows:
+`content_workflows` and `admin_password_resets`.
+
+### Content Studio
+
+The existing admin Content page now includes the AI-assisted editorial pipeline:
+Research → Topic Plan → Draft → SEO Review → Human Approval → Publish.
+
+- Requires `DEEPSEEK_API_KEY`; the server-side route `/api/admin/content/workflows` is admin-only.
+- AI drafts are always created as private `blog_posts` drafts. Approval and a separate human Publish/Schedule action are required.
+- The server does not have a live SERP/search-volume provider. Editor-supplied notes are the only external research input, and only editor-supplied URLs may be cited.
+- Review is a mix of deterministic checks and an AI editorial critique; it is not a substitute for human factual review.
+
+### Password recovery
+
+- Set `ADMIN_EMAIL` to the owner inbox and configure Resend or SMTP; no new secret is required.
+- Forgot/reset pages are public admin routes: `/admin/forgot-password` and `/admin/reset-password`.
+- Tokens are 30-minute, single-use, stored only as SHA-256 hashes; reset links are deliberately not written to the email outbox.
+- Requests are rate-limited per client. The public response does not reveal whether the address exists.
+- A successful reset or panel password change invalidates outstanding reset tokens.
+- If `NEXT_PUBLIC_SITE_URL` is wrong, the reset link points to the wrong host; set it before deployment.

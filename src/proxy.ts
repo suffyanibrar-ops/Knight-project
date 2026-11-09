@@ -45,6 +45,14 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (pathname.startsWith("/admin")) {
+    // These two recovery pages are intentionally public: an owner who cannot
+    // sign in still needs to reach them. They never expose whether an account
+    // exists and do not grant a session by themselves.
+    if (pathname === "/admin/forgot-password" || pathname === "/admin/reset-password") {
+      const response = NextResponse.next();
+      response.headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+      return response;
+    }
     const authenticated = await verifySession(request.cookies.get(COOKIE)?.value, sessionSecret());
 
     if (pathname === "/admin/login") {

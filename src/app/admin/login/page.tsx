@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminLoginForm } from "@/components/admin/login-form";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { adminEmail } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Admin Sign In",
@@ -13,9 +14,10 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string }> }) {
   if (await isAdminAuthenticated()) redirect("/admin");
-  const { next } = await searchParams;
+  const { next, reset } = await searchParams;
+  const ownerEmail = adminEmail();
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-night px-4 py-12">
@@ -47,8 +49,18 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
             <p className="mt-1.5 text-[0.8rem] leading-relaxed text-white/50">Owner access only. All sign-in attempts are logged.</p>
           </div>
 
+          {reset === "success" && (
+            <p role="status" className="mt-4 rounded-xl border border-mint-400/25 bg-mint-500/10 px-3 py-2.5 text-[0.72rem] font-semibold text-mint-100">
+              Your password was updated. Sign in with the new password.
+            </p>
+          )}
           <div className="mt-5">
             <AdminLoginForm next={next} />
+          </div>
+          <div className="mt-3 text-center">
+            <Link href="/admin/forgot-password" className="text-[0.7rem] font-semibold text-white/45 transition-colors hover:text-white">
+              Forgot password?
+            </Link>
           </div>
 
           <div className="mt-6 flex items-start gap-2 border-t border-white/10 pt-4">
@@ -58,7 +70,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
             </p>
           </div>
         </div>
-        <p className="mt-4 text-center text-[0.66rem] text-white/30">Need help? admin@knightmedicalbilling.com · (812) 994-0046</p>
+        <p className="mt-4 text-center text-[0.66rem] text-white/30">Need help? {ownerEmail} · (812) 994-0046</p>
       </div>
     </div>
   );

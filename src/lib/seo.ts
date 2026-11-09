@@ -76,7 +76,7 @@ export function organizationSchema() {
     email: site.email,
     slogan: "You heal. Leave the revenue management to us.",
     foundingDate: "2023",
-    founder: { "@type": "Person", name: "Lawrence Fianko", jobTitle: "CEO & Founder" },
+    founder: { "@type": "Person", name: "Dr. Fianko", jobTitle: "CEO & Founder" },
     address: {
       "@type": "PostalAddress",
       streetAddress: "585 Grove St Ste 145",

@@ -8,6 +8,7 @@ import { StorageNotice } from "@/components/admin/storage-notice";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
 import { getBlogStats, listAdminCategories, listAdminPosts, listTags } from "@/lib/blog";
 import { getArticles } from "@/lib/data";
+import { ContentStudio } from "@/components/admin/content-studio";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Content · Admin", robots: { index: false, follow: false } };
@@ -36,6 +37,8 @@ export default async function AdminContentPage() {
           </>
         }
       />
+
+      <ContentStudio />
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Blog posts" value={stats.total} hint={`${stats.published} published · ${stats.drafts} drafts`} tone="brand" />

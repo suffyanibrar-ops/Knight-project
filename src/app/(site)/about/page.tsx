@@ -156,13 +156,13 @@ export default function AboutPage() {
           <Reveal delay={0.08}>
             <SectionLabel>Leadership</SectionLabel>
             <h2 className="mt-3 text-[clamp(1.75rem,3.6vw,2.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
-              CEO & founder, <span className="display-serif text-brand-600">Lawrence Fianko</span>
+              CEO & founder, <span className="display-serif text-brand-600">Dr. Fianko</span>
             </h2>
             <div className="mt-4 space-y-3.5 text-[0.92rem] leading-relaxed text-ink-600/85">
               <p>{leadership[0].bio}</p>
               <p>{leadership[0].detail}</p>
               <p>
-                Combining clinical insight, entrepreneurial spirit and a commitment to social impact, Lawrence founded Knight Medical Billing to empower providers by alleviating financial burdens, streamlining billing processes and optimizing revenue cycles.
+                Combining clinical insight, entrepreneurial spirit and a commitment to social impact, Dr. Fianko founded Knight Medical Billing to empower providers by alleviating financial burdens, streamlining billing processes and optimizing revenue cycles.
               </p>
             </div>
             <div className="mt-5 flex items-center gap-3 rounded-2xl border border-mist-200 bg-mist-50 p-4">

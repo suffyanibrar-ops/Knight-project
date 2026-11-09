@@ -1391,10 +1391,10 @@ export const faqs = [
 
 export const leadership = [
   {
-    name: "Lawrence Fianko",
+    name: "Dr. Fianko",
     role: "CEO & Founder",
-    image: "/images/ceo-lawrence-fianko.jpg",
-    bio: "Lawrence is a visionary leader driven by a commitment to improving healthcare. With a background as a mental health and addiction therapist, he brings over five years of clinical experience and a deep understanding of the challenges providers face.",
+    image: "/images/ceo-dr-fianko.jpg",
+    bio: "Dr. Fianko is a visionary leader driven by a commitment to improving healthcare. With a background as a mental health and addiction therapist, he brings over five years of clinical experience and a deep understanding of the challenges providers face.",
     detail:
       "As founder of Limelight Recovery he experienced the financial and administrative burdens that hinder quality care, which led him to revolutionize revenue cycle management. He also serves as CEO of Educational Communities Worldwide, a non-profit providing educational resources to underprivileged students in Africa.",
   },

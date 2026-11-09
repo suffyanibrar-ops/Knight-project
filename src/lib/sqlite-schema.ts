@@ -592,3 +592,35 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 CREATE INDEX IF NOT EXISTS idx_analytics_events_occurred ON analytics_events (occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_analytics_events_name ON analytics_events (name);
 `;
+
+/* -------------------------------------------------------------------------
+ * v9 — AI content workflow + admin password-reset tokens.
+ * These are additive tables: no existing content or auth rows are rewritten.
+ * ---------------------------------------------------------------------- */
+
+export const CONTENT_AND_SECURITY_SCHEMA = `
+CREATE TABLE IF NOT EXISTS content_workflows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic TEXT NOT NULL,
+  audience TEXT,
+  stage TEXT NOT NULL DEFAULT 'research',
+  data_json TEXT NOT NULL DEFAULT '{}',
+  blog_post_id INTEGER REFERENCES blog_posts(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_content_workflows_updated ON content_workflows (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_workflows_stage ON content_workflows (stage);
+CREATE INDEX IF NOT EXISTS idx_content_workflows_post ON content_workflows (blog_post_id);
+
+CREATE TABLE IF NOT EXISTS admin_password_resets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_admin_password_resets_expiry ON admin_password_resets (expires_at);
+CREATE INDEX IF NOT EXISTS idx_admin_password_resets_email ON admin_password_resets (email);
+`;

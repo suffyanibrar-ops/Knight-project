@@ -158,7 +158,7 @@ export default function WhoWeServePage() {
               <p className="text-[0.8rem] leading-relaxed text-white/75">
                 “As your medical billing service provider, we are an extension of your staff. You heal. Leave the revenue management to us.”
               </p>
-              <p className="mt-2 text-[0.68rem] font-extrabold text-brand-300">Lawrence Fianko · CEO & Founder</p>
+              <p className="mt-2 text-[0.68rem] font-extrabold text-brand-300">Dr. Fianko · CEO & Founder</p>
             </div>
           </Reveal>
         </div>

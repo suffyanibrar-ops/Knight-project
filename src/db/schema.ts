@@ -412,3 +412,32 @@ export const aiConversationContexts = sqliteTable("ai_conversation_contexts", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 });
+
+/* -------------------------------------------------------------------------
+ * AI content workflow + password reset tokens (schema migration v9).
+ * Workflow JSON is stored separately from published blog content; reset tokens
+ * are stored only as SHA-256 hashes, never in plaintext.
+ * ---------------------------------------------------------------------- */
+
+export const contentWorkflows = sqliteTable("content_workflows", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  topic: text("topic").notNull(),
+  audience: text("audience"),
+  stage: text("stage").notNull().default("research"),
+  dataJson: text("data_json").notNull().default("{}"),
+  blogPostId: integer("blog_post_id").references(() => blogPosts.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const adminPasswordResets = sqliteTable("admin_password_resets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tokenHash: text("token_hash").notNull().unique(),
+  email: text("email").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  usedAt: integer("used_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+export type ContentWorkflowRow = typeof contentWorkflows.$inferSelect;
+export type AdminPasswordResetRow = typeof adminPasswordResets.$inferSelect;

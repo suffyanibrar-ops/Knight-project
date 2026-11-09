@@ -4,6 +4,7 @@ import { SiteIntro } from "@/components/site-intro";
 import { AiChatWidget } from "@/components/ai/chat-widget";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { MobileCtaBar } from "@/components/mobile-cta-bar";
 import { FirstPartyAnalytics } from "@/components/analytics/first-party-analytics";
 
 /**
@@ -26,8 +27,9 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <SiteIntro />
       <ScrollProgress />
       <SiteHeader />
-      <main id="main">{children}</main>
+      <main id="main" className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <SiteFooter />
+      <MobileCtaBar />
       <BackToTop />
       <AiChatWidget />
       <FirstPartyAnalytics />
