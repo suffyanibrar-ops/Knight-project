@@ -80,6 +80,9 @@ export const articleVisuals: Record<string, string> = {
   "out-of-network-negotiation-explained": photo.documentsDesk,
   "credentialing-contracts-and-rates": photo.stethoscopeNotes,
   "revenue-cycle-clean-up-audit": photo.deskCharts,
+  "how-to-choose-medical-billing-company": photo.executiveMeeting,
+  "in-house-vs-outsourced-medical-billing": photo.teamOffice,
+  "medical-billing-pricing": photo.deskCharts,
 };
 
 /**

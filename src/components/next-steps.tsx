@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Layers, Stethoscope } from "lucide-react";
-import { services, specialties } from "@/lib/site";
+import { services, specialties, specialtyHref } from "@/lib/site";
 
 /**
  * Cross-link band used at the end of every detail page.
@@ -46,12 +46,16 @@ export function NextSteps({ currentService }: { currentService?: string }) {
             {topSpecialties.map((specialty) => (
               <Link
                 key={specialty.slug}
-                href={`/specialties/${specialty.slug}`}
+                href={specialtyHref(specialty.slug)}
                 className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.74rem] font-bold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700"
               >
                 {specialty.name}
               </Link>
             ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-[0.74rem] font-extrabold text-brand-700">
+            <Link href="/software" className="hover:text-brand-500">Software &amp; EHR expertise</Link>
+            <Link href="/insights/how-to-choose-medical-billing-company" className="hover:text-brand-500">How to choose a billing company</Link>
           </div>
           <div className="mt-5 rounded-2xl border border-brand-100 bg-surface p-4">
             <p className="flex items-center gap-1.5 text-[0.78rem] font-extrabold text-ink-950">

@@ -17,12 +17,15 @@ export function Typewriter({
   typeSpeed = 62,
   deleteSpeed = 34,
   holdMs = 1900,
+  announce = true,
 }: {
   phrases: string[];
   className?: string;
   typeSpeed?: number;
   deleteSpeed?: number;
   holdMs?: number;
+  /** Set false when a parent supplies the stable accessible heading text. */
+  announce?: boolean;
 }) {
   const reduced = usePrefersReducedMotion();
   const [index, setIndex] = useState(0);
@@ -61,7 +64,7 @@ export function Typewriter({
 
   return (
     <span className={cn("relative inline-flex items-baseline", className)}>
-      <span className="sr-only">{phrases.join(", ")}</span>
+      {announce && <span className="sr-only">{phrases.join(", ")}</span>}
       {/* Invisible longest phrase reserves the width — no reflow while typing */}
       <span aria-hidden className="invisible whitespace-pre">{longest}</span>
       <span aria-hidden className="absolute inset-0 flex items-baseline">

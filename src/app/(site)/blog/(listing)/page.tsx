@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ArrowRight, FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +9,8 @@ import { Pagination } from "@/components/blog/pagination";
 import { PostCard } from "@/components/blog/post-card";
 import { BlogSearchForm } from "@/components/blog/search-form";
 import { listCategoriesWithCounts, listPublicPosts, listTags } from "@/lib/blog";
+import { articleVisuals } from "@/components/sections/visuals";
+import { getArticles } from "@/lib/data";
 import { pageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 
@@ -60,10 +63,11 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
   const page = currentPage(params.page);
   const query = firstValue(params.q).trim().slice(0, 120);
 
-  const [result, categories, tags] = await Promise.all([
+  const [result, categories, tags, evergreen] = await Promise.all([
     listPublicPosts({ page, perPage: PER_PAGE, q: query }),
     listCategoriesWithCounts(),
     listTags(),
+    !query && page === 1 ? getArticles() : Promise.resolve([]),
   ]);
 
   const featured = !query && page === 1 ? result.posts[0] ?? null : null;
@@ -155,7 +159,7 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
               </div>
             ) : null}
 
-            {result.total === 0 ? (
+            {result.total === 0 && (query || evergreen.length === 0) ? (
               <div className="rounded-3xl border border-dashed border-mist-300 bg-mist-50 px-6 py-14 text-center">
                 <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-surface text-brand-700 shadow-sm">
                   <FileText aria-hidden className="h-5 w-5" />
@@ -178,6 +182,31 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
                 </div>
               </div>
             ) : null}
+
+            {evergreen.length > 0 && (
+              <div className="mt-10 rounded-3xl border border-mist-200 bg-mist-50 p-5 sm:p-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-700">Evergreen guides</p>
+                    <h2 className="mt-1 text-xl font-extrabold tracking-tight text-ink-950">Start with a practical guide</h2>
+                  </div>
+                  <Link href="/insights" className="text-[0.76rem] font-extrabold text-brand-700 hover:text-brand-500">Browse all insights →</Link>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {evergreen.slice(0, 3).map((article) => (
+                    <Link key={article.slug} href={`/insights/${article.slug}`} className="group overflow-hidden rounded-2xl border border-mist-200 bg-surface transition-colors hover:border-brand-300">
+                      <div className="relative aspect-[16/8] overflow-hidden">
+                        <Image src={articleVisuals[article.slug] ?? article.image} alt="" fill className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" sizes="(max-width: 640px) 100vw, 33vw" />
+                      </div>
+                      <div className="p-3.5">
+                        <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-brand-700">{article.category}</p>
+                        <p className="mt-1 text-[0.8rem] font-extrabold leading-snug text-ink-900 group-hover:text-brand-700">{article.title}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Pagination page={result.page} totalPages={result.totalPages} basePath="/blog" query={{ q: query || undefined }} />
           </div>

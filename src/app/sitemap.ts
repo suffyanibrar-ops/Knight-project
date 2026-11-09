@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-import { audiences, services, site, specialties } from "@/lib/site";
+import { audiences, services, site, specialties, specialtyCanonicalSlugs } from "@/lib/site";
+import { softwarePlatforms, specialtyBillingGuides } from "@/lib/seo-content";
 
 import { getArticles } from "@/lib/data";
 import { listCategoriesWithCounts, listPublicPosts, listTags, type BlogPostSummary } from "@/lib/blog";
@@ -24,6 +25,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "": 1,
     "/services": 0.95,
     "/schedule-form": 0.9,
+    "/software": 0.9,
+    "/results/case-studies": 0.75,
+    "/why-knight": 0.75,
+    "/tools/revenue-leak-calculator": 0.7,
     "/who-we-serve": 0.9,
     "/specialties": 0.85,
     "/our-process": 0.8,
@@ -44,6 +49,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/our-process",
     "/switching-medical-billing",
     "/results",
+    "/results/case-studies",
+    "/software",
+    "/why-knight",
+    "/tools/revenue-leak-calculator",
     "/about",
     "/insights",
     "/blog",
@@ -70,7 +79,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticRoutes,
     ...services.map((service) => ({ url: `${site.url}/services/${service.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 })),
     ...audiences.map((audience) => ({ url: `${site.url}/who-we-serve/${audience.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 })),
-    ...specialties.map((specialty) => ({ url: `${site.url}/specialties/${specialty.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.6 })),
+    ...specialties
+      .filter((specialty) => !specialtyCanonicalSlugs[specialty.slug] && !specialtyBillingGuides.some((guide) => guide.slug === specialty.slug))
+      .map((specialty) => ({ url: `${site.url}/specialties/${specialty.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.6 })),
+    ...specialtyBillingGuides.map((guide) => ({ url: `${site.url}/specialties/${guide.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.85 })),
+    ...softwarePlatforms.map((platform) => ({ url: `${site.url}/software/${platform.slug}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.85 })),
     ...articles.map((article) => ({ url: `${site.url}/insights/${article.slug}`, lastModified: new Date(article.date), changeFrequency: "yearly" as const, priority: 0.6 })),
     ...blogPosts.map((post) => ({ url: `${site.url}/blog/${post.slug}`, lastModified: post.updatedAt, changeFrequency: "monthly" as const, priority: 0.65 })),
     ...blogCategories

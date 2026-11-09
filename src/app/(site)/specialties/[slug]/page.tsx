@@ -12,6 +12,7 @@ import { PageHero } from "@/components/page-hero";
 import { specialtyVisuals } from "@/components/sections/visuals";
 import { ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getSpecialties, getSpecialty } from "@/lib/data";
+import { specialtyHref } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -169,7 +170,7 @@ export default async function SpecialtyDetailPage({ params }: { params: Promise<
                 <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-ink-600/75">Other {specialty.group.toLowerCase()} specialties</p>
                 <div className="mt-3 space-y-2">
                   {relatedItems.map((item) => (
-                    <Link key={item.slug} href={`/specialties/${item.slug}`} className="group flex items-center gap-3 rounded-xl bg-surface p-2.5 transition-colors hover:bg-brand-50">
+                    <Link key={item.slug} href={specialtyHref(item.slug)} className="group flex items-center gap-3 rounded-xl bg-surface p-2.5 transition-colors hover:bg-brand-50">
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 group-hover:bg-brand-500 group-hover:text-white">
                         <Icon name={item.icon} className="h-4 w-4" />
                       </span>

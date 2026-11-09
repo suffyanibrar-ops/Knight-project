@@ -22,7 +22,8 @@ import { ProcessTimeline } from "@/components/process-timeline";
 import { SpecialtyExplorer } from "@/components/specialty-explorer";
 import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getArticles, getFaqs, getSpecialties } from "@/lib/data";
-import { audiences, benefits, billingSoftware, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
+import { audiences, benefits, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
+import { softwarePlatforms } from "@/lib/seo-content";
 
 const homeTitle = "Knight Medical Billing | Custom Tailored Medical Billing & RCM";
 const homeMetadata = pageMetadata({ title: homeTitle, description: 'Knight Medical Billing provides medical billing, coding and revenue cycle management for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations. Dedicated teams, clear reporting, no prepayment.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'custom tailored medical billing'] });
@@ -620,15 +621,18 @@ export default async function HomePage() {
                 We work in <span className="display-serif text-brand-600">your system.</span>
               </h2>
               <p className="mt-4 text-[0.94rem] leading-relaxed text-ink-600/80">
-                Billing software is central to the revenue cycle. Our team has hands-on expertise across major platforms, so you do not have to migrate or retrain your staff.
+                Billing software is central to the revenue cycle. Our team works inside major platforms, so you do not have to migrate or retrain your staff. We are a billing partner, not a software vendor.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                {billingSoftware.map((tool) => (
-                  <span key={tool} className="rounded-lg border border-mist-200 bg-surface px-2.5 py-1.5 text-[0.72rem] font-bold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700">
-                    {tool}
-                  </span>
+                {softwarePlatforms.map((platform) => (
+                  <Link key={platform.slug} href={`/software/${platform.slug}`} className="rounded-lg border border-mist-200 bg-surface px-2.5 py-1.5 text-[0.72rem] font-bold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700">
+                    {platform.name}
+                  </Link>
                 ))}
               </div>
+              <Link href="/software" className="mt-4 inline-flex items-center gap-1.5 text-[0.8rem] font-extrabold text-brand-700 hover:text-brand-500">
+                View all software expertise <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </Reveal>
 
             <Reveal delay={0.1}>

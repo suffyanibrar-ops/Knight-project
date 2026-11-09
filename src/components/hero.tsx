@@ -46,13 +46,21 @@ export function Hero() {
             </span>
           </motion.div>
 
-          <motion.h1 initial="hidden" animate="show" custom={1} variants={fadeUp} className="mt-5 text-[clamp(2.15rem,5.6vw,4.1rem)] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink-950">
+          <motion.h1
+            initial="hidden"
+            animate="show"
+            custom={1}
+            variants={fadeUp}
+            aria-label="Your revenue cycle, managed end to end."
+            className="mt-5 text-[clamp(2.15rem,5.6vw,4.1rem)] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink-950"
+          >
             Your revenue cycle,
-            <span className="relative mt-1 flex items-baseline gap-3">
+            <span aria-hidden="true" className="relative mt-1 flex items-baseline gap-3">
               <span className="relative inline-block align-bottom text-brand-600">
-                <Typewriter phrases={typePhrases} className="display-serif" />
+                <Typewriter phrases={typePhrases} className="display-serif" announce={false} />
               </span>
             </span>
+            <span className="sr-only">managed end to end.</span>
             <svg aria-hidden viewBox="0 0 320 12" className="mt-1 h-2.5 w-[min(18rem,72%)] text-brand-400" fill="none" preserveAspectRatio="none">
               <motion.path
                 d="M2 9C60 3.5 150 2 318 6.5"

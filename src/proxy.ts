@@ -10,6 +10,19 @@ import { sessionSecret } from "@/lib/admin-session";
 
 const COOKIE = "kmb_admin_session";
 
+/**
+ * Permanent aliases for the first dedicated SEO pages. These are handled here
+ * so they are true 301 responses rather than framework-default 308s.
+ */
+const CANONICAL_ALIASES: Record<string, string> = {
+  "/specialties/mental-health": "/specialties/mental-health-billing",
+  "/specialties/behavioral-health": "/specialties/mental-health-billing",
+  "/specialties/physical-therapy": "/specialties/physical-therapy-billing",
+  "/specialties/podiatry": "/specialties/podiatry-billing",
+  "/insights/switching-medical-billing": "/switching-medical-billing",
+  "/case-studies": "/results/case-studies",
+};
+
 function hexToBytes(hex: string) {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i += 1) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
@@ -43,6 +56,12 @@ async function verifySession(token: string | undefined, secret: string) {
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const alias = CANONICAL_ALIASES[pathname] ?? (pathname.startsWith("/case-studies/") ? "/results/case-studies" : undefined);
+  if (alias) {
+    const destination = request.nextUrl.clone();
+    destination.pathname = alias;
+    return NextResponse.redirect(destination, 301);
+  }
 
   if (pathname.startsWith("/admin")) {
     // These two recovery pages are intentionally public: an owner who cannot
@@ -83,5 +102,16 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/api/admin/:path*"],
+  matcher: [
+    "/admin",
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/specialties/mental-health",
+    "/specialties/behavioral-health",
+    "/specialties/physical-therapy",
+    "/specialties/podiatry",
+    "/insights/switching-medical-billing",
+    "/case-studies",
+    "/case-studies/:path*",
+  ],
 };

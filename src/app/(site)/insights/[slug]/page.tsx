@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { CtaBand } from "@/components/cta-band";
 import { ArrowLink, Reveal } from "@/components/ui";
 import { getArticle, getArticles } from "@/lib/data";
+import { services } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     )}
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-10 rounded-3xl border border-mist-200 bg-mist-50 p-5">
+                <p className="text-[0.66rem] font-extrabold uppercase tracking-[0.16em] text-ink-600/75">Keep exploring</p>
+                <h2 className="mt-1.5 text-[1.1rem] font-extrabold tracking-tight text-ink-950">Relevant services and resources</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[...new Set([
+                    ...(article.category === "Choosing a partner" ? ["medical-billing-and-coding", "complete-rcm-services"] : []),
+                    ...(article.category === "Operations" ? ["complete-rcm-services", "accounts-receivable-management"] : []),
+                    ...(article.category === "Pricing" ? ["medical-billing-and-coding", "revenue-performance-reporting"] : []),
+                    ...(article.category === "Billing & coding" ? ["medical-billing-and-coding", "denial-management"] : []),
+                  ])].map((slug) => {
+                    const service = services.find((item) => item.slug === slug);
+                    return service ? <Link key={slug} href={`/services/${slug}`} className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">{service.short}</Link> : null;
+                  })}
+                  <Link href="/software" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Software &amp; EHR expertise</Link>
+                  <Link href="/why-knight" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Why Knight</Link>
+                  <Link href="/results/case-studies" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Case-study standard</Link>
+                </div>
               </div>
 
               <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-mist-200 bg-mist-50 p-5">

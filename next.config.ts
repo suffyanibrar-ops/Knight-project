@@ -95,8 +95,6 @@ const nextConfig: NextConfig = {
       { source: "/contact-us", destination: "/contact", permanent: true },
       { source: "/about-us", destination: "/about", permanent: true },
       { source: "/our-services", destination: "/services", permanent: true },
-      { source: "/case-studies", destination: "/results", permanent: true },
-      { source: "/case-studies/:slug", destination: "/results", permanent: true },
       { source: "/platform", destination: "/our-process", permanent: true },
       { source: "/pricing", destination: "/services", permanent: true },
       { source: "/services/medical-billing-services", destination: "/services/medical-billing-and-coding", permanent: true },

@@ -40,32 +40,22 @@ export const primaryNav: NavItem[] = [
       {
         title: "Revenue cycle",
         items: [
-          { label: "Medical Billing", href: "/services/medical-billing-and-coding", description: "Charge capture to paid claim", icon: "ReceiptText" },
-          { label: "Revenue Cycle Management", href: "/services/complete-rcm-services", description: "The whole cycle, one team", icon: "Workflow" },
+          { label: "Medical Billing & Coding", href: "/services/medical-billing-and-coding", description: "Charge review to paid claim", icon: "ReceiptText" },
+          { label: "Complete RCM", href: "/services/complete-rcm-services", description: "The whole cycle, one team", icon: "Workflow" },
+          { label: "A/R Management", href: "/services/accounts-receivable-management", description: "Follow-up on every balance", icon: "TrendingUp" },
+          { label: "Denial Management", href: "/services/denial-management", description: "Appeals and prevention", icon: "ShieldAlert" },
           { label: "Claims Management", href: "/services/claims-management", description: "Scrubbed, filed, tracked", icon: "FileCheck2" },
           { label: "Payment Posting", href: "/services/payment-posting", description: "ERAs posted and reconciled", icon: "CircleDollarSign" },
-          { label: "Accounts Receivable", href: "/services/accounts-receivable-management", description: "Follow-up on every balance", icon: "TrendingUp" },
-          { label: "Denial Management", href: "/services/denial-management", description: "Appeals and prevention", icon: "ShieldAlert" },
         ],
       },
       {
-        title: "Access & enrollment",
+        title: "Access & performance",
         items: [
+          { label: "Credentialing", href: "/services/credentialing-and-contracting", description: "In-network, on time", icon: "BadgeCheck" },
           { label: "Eligibility & Benefits", href: "/services/eligibility-and-benefits-verification", description: "Verify before the visit", icon: "ShieldCheck" },
           { label: "Prior Authorization", href: "/services/prior-and-retro-authorization", description: "Approvals tracked to expiry", icon: "ClipboardCheck" },
-          { label: "Credentialing", href: "/services/credentialing-and-contracting", description: "In-network, on time", icon: "BadgeCheck" },
-          { label: "Contracting & Enrollment", href: "/services/contracting-and-enrollment", description: "Payer applications managed", icon: "Handshake" },
-          { label: "EFT, ERA & EDI Support", href: "/services/eft-era-edi-support", description: "Electronic plumbing", icon: "Network" },
           { label: "Performance Reporting", href: "/services/revenue-performance-reporting", description: "Metrics with actions", icon: "LineChart" },
-        ],
-      },
-      {
-        title: "Specialist support",
-        items: [
-          { label: "Out-of-Network Negotiation", href: "/services/out-of-network-negotiation", description: "Multiplan, Zelis, Viant, GCS", icon: "Handshake" },
-          { label: "Patient Billing", href: "/services/complete-patient-billing", description: "Statements and patient calls", icon: "Wallet" },
-          { label: "Clean-Up Billing", href: "/services/clean-up-billing", description: "Find the revenue leak", icon: "Wrench" },
-          { label: "Chart Auditing & DRG", href: "/services/chart-auditing-and-drg-review", description: "Coding accuracy review", icon: "Microscope" },
+          { label: "View all services", href: "/services", description: "Every revenue-cycle service", icon: "Layers" },
         ],
       },
     ],
@@ -73,59 +63,54 @@ export const primaryNav: NavItem[] = [
   {
     label: "Specialties",
     href: "/specialties",
-    columns: [
-      {
-        title: "By specialty",
-        items: [
-          { label: "Cardiology", href: "/specialties/cardiology", description: "Diagnostics and devices", icon: "HeartPulse" },
-          { label: "Orthopedics", href: "/specialties/orthopedic", description: "Global periods and implants", icon: "Bone" },
-          { label: "Behavioral Health", href: "/specialties/behavioral-health", description: "Time-based and parity", icon: "HandHeart" },
-          { label: "Gastroenterology", href: "/specialties/gastroenterology", description: "Screening vs. diagnostic", icon: "Search" },
-          { label: "Radiology", href: "/specialties/radiology", description: "Technical and professional", icon: "ScanLine" },
-          { label: "Urgent Care", href: "/specialties/urgent-care", description: "High-volume E/M", icon: "Cross" },
-        ],
-      },
-      {
-        title: "Practice settings",
-        items: [
-          { label: "Private Practices", href: "/who-we-serve/private-practices", description: "Independent practice support", icon: "Stethoscope" },
-          { label: "Hospitals", href: "/who-we-serve/hospitals", description: "Hospital billing and A/R", icon: "Cross" },
-          { label: "Healthcare Systems", href: "/who-we-serve/healthcare-systems", description: "Multi-facility RCM", icon: "Building2" },
-          { label: "Emergency Rooms", href: "/who-we-serve/emergency-rooms", description: "High-acuity ED billing", icon: "Siren" },
-          { label: "Urgent Cares", href: "/who-we-serve/urgent-cares", description: "Volume and speed", icon: "Activity" },
-        ],
-      },
+    children: [
+      { label: "Mental Health Billing", href: "/specialties/mental-health-billing", description: "Behavioral-health workflow and authorizations", icon: "HeartHandshake" },
+      { label: "Physical Therapy Billing", href: "/specialties/physical-therapy-billing", description: "Timed services, plans of care and visit limits", icon: "Activity" },
+      { label: "Podiatry Billing", href: "/specialties/podiatry-billing", description: "Routine vs. medical care and surgical detail", icon: "Footprints" },
+      { label: "View all specialties", href: "/specialties", description: "Browse the full specialty directory", icon: "Stethoscope" },
     ],
   },
   {
     label: "Who We Serve",
     href: "/who-we-serve",
     children: [
-      { label: "Independent & growing practices", href: "/who-we-serve/private-practices", description: "New, established and multi-provider practices", icon: "Stethoscope" },
-      { label: "Hospitals", href: "/who-we-serve/hospitals", description: "Hospital billing and A/R", icon: "Cross" },
-      { label: "Healthcare systems", href: "/who-we-serve/healthcare-systems", description: "Multi-facility revenue operations", icon: "Building2" },
-      { label: "Emergency rooms", href: "/who-we-serve/emergency-rooms", description: "High-acuity ED billing", icon: "Siren" },
-      { label: "Urgent cares", href: "/who-we-serve/urgent-cares", description: "Volume and speed", icon: "Activity" },
+      { label: "Independent Practices", href: "/who-we-serve/private-practices", description: "Support without adding a back office", icon: "Stethoscope" },
+      { label: "Growing Practices", href: "/who-we-serve/growing-practices", description: "Processes that scale with provider growth", icon: "TrendingUp" },
+      { label: "Multi-Provider Practices", href: "/who-we-serve/multi-provider-practices", description: "Provider-level ownership and reporting", icon: "UsersRound" },
+      { label: "Hospitals & Systems", href: "/who-we-serve/hospitals", description: "Hospital, health-system and facility billing", icon: "Building2" },
+      { label: "View all audiences", href: "/who-we-serve", description: "See every practice setting we support", icon: "Layers" },
     ],
   },
-  { label: "Results", href: "/results" },
+  {
+    label: "Results",
+    href: "/results",
+    children: [
+      { label: "Results & Performance", href: "/results", description: "How we measure the work", icon: "LineChart" },
+      { label: "Case Studies", href: "/results/case-studies", description: "Verified results only", icon: "BadgeCheck" },
+      { label: "Practice Perspectives", href: "/results#practice-perspectives", description: "Anonymised operating themes", icon: "Quote" },
+    ],
+  },
   {
     label: "Resources",
     href: "/insights",
     children: [
-      { label: "Insights & guides", href: "/insights", description: "Billing playbooks from our team", icon: "Newspaper" },
-      { label: "Blog", href: "/blog", description: "Long-form editorial and updates", icon: "Newspaper" },
-      { label: "Frequently asked questions", href: "/faq", description: "Answers before you switch", icon: "CircleDollarSign" },
-      { label: "HIPAA & data security", href: "/hipaa-compliance", description: "Safeguards and agreements", icon: "ShieldCheck" },
+      { label: "Insights & Guides", href: "/insights", description: "Practical revenue-cycle education", icon: "Newspaper" },
+      { label: "How to Choose a Billing Company", href: "/insights/how-to-choose-medical-billing-company", description: "A buyer's due-diligence guide", icon: "ClipboardCheck" },
+      { label: "In-House vs. Outsourced", href: "/insights/in-house-vs-outsourced-medical-billing", description: "A neutral operating comparison", icon: "Scale" },
+      { label: "Medical Billing Pricing", href: "/insights/medical-billing-pricing", description: "Pricing structures and contract terms", icon: "CircleDollarSign" },
+      { label: "Switching Billing Companies", href: "/switching-medical-billing", description: "A practical transition guide", icon: "Workflow" },
+      { label: "Software & EHR Expertise", href: "/software", description: "Work inside the systems you use", icon: "MonitorSmartphone" },
+      { label: "Revenue Leak Calculator", href: "/tools/revenue-leak-calculator", description: "Educational revenue indicators", icon: "Calculator" },
     ],
   },
   {
     label: "Company",
     href: "/about",
     children: [
-      { label: "About us", href: "/about", description: "Mission, values and leadership", icon: "Building2" },
-      { label: "Our process", href: "/our-process", description: "Onboarding and workflow", icon: "Workflow" },
-      { label: "Switching billing partners", href: "/switching-medical-billing", description: "A transition without losing the thread", icon: "Workflow" },
+      { label: "About Knight", href: "/about", description: "Mission, values and leadership", icon: "Building2" },
+      { label: "Why Knight", href: "/why-knight", description: "What we own and how we work", icon: "BadgeCheck" },
+      { label: "Our Process", href: "/our-process", description: "Onboarding and workflow", icon: "Workflow" },
+      { label: "Technology & Software", href: "/software", description: "The systems we work in", icon: "MonitorSmartphone" },
       { label: "Contact", href: "/contact", description: "Talk to our team", icon: "Phone" },
     ],
   },
@@ -1124,6 +1109,50 @@ export const audiences: Audience[] = [
     services: ["Medical Billing & Coding", "Accounts Receivable Management", "Credentialing & Contracting", "Complete Patient Billing"],
     stat: { value: "Dedicated", label: "Account team" },
   },
+  {
+    slug: "growing-practices",
+    segment: "practices",
+    name: "Growing Practices",
+    eyebrow: "Built for the next stage",
+    title: "Billing operations that keep up as your practice grows",
+    short: "Growing practices",
+    icon: "TrendingUp",
+    image: "/images/photos/team-tablet.jpg",
+    intro:
+      "Adding providers, locations or service lines changes the billing workload faster than most practices can add administrative capacity. We help keep claims, denials, payer setup and reporting under control while the practice grows.",
+    points: [
+      "Workflows that hold up as provider count increases",
+      "Provider-level visibility across the practice",
+      "Payer enrollment and credentialing coordination",
+      "A/R and denial ownership that does not depend on one person",
+      "Reporting that separates growth from collections problems",
+      "A structured handoff from the current billing process",
+    ],
+    services: ["Complete RCM Services", "Medical Billing & Coding", "Credentialing & Contracting", "Accounts Receivable Management"],
+    stat: { value: "Provider-level", label: "Visibility" },
+  },
+  {
+    slug: "multi-provider-practices",
+    segment: "practices",
+    name: "Multi-Provider Practices",
+    eyebrow: "Multiple providers, one accountable process",
+    title: "Billing support for multi-provider practices",
+    short: "Multi-provider practices",
+    icon: "UsersRound",
+    image: "/images/photos/team-lounge.jpg",
+    intro:
+      "Multi-provider practices need more than a shared queue. They need provider-level ownership, consistent payer setup and a process that does not let one provider's claims disappear into a practice-wide total.",
+    points: [
+      "Provider-level claims and A/R reporting",
+      "Consistent charge and documentation review",
+      "Credentialing and payer roster maintenance",
+      "Denial follow-up with clear ownership",
+      "Monthly review by provider and payer",
+      "Coverage during staff turnover and leave",
+    ],
+    services: ["Complete RCM Services", "Revenue Performance & Reporting", "Denial Management", "Credentialing & Contracting"],
+    stat: { value: "Provider-level", label: " Reporting" },
+  },
 ];
 
 export type Specialty = {
@@ -1178,6 +1207,18 @@ export const specialties: Specialty[] = specialtySeed.map(([slug, name, group, i
 }));
 
 export const specialtyGroups = ["All", "Primary care", "Specialty medicine", "Surgical", "Diagnostics", "Facility & community"];
+
+/** Canonical billing landing pages for the first dedicated specialty guides. */
+export const specialtyCanonicalSlugs: Record<string, string> = {
+  "mental-health": "mental-health-billing",
+  "behavioral-health": "mental-health-billing",
+  "physical-therapy": "physical-therapy-billing",
+  podiatry: "podiatry-billing",
+};
+
+export function specialtyHref(slug: string): string {
+  return `/specialties/${specialtyCanonicalSlugs[slug] ?? slug}`;
+}
 
 export const benefits = [
   { title: "More focus on patient care", detail: "Your clinicians stay with patients while billing runs in the background.", icon: "HeartHandshake" },

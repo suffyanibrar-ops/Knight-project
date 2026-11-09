@@ -5,7 +5,7 @@ import { ArrowRight, ArrowUpRight, Search, SlidersHorizontal } from "lucide-reac
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import type { Specialty } from "@/lib/site";
-import { specialtyGroups } from "@/lib/site";
+import { specialtyGroups, specialtyHref } from "@/lib/site";
 import { Icon } from "./icon";
 import { cn } from "./ui";
 
@@ -120,7 +120,7 @@ export function SpecialtyExplorer({
               </div>
               <div className="mt-4 flex items-center justify-between border-t border-mist-100 pt-3">
                 <span className="text-[0.68rem] font-bold text-ink-600/80">Certified coders · 24h filing</span>
-                <Link href={`/specialties/${specialty.slug}`} aria-label={`${specialty.name} billing`} className="grid h-7 w-7 place-items-center rounded-full border border-mist-200 text-ink-700 transition-colors group-hover:border-brand-500 group-hover:bg-brand-500 group-hover:text-white">
+                <Link href={specialtyHref(specialty.slug)} aria-label={`${specialty.name} billing`} className="grid h-7 w-7 place-items-center rounded-full border border-mist-200 text-ink-700 transition-colors group-hover:border-brand-500 group-hover:bg-brand-500 group-hover:text-white">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
               </div>

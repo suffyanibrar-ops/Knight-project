@@ -11,6 +11,8 @@ import { pageHeroVisuals } from "@/components/sections/visuals";
 import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { benefits, site } from "@/lib/site";
+import { TestimonialsCarousel } from "@/components/testimonials";
+import { perspectives } from "@/lib/testimonials";
 
 export const metadata: Metadata = pageMetadata({
   title: "Results & Performance | How We Measure Billing",
@@ -210,6 +212,22 @@ export default function ResultsPage() {
               </div>
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      <section id="practice-perspectives" className="border-y border-mist-200 bg-mist-50 py-14 sm:py-20">
+        <div className="shell">
+          <Reveal className="max-w-2xl">
+            <SectionLabel>Practice perspectives</SectionLabel>
+            <h2 className="mt-3 text-[clamp(1.7rem,3.6vw,2.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
+              Anonymised operating themes, <span className="display-serif text-brand-600">not invented testimonials.</span>
+            </h2>
+            <p className="mt-3 text-[0.92rem] leading-relaxed text-ink-600/80">These themes are labelled clearly and are not attributed to named practices. Read more about our publication standard for verified results.</p>
+          </Reveal>
+          <div className="mt-6">
+            <TestimonialsCarousel items={perspectives} />
+          </div>
+          <Link href="/results/case-studies" className="mt-6 inline-flex items-center gap-1.5 text-[0.8rem] font-extrabold text-brand-700">Case-study publication standard <ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
       </section>
 
