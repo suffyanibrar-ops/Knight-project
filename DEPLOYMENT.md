@@ -523,8 +523,11 @@ volume, keyword difficulty, rankings or citations.
 
 ### GitHub Actions deployment
 
-`.github/workflows/deploy-vps.yml` is manual (`workflow_dispatch`) and requires
-these repository/environment secrets:
+`ops/github-actions-deploy.yml` is a ready-to-use manual workflow template
+(`workflow_dispatch`). Copy it to `.github/workflows/deploy-vps.yml` after
+granting the repository token/actor GitHub Actions workflow permission. It was
+not activated in this repository because the available push token lacks the
+GitHub `workflow` scope. It requires these repository/environment secrets:
 
 - `VPS_HOST`
 - `VPS_USER`
