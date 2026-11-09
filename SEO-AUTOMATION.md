@@ -120,12 +120,12 @@ The server has no passwordless sudo, so the systemd timer requested in the speci
 
 ```cron
 @reboot /home/knight/jiro/start.sh >/dev/null 2>&1
-* * * * * /home/knight/jiro/start.sh >/dev/null 2>&1
+* * * * * /home/knight/jiro/watchdog.sh >/dev/null 2>&1
 */5 * * * * /home/knight/jiro/publish-due.sh >> /home/knight/jiro/logs/publish-due.log 2>&1
 */15 * * * * /home/knight/jiro/automation-tick.sh >> /home/knight/jiro/logs/automation-tick.log 2>&1
 ```
 
-The first `start.sh` is a process watchdog; it does nothing if the PID is alive. `publish-due.sh` runs the existing idempotent scheduled-publication script. `automation-tick.sh` calls:
+The minute-level job is `watchdog.sh`, which checks `/health` with the internal token and restarts Jiro if the process is dead or unhealthy. `@reboot` starts it immediately after boot. `publish-due.sh` runs the existing idempotent scheduled-publication script. `automation-tick.sh` calls:
 
 ```text
 POST http://127.0.0.1:3000/api/admin/seo/automation/tick
