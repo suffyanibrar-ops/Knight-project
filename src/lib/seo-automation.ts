@@ -136,7 +136,8 @@ export async function dueTasks(now = Date.now()): Promise<SeoTaskType[]> {
   const due: SeoTaskType[] = [];
   for (const task of SEO_TASK_TYPES) {
     const latest = await latestRun(task);
-    if (!latest || now - latest.startedAt.getTime() >= intervalMs(settings, task)) due.push(task);
+    const retryDue = latest?.status === "failed" && latest.retryCount < 3 && now - latest.startedAt.getTime() >= 10 * 60 * 1000;
+    if (!latest || retryDue || now - latest.startedAt.getTime() >= intervalMs(settings, task)) due.push(task);
   }
   // Keep one tick bounded; the next tick handles the remainder.
   return due.slice(0, 2);
@@ -144,8 +145,10 @@ export async function dueTasks(now = Date.now()): Promise<SeoTaskType[]> {
 
 async function beginRun(task: SeoTaskType): Promise<{ id: number; executionId: string }> {
   const executionId = randomUUID();
+  const previous = await latestRun(task);
+  const retryCount = previous?.status === "failed" ? Math.min(3, previous.retryCount + 1) : 0;
   const [row] = await db.insert(seoAutomationRuns).values({
-    executionId, taskType: task, status: "running", startedAt: new Date(),
+    executionId, taskType: task, status: "running", startedAt: new Date(), retryCount,
   }).returning({ id: seoAutomationRuns.id });
   return { id: row.id, executionId };
 }
