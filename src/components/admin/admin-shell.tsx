@@ -20,6 +20,7 @@ const navGroups: { label: string; links: NavLink[] }[] = [
     label: "Command Center",
     links: [
       { label: "Overview", href: "/admin", icon: LayoutDashboard },
+      { label: "AI Team", href: "/admin/team", icon: Users },
       { label: "Live Traffic", href: "/admin/traffic", icon: Activity },
     ],
   },

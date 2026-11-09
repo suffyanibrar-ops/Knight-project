@@ -112,13 +112,13 @@ async function jiroRequest(path: string, init: RequestInit): Promise<Record<stri
   return payload as Record<string, unknown>;
 }
 
-export async function jiroHealth(): Promise<{ ok: boolean; version?: string; uptimeSeconds?: number; error?: string }> {
+export async function jiroHealth(timeoutMs = 8_000): Promise<{ ok: boolean; version?: string; uptimeSeconds?: number; error?: string }> {
   if (!jiroConfigured()) return { ok: false, error: "Jiro is not configured or internal token is missing." };
   try {
     const response = await fetch(`${baseUrl()}/health`, {
       cache: "no-store",
       headers: { "x-knight-internal-token": token() },
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const body = (await response.json().catch(() => null)) as { status?: string; version?: string; uptime_seconds?: number } | null;
     if (!response.ok || body?.status !== "ok") return { ok: false, error: `Jiro health returned HTTP ${response.status}.` };

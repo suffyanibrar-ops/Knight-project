@@ -165,6 +165,18 @@ WantedBy=timers.target
 
 `systemctl daemon-reload && systemctl enable --now knight-seo-automation.timer` requires privileged access.
 
+## AI Team page
+
+`/admin/team` is a read-only owner overview of five clearly labelled AI roles:
+
+- SEO Manager
+- Content Editor
+- QA Reviewer
+- Growth Analyst
+- Operations Monitor
+
+It shows a short daily focus, real status/metrics from SQLite and Jiro health, and recent teamwork. It has no agent controls; those stay on `/admin/seo` and existing modules. It requires admin authentication, is noindex, and shows an honest unavailable state if SQLite is unavailable.
+
 ## Google Search Console
 
 Not connected. The existing modular integration in `src/lib/search-research.ts` already supports:
