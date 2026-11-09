@@ -352,11 +352,16 @@ export function AiChatWidget() {
 
   async function enableVoice() {
     setVoiceIntro(false);
-    // Must run while the click/user gesture is still active. iOS Safari and
-    // some mobile browsers block TTS that starts after an async API response.
-    voice.unlock();
+    // Start recognition synchronously from the user gesture first. Some Android
+    // browsers can lose audio focus if speech synthesis is started before the
+    // microphone recognizer; recognition must own the capture first.
     voiceModeRef.current = true;
-    const started = await voice.start();
+    const startedPromise = voice.start();
+    // Prime TTS only after recognition has been initiated. On iOS this still
+    // occurs inside the original tap gesture; on Android the unlock is a no-op
+    // so it cannot compete with the microphone session.
+    voice.unlock();
+    const started = await startedPromise;
     if (!started || !voiceModeRef.current) {
       voiceModeRef.current = false;
       return;

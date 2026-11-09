@@ -657,8 +657,12 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     const synth = window.speechSynthesis;
     try { if (synth.paused) synth.resume(); } catch { /* ignore */ }
     const ua = navigator.userAgent;
-    const safari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR/i.test(ua);
-    if (!isMobileBrowser() && !safari) return;
+    const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const desktopSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR/i.test(ua);
+    // Android Chrome does not need a silent TTS utterance and starting one
+    // before recognition can steal audio focus from the microphone. Only iOS
+    // (and desktop Safari) get the gesture-priming utterance.
+    if (!ios && !desktopSafari) return;
     try {
       const utterance = new SpeechSynthesisUtterance(" ");
       utterance.volume = 0;
