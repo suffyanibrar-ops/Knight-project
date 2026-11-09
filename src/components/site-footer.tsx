@@ -11,7 +11,6 @@ const companyLinks = [
   { label: "Switching billing partners", href: "/switching-medical-billing" },
   { label: "Results", href: "/results" },
   { label: "Resources", href: "/insights" },
-  { label: "Blog", href: "/blog" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];

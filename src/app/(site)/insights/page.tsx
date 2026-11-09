@@ -1,4 +1,6 @@
 import { pageMetadata } from "@/lib/seo";
+import Link from "next/link";
+import { listPublicPosts } from "@/lib/blog";
 import type { Metadata } from "next";
 import { CtaBand } from "@/components/cta-band";
 import { InsightsExplorer } from "@/components/insights-explorer";
@@ -13,7 +15,7 @@ export const metadata: Metadata = pageMetadata({ title: 'Billing Resources & Gui
 export const dynamic = "force-dynamic";
 
 export default async function InsightsPage() {
-  const articles = await getArticles();
+  const [articles, cmsPosts] = await Promise.all([getArticles(), listPublicPosts({ page: 1, perPage: 6 })]);
   const illustrated = articles.map((article) => ({
     ...article,
     image: articleVisuals[article.slug] ?? article.image,
@@ -41,6 +43,28 @@ export default async function InsightsPage() {
       <section className="bg-surface py-14 sm:py-20">
         <div className="shell">
           <InsightsExplorer articles={illustrated} />
+
+          {cmsPosts.posts.length > 0 && (
+            <Reveal className="mt-12">
+              <div className="rounded-3xl border border-mist-200 bg-mist-50 p-5 sm:p-7">
+                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                  <div>
+                    <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-700">From the blog</p>
+                    <h2 className="mt-1 text-[1.35rem] font-extrabold tracking-tight text-ink-950">Latest published articles</h2>
+                  </div>
+                  <span className="text-[0.72rem] font-semibold text-ink-600/65">Updates from the Knight team</span>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {cmsPosts.posts.map((post) => (
+                    <Link key={post.slug} href={`/blog/${post.slug}`} className="group rounded-xl border border-mist-200 bg-surface p-4 transition-colors hover:border-brand-300">
+                      <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.12em] text-brand-700">{post.category?.name ?? "Article"}</p>
+                      <p className="mt-1 text-[0.85rem] font-extrabold leading-snug text-ink-950 group-hover:text-brand-700">{post.title}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          )}
 
           <Reveal className="mt-12">
             <div id="newsletter" className="relative overflow-hidden rounded-3xl bg-night p-6 text-white sm:p-10">

@@ -41,7 +41,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 700 }
   ok(`${viewport.width}: body scroll is locked while open`, await page.evaluate(() => getComputedStyle(document.body).overflow === "hidden"));
   await servicesToggle.click();
   ok(`${viewport.width}: Services expands only after explicit tap`, (await servicesToggle.getAttribute("aria-expanded")) === "true");
-  await drawer.getByRole("link", { name: "Medical Billing", exact: true }).click();
+  await drawer.getByRole("link", { name: "Medical Billing & Coding", exact: true }).click();
   await page.waitForURL("**/services/medical-billing-and-coding", { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(350);
   ok(`${viewport.width}: drawer closes immediately on submenu navigation`, !(await page.locator("#mobile-navigation").isVisible().catch(() => false)));

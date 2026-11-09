@@ -21,7 +21,7 @@ export default function RevenueLeakCalculatorPage() {
         eyebrow="Revenue-cycle tool"
         title={<>See where the revenue cycle <span className="display-serif text-brand-600">deserves a closer look.</span></>}
         description="Enter a recent month of practice numbers to get neutral indicators for collection rate, aged A/R, denial exposure and billing cost. The result is a conversation starter — not a calculated promise or a diagnosis."
-        image={photo.deskCharts}
+        image={photo.medicalBillingPricingCalculator}
         imageAlt="Financial reports and charts on a desk"
         badges={["No data submitted", "No PHI required", "Estimates only"]}
         crumbs={[{ label: "Resources", href: "/insights" }, { label: "Revenue Leak Calculator" }]}

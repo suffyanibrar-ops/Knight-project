@@ -23,7 +23,7 @@ export default function SoftwareHubPage() {
         eyebrow={softwareHub.eyebrow}
         title={<>{softwareHub.h1}</>}
         description={softwareHub.intro}
-        image={photo.analyticsLaptop}
+        image={photo.medicalBillingSoftwareHub}
         imageAlt="Billing specialist reviewing revenue-cycle software"
         badges={["Works in your system", "No platform migration", "Billing team, not software vendor"]}
         crumbs={[{ label: "Software & EHR Expertise" }]}

@@ -107,7 +107,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   await skip.click();
   const elapsed = await waitForIntroEnd(page);
   ok("skip dismisses the intro immediately", elapsed >= 0 && elapsed < 700, `${elapsed}ms`);
-  ok("site is usable after skip", (await page.locator("body").innerText()).includes("Your revenue cycle"));
+  ok("site is usable after skip", (await page.locator("body").innerText()).includes("Medical billing"));
   await context.close();
 }
 
@@ -132,7 +132,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   ok("no-JS: branded overlay still renders", Number(await page.locator(".site-intro__brand").evaluate((el) => getComputedStyle(el).opacity)) > 0.4);
   await page.waitForTimeout(3000);
   ok("no-JS: overlay auto-dismisses", !(await page.locator("[data-site-intro]").isVisible()));
-  ok("no-JS: homepage content is visible", (await page.locator("body").innerText()).includes("Your revenue cycle"));
+  ok("no-JS: homepage content is visible", (await page.locator("body").innerText()).includes("Medical billing"));
   await context.close();
 }
 
@@ -176,7 +176,7 @@ async function waitForIntroEnd(page, minMs = 0) {
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   const elapsed = await waitForIntroEnd(page);
   ok("slow HTML does not leave a stuck overlay", elapsed >= 0 && elapsed < 4200, `${elapsed}ms`);
-  ok("slow load remains usable after intro", (await page.locator("body").innerText()).includes("Your revenue cycle"));
+  ok("slow load remains usable after intro", (await page.locator("body").innerText()).includes("Medical billing"));
   ok("slow load still dismisses within a bounded total", Date.now() - started < 9000, `${Date.now() - started}ms`);
   await context.close();
 }

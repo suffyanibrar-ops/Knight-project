@@ -33,7 +33,7 @@ export default function WhyKnightPage() {
         eyebrow="Why Knight"
         title={<>Why independent practices choose <span className="display-serif text-brand-600">Knight Medical Billing.</span></>}
         description="You do not need a larger back office to get more control over the revenue cycle. You need a team that owns the detail, works inside your software and explains what is happening in plain language."
-        image={photo.teamLounge}
+        image={photo.whyKnightTeamCollaboration}
         imageAlt="Knight Medical Billing team collaborating in a bright office"
         badges={["Dedicated team", "Works in your software", "No prepayment"]}
         crumbs={[{ label: "Company", href: "/about" }, { label: "Why Knight" }]}

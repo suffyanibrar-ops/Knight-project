@@ -93,7 +93,7 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
 
   const breadcrumbs = [
     { name: "Home", path: "/" },
-    { name: "Blog", path: "/blog" },
+    { name: "Insights", path: "/insights" },
     ...(post.category ? [{ name: post.category.name, path: `/blog/category/${post.category.slug}` }] : []),
     { name: post.title, path: `/blog/${post.slug}` },
   ];
@@ -134,7 +134,7 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
                 Home
               </Link>
               <span aria-hidden className="text-ink-600/30">/</span>
-              <Link href="/blog" className="transition-colors hover:text-brand-700">
+              <Link href="/insights" className="transition-colors hover:text-brand-700">
                 Blog
               </Link>
               {post.category ? (
@@ -220,7 +220,7 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
 
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-mist-200 bg-mist-50 p-4 print:hidden">
                 <ShareLinks url={canonical} title={post.title} />
-                <Link href="/blog" className="inline-flex items-center gap-1.5 text-[0.74rem] font-extrabold text-brand-700 hover:text-brand-500">
+                <Link href="/insights" className="inline-flex items-center gap-1.5 text-[0.74rem] font-extrabold text-brand-700 hover:text-brand-500">
                   <ArrowLeft aria-hidden className="h-3.5 w-3.5" /> All articles
                 </Link>
               </div>
@@ -293,7 +293,7 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
                     Related <span className="display-serif text-brand-600">articles.</span>
                   </h2>
                 </div>
-                <Link href="/blog" className="inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-brand-700 hover:text-brand-500">
+                <Link href="/insights" className="inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-brand-700 hover:text-brand-500">
                   All articles <ArrowRight aria-hidden className="h-3.5 w-3.5" />
                 </Link>
               </div>

@@ -51,31 +51,38 @@ export function Hero() {
             animate="show"
             custom={1}
             variants={fadeUp}
-            aria-label="Your revenue cycle, managed end to end."
-            className="mt-5 text-[clamp(2.15rem,5.6vw,4.1rem)] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink-950"
+            className="mt-5 max-w-[18ch] text-[clamp(2rem,5vw,3.75rem)] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink-950"
           >
-            Your revenue cycle,
-            <span aria-hidden="true" className="relative mt-1 flex items-baseline gap-3">
-              <span className="relative inline-block align-bottom text-brand-600">
-                <Typewriter phrases={typePhrases} className="display-serif" announce={false} />
-              </span>
-            </span>
-            <span className="sr-only">managed end to end.</span>
-            <svg aria-hidden viewBox="0 0 320 12" className="mt-1 h-2.5 w-[min(18rem,72%)] text-brand-400" fill="none" preserveAspectRatio="none">
-              <motion.path
-                d="M2 9C60 3.5 150 2 318 6.5"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1.1, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </svg>
+            Medical billing and revenue cycle management for{" "}
+            <span className="display-serif text-brand-600">independent practices.</span>
           </motion.h1>
 
+          <motion.p
+            aria-hidden="true"
+            data-hero-typewriter
+            initial="hidden"
+            animate="show"
+            custom={2}
+            variants={fadeUp}
+            className="mt-3 min-h-[1.5em] text-[0.9rem] font-bold tracking-tight text-brand-700/80 sm:text-[0.98rem]"
+          >
+            <Typewriter phrases={typePhrases} className="display-serif" announce={false} />
+          </motion.p>
+
+          <svg aria-hidden viewBox="0 0 320 12" className="mt-1 h-2.5 w-[min(18rem,72%)] text-brand-400" fill="none" preserveAspectRatio="none">
+            <motion.path
+              d="M2 9C60 3.5 150 2 318 6.5"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.1, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </svg>
+
           <motion.p initial="hidden" animate="show" custom={2} variants={fadeUp} className="mt-6 max-w-xl text-[1rem] leading-relaxed text-ink-600/85 sm:text-[1.06rem]">
-            Knight Medical Billing is a US medical billing and revenue cycle management partner for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations. From eligibility checks to final payment posting, we run the administrative side of revenue — in your existing software, with a dedicated team.
+            Knight Medical Billing is a medical billing and revenue cycle management partner built around independent and growing practices. From eligibility checks to final payment posting, our dedicated team runs the administrative side of revenue in your existing software. We also support multi-provider groups and facility teams where the fit is right.
           </motion.p>
 
           <motion.div initial="hidden" animate="show" custom={3} variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

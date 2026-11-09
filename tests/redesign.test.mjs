@@ -85,16 +85,20 @@ for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390
   await ctx.close();
 }
 
-// 5. Typewriter present and animating
+// 5. One stable semantic H1; motion remains in a subtitle
 {
   const ctx = await br.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   const h1 = page.locator("h1").first();
-  const text1 = await h1.innerText();
+  const h1Text1 = await h1.innerText();
+  const subtitle = page.locator("[data-hero-typewriter]").first();
+  const subtitle1 = await subtitle.innerText();
   await page.waitForTimeout(2600);
-  const text2 = await h1.innerText();
-  record("typewriter headline changes", text1 !== text2, `"${text1.slice(-24)}" → "${text2.slice(-24)}"`);
+  const h1Text2 = await h1.innerText();
+  const subtitle2 = await subtitle.innerText();
+  record("homepage has one stable semantic H1", (await page.locator("h1").count()) === 1 && h1Text1 === h1Text2 && /independent practices/i.test(h1Text1), `"${h1Text1}"`);
+  record("hero motion remains in a separate subtitle", subtitle1 !== subtitle2, `"${subtitle1.slice(-24)}" → "${subtitle2.slice(-24)}"`);
   await ctx.close();
 }
 

@@ -23,7 +23,7 @@ export default function CaseStudiesPage() {
         eyebrow="Case studies"
         title={<>Verified results, <span className="display-serif text-brand-600">never invented ones.</span></>}
         description="We are preparing case studies with documented, practice-approved outcomes. Until a result is verified and permission is in place, we will not publish a percentage, client name, logo or testimonial."
-        image={photo.executiveMeeting}
+        image={photo.caseStudiesHealthcareTeam}
         imageAlt="Healthcare leaders reviewing performance information"
         badges={["Verified only", "Practice approval required", "No fabricated outcomes"]}
         crumbs={[{ label: "Results", href: "/results" }, { label: "Case Studies" }]}

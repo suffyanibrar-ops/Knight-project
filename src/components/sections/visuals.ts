@@ -10,15 +10,15 @@ import { photo } from "@/lib/photos";
 
 /** Hero photograph per marketing page. */
 export const pageHeroVisuals = {
-  services: photo.teamTablet,
+  services: photo.executiveMeeting,
   specialties: photo.doctorFemale,
   whoWeServe: photo.corridorBright,
-  results: photo.analyticsLaptop,
-  about: photo.teamLounge,
-  contact: photo.reception,
-  schedule: photo.videoConsult,
-  process: photo.presentation,
-  insights: photo.laptopNotes,
+  results: photo.revenuePerformanceReportingTeam,
+  about: photo.doctorPortrait,
+  contact: photo.contactPracticeReception,
+  schedule: photo.scheduleConsultationCall,
+  process: photo.processRevenueCyclePlanning,
+  insights: photo.insightsMedicalBillingReading,
   faq: photo.supportHeadset,
   compliance: photo.stethoscopeNotes,
 } as const;
@@ -28,7 +28,7 @@ export const serviceVisuals: Record<string, string> = {
   "medical-billing-and-coding": photo.documentsTeam,
   "accounts-receivable-management": photo.documentsReview,
   "complete-rcm-services": photo.analyticsLaptop,
-  "credentialing-and-contracting": photo.stethoscopeNotes,
+  "credentialing-and-contracting": photo.credentialingProviderEnrollment,
   "out-of-network-negotiation": photo.documentsDesk,
   "eligibility-and-benefits-verification": photo.reception,
   "prior-and-retro-authorization": photo.doctorsDiscussing,
@@ -80,9 +80,9 @@ export const articleVisuals: Record<string, string> = {
   "out-of-network-negotiation-explained": photo.documentsDesk,
   "credentialing-contracts-and-rates": photo.stethoscopeNotes,
   "revenue-cycle-clean-up-audit": photo.deskCharts,
-  "how-to-choose-medical-billing-company": photo.executiveMeeting,
-  "in-house-vs-outsourced-medical-billing": photo.teamOffice,
-  "medical-billing-pricing": photo.deskCharts,
+  "how-to-choose-medical-billing-company": photo.caseStudiesHealthcareTeam,
+  "in-house-vs-outsourced-medical-billing": photo.whyKnightTeamCollaboration,
+  "medical-billing-pricing": photo.medicalBillingPricingCalculator,
 };
 
 /**
