@@ -31,7 +31,9 @@
     "test:mobile:ui": "node tests/mobile-nav-cta-theme.e2e.mjs",
     "blog:publish-due": "node scripts/publish-due.mjs",
     "db:verify-backup": "node scripts/verify-backup.mjs",
-    "test:deploy-safety": "node tests/deployment-safety.test.mjs"
+    "test:deploy-safety": "node tests/deployment-safety.test.mjs",
+    "test:voice:mobile": "node tests/voice-mobile.e2e.mjs",
+    "test:voice:errors": "node tests/voice-errors.e2e.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

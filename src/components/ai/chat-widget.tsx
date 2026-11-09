@@ -97,6 +97,13 @@ export function AiChatWidget() {
     voiceName: voiceChoice || config?.voiceName,
   });
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
+  useEffect(() => {
+    // A fatal voice failure returns the conversation to text mode while leaving
+    // the error visible and retryable.
+    if (voice.state === "error" || voice.state === "unsupported" || voice.state === "off") {
+      voiceModeRef.current = false;
+    }
+  }, [voice.state]);
 
   // Load public config when the widget first opens.
   useEffect(() => {
@@ -339,16 +346,22 @@ export function AiChatWidget() {
       return;
     }
     loadVoiceOptions();
-    if (voice.state === "off") setVoiceIntro(true);
+    if (voice.state === "off" || voice.state === "error") setVoiceIntro(true);
     else setVoiceIntro(false);
   }
 
   async function enableVoice() {
     setVoiceIntro(false);
+    // Must run while the click/user gesture is still active. iOS Safari and
+    // some mobile browsers block TTS that starts after an async API response.
+    voice.unlock();
     voiceModeRef.current = true;
-    await voice.start();
-    if (!voiceModeRef.current) return;
-    setMessages((prev) => [...prev, { id: uid(), role: "note", text: "Voice mode is on. Speak naturally — I'll stop talking as soon as you interrupt." }]);
+    const started = await voice.start();
+    if (!started || !voiceModeRef.current) {
+      voiceModeRef.current = false;
+      return;
+    }
+    setMessages((prev) => [...prev, { id: uid(), role: "note", text: "Voice mode is on. Speak naturally — use Stop if you need to interrupt." }]);
   }
 
   function endVoice() {
@@ -396,7 +409,9 @@ export function AiChatWidget() {
   }
 
   const voiceActive = voice.state !== "off" && voice.state !== "unsupported";
-  const voiceStatus = voice.state === "listening"
+  const voiceStatus = voice.state === "starting"
+    ? "Starting microphone…"
+    : voice.state === "listening"
     ? "Listening…"
     : voice.state === "user-speaking"
       ? "Listening to you…"
@@ -483,7 +498,7 @@ export function AiChatWidget() {
                 )}
                 {voiceActive && voice.audioMode === "half-duplex" && (
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.68rem] leading-relaxed text-amber-900">
-                    This device reports limited echo cancellation. Riley uses a safer half-duplex mode here — tap <strong>Stop</strong> to interrupt and speak.
+                    This device has limited echo cancellation, so Riley uses walkie-talkie style half-duplex voice. While Riley is speaking, tap <strong>Stop</strong>, then speak. Voice remains fully usable.
                   </p>
                 )}
                 {voice.error && (

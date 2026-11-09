@@ -7,7 +7,7 @@ import { chooseBestVoice, naturalVoiceOptions, normalizeForSpeech } from "./voic
  * Browser-native voice stack (no paid speech services):
  *  - SpeechRecognition for streaming-ish STT with interim results
  *  - speechSynthesis for TTS
- *  - WebAudio RMS energy detection for barge-in while the agent speaks
+ *  - WebAudio RMS energy detection for desktop full-duplex barge-in
  *
  * The critical rule in this hook is: a transcript is never forwarded while the
  * agent is speaking. Riley's own output can only cause a turn after an explicit
@@ -15,14 +15,17 @@ import { chooseBestVoice, naturalVoiceOptions, normalizeForSpeech } from "./voic
  * visitor's new turn. This breaks the acoustic feedback loop even when browser
  * echo cancellation is imperfect.
  *
- * Echo cancellation is requested from getUserMedia and its *actual applied*
- * state is read from the audio track. When it is reported unavailable, Riley
- * uses a safe half-duplex fallback: playback is never allowed to become a user
- * turn, and the visible Stop control is the reliable interruption path.
+ * Mobile browsers are deliberately kept on a half-duplex path: SpeechRecognition
+ * starts directly from the user's tap, no second getUserMedia stream competes
+ * with it, recognition is closed while TTS plays and reopened afterwards. Desktop
+ * may use full-duplex only when getUserMedia confirms an echo-cancelling track;
+ * otherwise it also falls back to half-duplex. The Stop control always remains
+ * the reliable interruption path.
  */
 
 export type VoiceState =
   | "off"
+  | "starting"
   | "idle"
   | "listening"
   | "user-speaking"
@@ -61,6 +64,49 @@ function getRecognitionCtor(): RecognitionCtor | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+/**
+ * Mobile browsers (especially iOS) cannot reliably hold a separate
+ * getUserMedia stream while SpeechRecognition owns the microphone. Treat
+ * touch/mobile devices as half-duplex and use recognition alone; desktop
+ * browsers may probe microphone capabilities for a safe full-duplex mode.
+ */
+function isMobileBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
+  return navigator.maxTouchPoints > 1 && window.matchMedia?.("(pointer: coarse)").matches === true;
+}
+
+function isPermissionError(error: unknown): boolean {
+  const name = error instanceof Error ? error.name : "";
+  return name === "NotAllowedError" || name === "SecurityError";
+}
+
+async function requestMicrophoneStream(): Promise<MediaStream> {
+  const media = navigator.mediaDevices;
+  if (!media?.getUserMedia) throw new DOMException("Microphone API is not available.", "NotSupportedError");
+  const strict: MediaStreamConstraints = {
+    video: false,
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: { ideal: 1 } },
+  };
+  try {
+    return await media.getUserMedia(strict);
+  } catch (first) {
+    if (isPermissionError(first)) throw first;
+    // Some mobile/embedded browsers reject boolean constraints or channelCount.
+    const ideal: MediaStreamConstraints = {
+      video: false,
+      audio: { echoCancellation: { ideal: true }, noiseSuppression: { ideal: true }, autoGainControl: { ideal: true } },
+    };
+    try {
+      return await media.getUserMedia(ideal);
+    } catch (second) {
+      if (isPermissionError(second)) throw second;
+      return await media.getUserMedia({ video: false, audio: true });
+    }
+  }
 }
 
 export interface UseVoiceOptions {
@@ -172,6 +218,9 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
   const rafRef = useRef<number | null>(null);
   const speakingRef = useRef(false);
   const mutedRef = useRef(false);
+  const wantListeningRef = useRef(false);
+  const startingRef = useRef(false);
+  const mobileRef = useRef(false);
   const startedRef = useRef(false);
   const stateRef = useRef<VoiceState>("off");
   const onFinalRef = useRef(onFinalUtterance);
@@ -213,27 +262,6 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     () => false,
   );
 
-  /** True when a transcript is an exact/near-exact repeat of recently spoken TTS. */
-  const looksLikeSelfEcho = useCallback((text: string, includeShortExact = false) => {
-    const normalized = normalizeMatch(text);
-    // Short answers such as "yes", "hello", "good" and "I'm here" are never
-    // classified as echo in normal operation. The only exception is an exact
-    // match immediately after playback: that is the post-TTS tail guard, not a
-    // general short-transcript filter.
-    if (!normalized) return false;
-    if (!includeShortExact && (normalized.length < 12 || normalized.split(/\s+/).length < 3)) return false;
-    for (const spoken of recentSpokenRef.current) {
-      const spokenNormalized = normalizeMatch(spoken);
-      if (!spokenNormalized) continue;
-      if (normalized === spokenNormalized) return true;
-      if (normalized.length < 12 || normalized.split(/\s+/).length < 3) continue;
-      // A long exact excerpt of Riley's current/previous answer is self-echo.
-      if (normalized.split(/\s+/).length >= 4 && spokenNormalized.includes(normalized)) return true;
-      if (phraseSimilarity(normalized, spokenNormalized) >= 0.92) return true;
-    }
-    return false;
-  }, []);
-
   const stopAnalyser = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
@@ -248,6 +276,26 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     }
   }, []);
 
+  const stopRecognition = useCallback(() => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    recognitionEpochRef.current += 1;
+    startedRef.current = false;
+    if (recognitionRestartTimerRef.current !== null) {
+      window.clearTimeout(recognitionRestartTimerRef.current);
+      recognitionRestartTimerRef.current = null;
+    }
+    if (recognition) {
+      try { recognition.abort(); } catch { /* already closed */ }
+    }
+  }, []);
+
+  const setHalfDuplex = useCallback((reported: boolean | null = false) => {
+    audioModeRef.current = "half-duplex";
+    setAudioMode("half-duplex");
+    setEchoCancellation(reported);
+  }, []);
+
   const stopSpeech = useCallback(() => {
     speechSessionRef.current += 1;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -255,6 +303,58 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     }
     speakingRef.current = false;
     speechEndedAtRef.current = performance.now();
+  }, []);
+
+  const requestRecognitionRestart = useCallback((delay = 180) => {
+    if (recognitionRestartTimerRef.current !== null) {
+      window.clearTimeout(recognitionRestartTimerRef.current);
+    }
+    recognitionRestartTimerRef.current = window.setTimeout(() => {
+      recognitionRestartTimerRef.current = null;
+      if (!wantListeningRef.current || mutedRef.current) return;
+      if (stateRef.current === "off" || stateRef.current === "unsupported" || stateRef.current === "error") return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      // Half-duplex deliberately keeps the microphone closed while Riley speaks
+      // or while an answer is being generated.
+      if (audioModeRef.current !== "full-duplex" && (speakingRef.current || stateRef.current === "thinking")) return;
+      recognitionRestartRef.current();
+    }, delay);
+  }, []);
+
+  const resumeAfterTts = useCallback(() => {
+    // Restart if this is the half-duplex path, or if a capability probe upgraded
+    // to full-duplex after half-duplex already closed the recognizer.
+    if (audioModeRef.current !== "full-duplex" || !recognitionRef.current) requestRecognitionRestart(180);
+  }, [requestRecognitionRestart]);
+
+  const failVoice = useCallback((message: string) => {
+    wantListeningRef.current = false;
+    bargeAuthorizedAtRef.current = 0;
+    bargeViaVadRef.current = false;
+    bargeConfirmedRef.current = false;
+    stopRecognition();
+    stopAnalyser();
+    stopSpeech();
+    setInterim("");
+    setError(message);
+    stateRef.current = "error";
+    setState("error");
+  }, [stopAnalyser, stopRecognition, stopSpeech]);
+
+  /** True when a transcript is an exact/near-exact repeat of recently spoken TTS. */
+  const looksLikeSelfEcho = useCallback((text: string, includeShortExact = false) => {
+    const normalized = normalizeMatch(text);
+    if (!normalized) return false;
+    if (!includeShortExact && (normalized.length < 12 || normalized.split(/\s+/).length < 3)) return false;
+    for (const spoken of recentSpokenRef.current) {
+      const spokenNormalized = normalizeMatch(spoken);
+      if (!spokenNormalized) continue;
+      if (normalized === spokenNormalized) return true;
+      if (normalized.length < 12 || normalized.split(/\s+/).length < 3) continue;
+      if (normalized.split(/\s+/).length >= 4 && spokenNormalized.includes(normalized)) return true;
+      if (phraseSimilarity(normalized, spokenNormalized) >= 0.92) return true;
+    }
+    return false;
   }, []);
 
   /**
@@ -277,21 +377,24 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
   /** Start the WebAudio energy monitor used to detect speech during TTS. */
   const startAnalyser = useCallback(async () => {
     stopAnalyser();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: { ideal: 1 },
-        },
-      });
-      streamRef.current = stream;
+    // Mobile browsers do not reliably allow a second microphone capture beside
+    // SpeechRecognition. They use the half-duplex path and never open one.
+    if (mobileRef.current) {
+      setHalfDuplex(false);
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setHalfDuplex(false);
+      return;
+    }
 
-      // Verify what the browser actually applied, rather than trusting the
-      // request. The SpeechRecognition API has no way to accept this stream, so
-      // this is a capability signal for the conversation mode, not a guarantee
-      // that the STT engine's own capture is echo-free.
+    let stream: MediaStream | null = null;
+    try {
+      stream = await requestMicrophoneStream();
+      if (!wantListeningRef.current || stateRef.current === "off" || stateRef.current === "error") {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       const track = stream.getAudioTracks()[0];
       let appliedEchoCancellation: boolean | null = null;
       try {
@@ -313,25 +416,30 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         }
       } catch { /* older browser: state remains unknown */ }
 
-      const mode: AudioMode = appliedEchoCancellation === true
-        ? "full-duplex"
-        : appliedEchoCancellation === false
-          ? "half-duplex"
-          : "unknown";
-      audioModeRef.current = mode;
-      setAudioMode(mode);
-      setEchoCancellation(appliedEchoCancellation);
+      // Only trust a confirmed echo-cancellation track for full-duplex. If the
+      // browser omits the setting, use the safe half-duplex path.
+      if (appliedEchoCancellation !== true) {
+        stream.getTracks().forEach((item) => item.stop());
+        stream = null;
+        setHalfDuplex(false);
+        return;
+      }
 
       const AudioCtor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtor) {
-        stopAnalyser();
-        audioModeRef.current = "half-duplex";
-        setAudioMode("half-duplex");
+        stream.getTracks().forEach((item) => item.stop());
+        stream = null;
+        setHalfDuplex(false);
         return;
       }
       const context = new AudioCtor();
       audioContextRef.current = context;
       try { await context.resume(); } catch { /* autoplay/gesture state */ }
+      if (context.state !== "running") {
+        stopAnalyser();
+        setHalfDuplex(false);
+        return;
+      }
       // Deliberately connect microphone → analyser only. TTS is never routed
       // into this graph, and no source is connected to audioContext.destination.
       const source = context.createMediaStreamSource(stream);
@@ -339,7 +447,11 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
       analyser.fftSize = 1024;
       analyser.smoothingTimeConstant = 0.6;
       source.connect(analyser);
+      streamRef.current = stream;
       analyserRef.current = analyser;
+      audioModeRef.current = "full-duplex";
+      setAudioMode("full-duplex");
+      setEchoCancellation(true);
       const data = new Uint8Array(analyser.fftSize);
       let loudFrames = 0;
       const tick = () => {
@@ -353,7 +465,6 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         }
         const rms = Math.sqrt(sum / data.length);
         if (!speakingRef.current) {
-          // Track a quiet ambient floor only while Riley is not speaking.
           noiseFloorRef.current = Math.min(0.04, Math.max(0.008, noiseFloorRef.current * 0.98 + rms * 0.02));
           loudFrames = 0;
         } else if (!mutedRef.current && audioModeRef.current === "full-duplex") {
@@ -375,14 +486,15 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
       };
       rafRef.current = requestAnimationFrame(tick);
     } catch {
-      // If microphone access or WebAudio fails, recognition may still work.
-      // Mark the session half-duplex so no energy detector can manufacture barge-in.
+      if (stream) stream.getTracks().forEach((item) => item.stop());
       stopAnalyser();
-      audioModeRef.current = "half-duplex";
-      setAudioMode("half-duplex");
-      setEchoCancellation(false);
+      setHalfDuplex(false);
     }
-  }, [stopAnalyser, triggerBargeIn]);
+  }, [setHalfDuplex, stopAnalyser, triggerBargeIn]);
+
+  const pauseRecognitionForTts = useCallback(() => {
+    if (audioModeRef.current !== "full-duplex") stopRecognition();
+  }, [stopRecognition]);
 
   const acceptFinal = useCallback((raw: string) => {
     const text = raw.trim();
@@ -416,14 +528,7 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     const previous = lastFinalRef.current;
     if (previous && previous.normalized === normalized && now - previous.at < DUPLICATE_WINDOW_MS) return;
 
-    // If VAD stopped playback but the STT result is a long exact echo, do not
-    // manufacture a new user turn from the speaker. Transcript-based barge-in
-    // remains accepted even when the visitor uses words Riley used.
     if (bargeAuthorizedAtRef.current && looksLikeSelfEcho(text, true)) {
-      // This applies to both VAD- and transcript-triggered interruptions: an
-      // exact/near-exact repeat of Riley's own speech is still echo, not a
-      // visitor turn. Legitimate short replies that are not exact playback
-      // matches are not filtered here.
       bargeAuthorizedAtRef.current = 0;
       bargeViaVadRef.current = false;
       bargeConfirmedRef.current = false;
@@ -438,38 +543,30 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     stateRef.current = "thinking";
     setState("thinking");
 
-    // Close the recognition generation that produced this final. Any delayed
-    // result from that generation is now invalid, so it cannot create a second
-    // turn after the answer has started. A fresh recognizer is started for
-    // interruptions while Riley thinks/speaks.
-    const previousRecognition = recognitionRef.current;
-    recognitionEpochRef.current += 1;
-    recognitionRef.current = null;
-    startedRef.current = false;
-    if (previousRecognition) {
-      try { previousRecognition.abort(); } catch { /* already closed */ }
-    }
-    if (recognitionRestartTimerRef.current !== null) window.clearTimeout(recognitionRestartTimerRef.current);
-    recognitionRestartTimerRef.current = window.setTimeout(() => {
-      recognitionRestartTimerRef.current = null;
-      if (stateRef.current !== "off" && stateRef.current !== "unsupported" && stateRef.current !== "error") {
-        recognitionRestartRef.current();
-      }
-    }, 160);
+    // Close the recognition generation that produced this final. A fresh
+    // recognizer is only restarted during the answer in full-duplex mode for
+    // barge-in; half-duplex stays closed until TTS finishes.
+    stopRecognition();
+    if (audioModeRef.current === "full-duplex") requestRecognitionRestart(160);
 
     onFinalRef.current(text);
-  }, [looksLikeSelfEcho]);
+  }, [looksLikeSelfEcho, requestRecognitionRestart, stopRecognition]);
 
   const startRecognition = useCallback(() => {
     const Ctor = getRecognitionCtor();
-    if (!Ctor) return;
-    if (recognitionRef.current && startedRef.current) return;
+    if (!Ctor || !wantListeningRef.current || mutedRef.current) return;
+    if (audioModeRef.current !== "full-duplex" && (speakingRef.current || stateRef.current === "thinking")) return;
+    if (recognitionRef.current) return;
+
     const recognition = new Ctor();
     const epoch = ++recognitionEpochRef.current;
     recognition.lang = lang;
-    recognition.continuous = true;
+    // Mobile Safari/Chrome can handle a continuous recognizer poorly; restart
+    // via onend instead. Desktop keeps continuous mode for natural turns.
+    recognition.continuous = !mobileRef.current;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+
     recognition.onstart = () => {
       if (recognitionRef.current !== recognition || epoch !== recognitionEpochRef.current) return;
       startedRef.current = true;
@@ -478,9 +575,8 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         setState("listening");
       }
     };
+
     recognition.onresult = (event) => {
-      // A recognition instance/epoch mismatch means this result belongs to an
-      // ended or superseded session. Never let it create a turn.
       if (recognitionRef.current !== recognition || epoch !== recognitionEpochRef.current) return;
       let interimText = "";
       let finalText = "";
@@ -492,9 +588,6 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
       if (interimText.trim()) {
         const spoken = interimText.trim();
         if (speakingRef.current) {
-          // While Riley speaks, only a different-looking interim can authorize
-          // barge-in. A similar interim is the agent's own voice returning via
-          // the microphone and is discarded before it can create a turn.
           if (audioModeRef.current === "half-duplex") return;
           if (looksLikeSelfEcho(spoken)) return;
           if (isBargePhrase(spoken)) triggerBargeIn("transcript");
@@ -502,7 +595,6 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         }
         if (stateRef.current === "thinking") return;
         if (bargeAuthorizedAtRef.current && !looksLikeSelfEcho(spoken)) {
-          // This is the non-echo confirmation needed after a VAD-triggered stop.
           bargeConfirmedRef.current = true;
         }
         setInterim(spoken);
@@ -510,83 +602,131 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         setState("user-speaking");
       }
       if (finalText.trim()) {
-        // Never forward a final while Riley is speaking unless a genuine-looking
-        // interim has already authorized this interruption.
         acceptFinal(finalText);
       }
     };
+
     recognition.onerror = (event) => {
       if (event.error === "no-speech" || event.error === "aborted") return;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        recognitionRef.current = null;
-        startedRef.current = false;
-        setError("Microphone permission was denied. You can keep chatting by typing.");
-        stateRef.current = "error";
-        setState("error");
+        failVoice("Microphone permission was denied. Enable microphone access for this site in your browser settings, then try again. Text chat still works.");
+      } else if (event.error === "audio-capture") {
+        failVoice("No usable microphone was found, or another app is using it. Close other audio apps, check your device, and try again.");
       } else if (event.error === "network") {
-        recognitionRef.current = null;
-        startedRef.current = false;
-        setError("Speech recognition needs a network connection in this browser. Text chat still works.");
-        stateRef.current = "error";
-        setState("error");
+        failVoice("Voice recognition needs a network connection in this browser. You can keep chatting by text.");
+      } else if (event.error === "language-not-supported") {
+        failVoice("This browser does not support voice recognition for the selected language. You can keep chatting by text.");
+      } else {
+        failVoice("Voice could not start on this device. Check that a microphone is connected and allowed, then try again or use text chat.");
       }
     };
+
     recognition.onend = () => {
       startedRef.current = false;
-      // Chrome ends recognition after silence; restart while the voice session is open.
-      if (recognitionRef.current === recognition && epoch === recognitionEpochRef.current) {
-        window.setTimeout(() => {
-          if (recognitionRef.current === recognition && epoch === recognitionEpochRef.current && !mutedRef.current) {
-            try { recognition.start(); } catch { /* already started */ }
-          }
-        }, 250);
-      }
+      if (recognitionRef.current !== recognition || epoch !== recognitionEpochRef.current) return;
+      recognitionRef.current = null;
+      recognitionEpochRef.current += 1;
+      if (!wantListeningRef.current || mutedRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (audioModeRef.current !== "full-duplex" && (speakingRef.current || stateRef.current === "thinking")) return;
+      requestRecognitionRestart(250);
     };
+
     recognitionRef.current = recognition;
-    try { recognition.start(); } catch { /* start race */ }
-  }, [acceptFinal, lang, looksLikeSelfEcho, triggerBargeIn]);
+    try {
+      recognition.start();
+    } catch (startError) {
+      const name = startError instanceof Error ? startError.name : "";
+      if (name === "InvalidStateError") return;
+      recognitionRef.current = null;
+      startedRef.current = false;
+      recognitionEpochRef.current += 1;
+      failVoice("Voice could not start in this browser. Check microphone access, then try again or use text chat.");
+    }
+  }, [acceptFinal, failVoice, lang, looksLikeSelfEcho, requestRecognitionRestart, triggerBargeIn]);
 
   useEffect(() => { recognitionRestartRef.current = startRecognition; }, [startRecognition]);
 
-  /** Begin a voice session (must be called from a user gesture). */
-  const start = useCallback(async () => {
-    setError(null);
-    if (!getRecognitionCtor()) { setState("unsupported"); return; }
-    setMuted(false);
-    mutedRef.current = false;
-    stateRef.current = "listening";
-    setState("listening");
-    await startAnalyser();
-    startRecognition();
-  }, [startAnalyser, startRecognition]);
-
-  /** Pause/resume listening without ending the session. */
-  const toggleMute = useCallback(() => {
-    setMuted((current) => {
-      const next = !current;
-      mutedRef.current = next;
-      if (recognitionRef.current) {
-        if (next) recognitionRef.current.stop();
-        else { try { recognitionRef.current.start(); } catch { /* running */ } }
-      }
-      return next;
-    });
+  /**
+   * Prime speech synthesis while handling the user's gesture. iOS Safari and
+   * some mobile browsers otherwise block TTS that begins after an async API
+   * response.
+   */
+  const unlock = useCallback(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    try { if (synth.paused) synth.resume(); } catch { /* ignore */ }
+    const ua = navigator.userAgent;
+    const safari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR/i.test(ua);
+    if (!isMobileBrowser() && !safari) return;
+    try {
+      const utterance = new SpeechSynthesisUtterance(" ");
+      utterance.volume = 0;
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      synth.speak(utterance);
+    } catch { /* speech unavailable; normal errors surface later */ }
   }, []);
 
+  /** Begin a voice session (must be called from a user gesture). */
+  const start = useCallback(async () => {
+    if (!getRecognitionCtor()) {
+      stateRef.current = "unsupported";
+      setState("unsupported");
+      return false;
+    }
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      failVoice("Microphone access requires HTTPS. Open the secure site and try voice again, or keep chatting by text.");
+      return false;
+    }
+    if (startingRef.current) return false;
+    if (stateRef.current !== "off" && stateRef.current !== "error" && stateRef.current !== "unsupported") return true;
+    startingRef.current = true;
+    stopSpeech();
+    stopRecognition();
+    stopAnalyser();
+    bargeAuthorizedAtRef.current = 0;
+    bargeViaVadRef.current = false;
+    bargeConfirmedRef.current = false;
+    setError(null);
+    setMuted(false);
+    mutedRef.current = false;
+    wantListeningRef.current = true;
+    mobileRef.current = isMobileBrowser();
+    const initialMode: AudioMode = mobileRef.current ? "half-duplex" : "unknown";
+    audioModeRef.current = initialMode;
+    setAudioMode(initialMode);
+    setEchoCancellation(mobileRef.current ? false : null);
+    stateRef.current = "starting";
+    setState("starting");
+
+    // Start recognition synchronously inside the user gesture. Do not await a
+    // microphone probe first: mobile browsers lose the gesture and/or reject a
+    // second mic capture after the getUserMedia prompt.
+    startRecognition();
+    if (!mobileRef.current) void startAnalyser();
+    startingRef.current = false;
+    return true;
+  }, [failVoice, startAnalyser, startRecognition, stopAnalyser, stopRecognition, stopSpeech]);
+
+  const toggleMute = useCallback(() => {
+    const next = !mutedRef.current;
+    mutedRef.current = next;
+    setMuted(next);
+    if (next) {
+      stopRecognition();
+    } else if (wantListeningRef.current && !speakingRef.current && stateRef.current !== "thinking") {
+      requestRecognitionRestart(80);
+    }
+  }, [requestRecognitionRestart, stopRecognition]);
+
   const end = useCallback(() => {
+    wantListeningRef.current = false;
     stopSpeech();
     bargeAuthorizedAtRef.current = 0;
     bargeViaVadRef.current = false;
     bargeConfirmedRef.current = false;
-    if (recognitionRestartTimerRef.current !== null) {
-      window.clearTimeout(recognitionRestartTimerRef.current);
-      recognitionRestartTimerRef.current = null;
-    }
-    const recognition = recognitionRef.current;
-    recognitionRef.current = null;
-    recognitionEpochRef.current += 1;
-    startedRef.current = false;
-    if (recognition) { try { recognition.abort(); } catch { /* ignore */ } }
+    stopRecognition();
     stopAnalyser();
     setInterim("");
     setMuted(false);
@@ -594,26 +734,21 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     audioModeRef.current = "unknown";
     setAudioMode("unknown");
     setEchoCancellation(null);
+    setError(null);
+    startingRef.current = false;
     stateRef.current = "off";
     setState("off");
-  }, [stopSpeech, stopAnalyser]);
+  }, [stopAnalyser, stopRecognition, stopSpeech]);
 
   const setThinking = useCallback(() => {
+    if (audioModeRef.current !== "full-duplex") stopRecognition();
     setState((current) => {
       const next = current === "off" || current === "unsupported" ? current : "thinking";
       stateRef.current = next;
       return next;
     });
-  }, []);
+  }, [stopRecognition]);
 
-  /**
-   * Speak a complete batch as one natural utterance.
-   *
-   * The chat widget batches at least two completed sentences (or the end of the
-   * answer) before calling this. Speaking whole phrases in one utterance avoids
-   * the noticeable silence Chrome/Edge insert between many tiny utterances while
-   * preserving natural sentence pauses inside the text.
-   */
   const getVoices = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
     const synth = window.speechSynthesis;
@@ -633,7 +768,11 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     const chunks = chunkSpeech(clean);
     if (!chunks.length) return;
 
-    // This text is the reference used only to reject near-exact acoustic echo.
+    // Close recognition while Riley speaks in half-duplex/unknown mode. This is
+    // what prevents the phone speaker from being fed back into STT and is the
+    // normal path on mobile devices with limited echo cancellation.
+    pauseRecognitionForTts();
+
     recentSpokenRef.current = [...recentSpokenRef.current, clean].slice(-4);
     speakingRef.current = true;
     speakingStartedAtRef.current = performance.now();
@@ -649,7 +788,6 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     const finish = () => {
       if (pending > 0) pending -= 1;
       if (pending > 0 || settled) return;
-      // Give the browser queue a moment to move to the next queued batch.
       window.setTimeout(() => {
         if (generation !== speechSessionRef.current) return;
         if (!synth.speaking) {
@@ -660,6 +798,7 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
           bargeViaVadRef.current = false;
           if (stateRef.current !== "off" && stateRef.current !== "unsupported") stateRef.current = "listening";
           setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+          resumeAfterTts();
         }
       }, 90);
     };
@@ -692,19 +831,24 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
         bargeViaVadRef.current = false;
         if (stateRef.current !== "off" && stateRef.current !== "unsupported") stateRef.current = "listening";
         setState((current) => (current === "off" || current === "unsupported" ? current : "listening"));
+        resumeAfterTts();
       }
     }, Math.max(7000, clean.length * 95));
-  }, [lang]);
+  }, [lang, pauseRecognitionForTts, resumeAfterTts]);
 
   /** Cancel current playback + mark not speaking (used by barge-in and Stop). */
   const interrupt = useCallback(() => {
     stopSpeech();
+    bargeAuthorizedAtRef.current = 0;
+    bargeViaVadRef.current = false;
+    bargeConfirmedRef.current = false;
     setState((current) => {
       const next = current === "off" || current === "unsupported" ? current : "listening";
       stateRef.current = next;
       return next;
     });
-  }, [stopSpeech]);
+    resumeAfterTts();
+  }, [resumeAfterTts, stopSpeech]);
 
   /** Called when an answer finishes with no speakable text, so UI never sticks on "Thinking". */
   const settle = useCallback(() => {
@@ -713,7 +857,65 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
       stateRef.current = next;
       return next;
     });
-  }, []);
+    resumeAfterTts();
+  }, [resumeAfterTts]);
+
+  // Permission changes must not leave a hidden microphone stream running.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return;
+    let cancelled = false;
+    let status: PermissionStatus | null = null;
+    const onChange = () => {
+      if (!cancelled && status?.state === "denied" && wantListeningRef.current) {
+        failVoice("Microphone permission was revoked or blocked. Re-enable it in your browser settings, then start voice again. Text chat still works.");
+      }
+    };
+    try {
+      void navigator.permissions.query({ name: "microphone" as PermissionName }).then((value) => {
+        if (cancelled) return;
+        status = value;
+        status.onchange = onChange;
+        onChange();
+      }).catch(() => undefined);
+    } catch { /* Permissions API unavailable */ }
+    return () => {
+      cancelled = true;
+      if (status) status.onchange = null;
+    };
+  }, [failVoice]);
+
+  // Backgrounding a mobile browser suspends recognition/audio. Recover only
+  // when visible; never trigger a permission prompt while the page is hidden.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        stopRecognition();
+        stopAnalyser();
+        return;
+      }
+      if (!wantListeningRef.current) return;
+      const synth = window.speechSynthesis;
+      if (synth?.paused) { try { synth.resume(); } catch { /* ignore */ } }
+      if (speakingRef.current) {
+        if (audioModeRef.current === "full-duplex") void startAnalyser();
+        return;
+      }
+      requestRecognitionRestart(180);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [requestRecognitionRestart, startAnalyser, stopAnalyser, stopRecognition]);
+
+  // Bluetooth/headset route changes: full-duplex can re-acquire its analyser.
+  useEffect(() => {
+    const media = navigator.mediaDevices;
+    if (!media?.addEventListener) return;
+    const onDeviceChange = () => {
+      if (wantListeningRef.current && audioModeRef.current === "full-duplex") void startAnalyser();
+    };
+    media.addEventListener("devicechange", onDeviceChange);
+    return () => media.removeEventListener("devicechange", onDeviceChange);
+  }, [startAnalyser]);
 
   useEffect(() => () => { end(); }, [end]);
 
@@ -726,6 +928,7 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     audioMode,
     echoCancellation,
     start,
+    unlock,
     end,
     stopSpeech,
     toggleMute,
