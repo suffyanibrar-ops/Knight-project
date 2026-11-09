@@ -40,7 +40,7 @@ const DEFAULT_DB_FILE = "data/app.db";
  * Resolved database location.
  *
  * SQLITE_PATH may be relative (resolved from the project root) or absolute
- * (recommended in production, e.g. /var/data/app.db on a mounted volume).
+ * (recommended in production, e.g. /var/lib/knight/app.db on a mounted volume).
  * There is deliberately NO fallback to a temporary directory: an unwritable
  * path is reported as an error rather than silently losing submissions.
  */
@@ -232,7 +232,7 @@ function open(): DriverState {
     path: file,
     error:
       `SQLite could not open "${file}". The directory must exist and be writable by the server process. ` +
-      "Set SQLITE_PATH to a persistent volume (for example /var/data/app.db) and redeploy. " +
+      "Set SQLITE_PATH to a persistent volume (for example /var/lib/knight/app.db) and redeploy. " +
       "Form submissions are NOT being stored until this is resolved.",
     kind: null,
   };

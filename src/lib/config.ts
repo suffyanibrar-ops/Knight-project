@@ -104,7 +104,7 @@ export function configIssues(): ConfigIssue[] {
       key: "SQLITE_PATH",
       severity: "error",
       message:
-        `SQLite is not available at "${status.path}". Set SQLITE_PATH to a writable, persistent directory (for example /var/data/app.db). ` +
+        `SQLite is not available at "${status.path}". Set SQLITE_PATH to a writable, persistent directory (for example /var/lib/knight/app.db). ` +
         (status.error ?? "Form submissions and admin data cannot be stored until this is fixed."),
     });
   }

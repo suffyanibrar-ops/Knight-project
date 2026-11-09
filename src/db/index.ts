@@ -24,7 +24,7 @@ function getDb(): BetterSQLite3Database<Record<string, never>> {
     const handle = sqliteHandle();
     if (!handle) {
       throw new Error(
-        `SQLite is unavailable at "${sqlitePath()}". Set SQLITE_PATH to a writable, persistent directory (for example /var/data/app.db).`,
+        `SQLite is unavailable at "${sqlitePath()}". Set SQLITE_PATH to a writable, persistent directory (for example /var/lib/knight/app.db).`,
       );
     }
     globalForDb.__knightDrizzle = drizzle(handle);

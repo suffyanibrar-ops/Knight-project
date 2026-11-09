@@ -15,7 +15,7 @@ export function StorageNotice() {
       <ul className="mt-3 space-y-1 text-[0.82rem] leading-relaxed text-amber-800">
         <li>
           Set <code className="rounded bg-amber-100 px-1">SQLITE_PATH</code> to a file on a persistent volume, e.g.
-          <code className="ml-1 rounded bg-amber-100 px-1">/var/data/app.db</code>.
+          <code className="ml-1 rounded bg-amber-100 px-1">/var/lib/knight/app.db</code>.
         </li>
         <li>Do not point it at a temporary directory or a public/static directory.</li>
         <li>

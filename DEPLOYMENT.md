@@ -28,7 +28,7 @@ npm run start        # honours PORT; binds 0.0.0.0 by default
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `SQLITE_PATH` | Required in production | Path to the SQLite file. Defaults to `./data/app.db`; in production use an absolute path on a persistent volume, e.g. `/var/data/app.db` |
+| `SQLITE_PATH` | Required in production | Path to the SQLite file. Defaults to `./data/app.db`; in production use an absolute path on a persistent volume, e.g. `/var/lib/knight/app.db` |
 | `ADMIN_PASSWORD` | For admin sign-in | Password for `/admin`; with no password from this var, a panel change or `ADMIN_PASSWORD_HASH`, sign-in is disabled (fail closed) |
 | `ADMIN_PASSWORD_HASH` | Optional | Legacy peppered digest (`sha256(ADMIN_SESSION_SECRET + password)`), used only after a panel password and `ADMIN_PASSWORD`; requires the same `ADMIN_SESSION_SECRET` used to derive it |
 | `ADMIN_SESSION_SECRET` | Required in production | Signs admin session cookies; without it production uses a random per-process key (sessions reset on restart, not shared between instances) |
@@ -84,9 +84,12 @@ layer, `/tmp`, `/proc`, a network share, or a path inside the build output.
 `src/lib/site.ts` into SQLite. Public pages fall back to that same built-in content when the
 tables are empty, so seeding is safe to run at any time and can be skipped.
 
-**Health:** `GET /api/health` returns `ok: true` only when the SQLite file opens and answers a
-query. It reports `stores.sqlite.{role,available,path,driver,error}`, the email channel status,
-config issues, `fallbackContent`, environment, site URL and a timestamp.
+**Health:** `GET /api/health` returns top-level `ok: true` only when the SQLite
+file opens and answers a query. It reports
+`stores.sqlite.{role,available,path,driver,error}`, the email channel status,
+`config.{blockingErrors,issues}`, `fallbackContent`, environment, site URL and a
+timestamp. Deployment requires `ok === true`, `stores.sqlite.available === true`
+and `config.blockingErrors === 0`.
 
 ---
 
@@ -99,14 +102,16 @@ form submissions and contact details.
 **Safe online backup (WAL-safe, no downtime):**
 
 ```bash
-SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
+SQLITE_PATH=/var/lib/knight/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
 ```
 
-The script uses the SQLite online backup API, copies `blog-media`, writes a manifest and
-applies `BACKUP_KEEP_DAYS` retention (default 14). Run it from cron:
+The script opens SQLite read-only, uses the online backup API, copies `blog-media`, writes a
+manifest and applies `BACKUP_KEEP_DAYS` retention (default 14). Retention only
+touches ISO-timestamp directories; it never deletes `predeploy/` or other
+unknown recovery directories. Run it from cron (or the separately approved timer):
 
 ```cron
-15 2 * * * cd /srv/knight && SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup >> /var/log/knight-backup.log 2>&1
+15 2 * * * cd /srv/knight && SQLITE_PATH=/var/lib/knight/app.db BACKUP_DIR=/var/backups/knight npm run db:backup >> /var/log/knight-backup.log 2>&1
 ```
 
 Keep a copy off the host (object storage or another volume). Test a restore before relying on
@@ -115,35 +120,52 @@ it. Do not copy only `app.db` while the app is running — WAL may contain commi
 Keep backups off the host (object storage or another volume) and test a restore before you rely
 on it.
 
-**Restore:**
+**Restore (maintenance-only, never in normal deployment):**
 
-1. Stop the app process.
-2. Copy the backup over `SQLITE_PATH`.
-3. Remove any stale `app.db-wal` / `app.db-shm` files from the target directory.
-4. `chown` the file and directory to the user that runs the app.
-5. Start the app and verify `GET /api/health` reports `stores.sqlite.available: true`; check the
-   admin pages for expected row counts.
+1. Stop the application and keep it stopped.
+2. Take and verify a fresh backup of the current destination DB and media.
+3. Confirm the restoration source passes integrity checks.
+4. Remove stale destination `-wal`/`-shm` only after the stopped database has been
+   checkpointed/backed up. The restore script refuses to proceed if they remain.
+5. Run the explicit guarded restore:
+   ```bash
+   SOURCE_SQLITE_PATH=/var/backups/knight/predeploy/.../app.db \
+   DEST_SQLITE_PATH=/var/lib/knight/app.db \
+   OVERWRITE_PRODUCTION=1 PRODUCTION_APP_STOPPED=1 DESTINATION_BACKED_UP=1 \
+   npm run db:migrate:production
+   ```
+   The script verifies source and temporary destination integrity and atomically
+   renames the new database into place.
+6. `chown` the restored database/directory to `knight:knight`; verify media.
+7. Start the app and verify `GET /api/health` reports
+   `stores.sqlite.available: true`; check admin row counts.
+8. Do not restore a database automatically because a deployment health check
+   failed. Preserve the failed database/WAL for diagnosis.
 
-**Routine:** back up before every deploy and keep at least one pre-migration copy so a failed
-import or upgrade can be rolled back by restoring the previous file.
+**Routine:** back up before every deploy and keep at least one pre-migration copy.
+A failed application deploy rolls back application code only. Restoring a
+database file is a separate, explicit recovery action; it must never happen
+automatically because it can erase newer production data.
 
 **Safe local-to-production migration:**
 
 ```bash
 # 1. Stop writes / switch the production site to maintenance.
 # 2. Take a backup of the current production database first.
-SQLITE_PATH=/var/data/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
+SQLITE_PATH=/var/lib/knight/app.db BACKUP_DIR=/var/backups/knight npm run db:backup
 # 3. Copy the local application DB + blog-media into the persistent volume.
 SOURCE_SQLITE_PATH="./data/app.db" \
-DEST_SQLITE_PATH="/var/data/app.db" \
+DEST_SQLITE_PATH="/var/lib/knight/app.db" \
 npm run db:migrate:production
-# 4. Point SQLITE_PATH at /var/data/app.db, set SQLITE_REQUIRE_EXISTING=1, redeploy.
+# 4. Point SQLITE_PATH at /var/lib/knight/app.db, set SQLITE_REQUIRE_EXISTING=1, redeploy.
 # 5. Verify /api/health reports sqlite.available true and make a test enquiry.
 ```
 
-The copy script refuses to overwrite an existing destination unless
-`OVERWRITE_PRODUCTION=1` is explicitly set. Never run it while the production app is
-writing to the destination; stop the app or use the maintenance window first.
+The restore script requires all three explicit flags for an existing
+destination: `OVERWRITE_PRODUCTION=1`, `PRODUCTION_APP_STOPPED=1` and
+`DESTINATION_BACKED_UP=1`. It checks source and temporary-copy integrity, refuses
+stale destination WAL/SHM, and atomically replaces the database only after
+verification. It is never used in normal deployment.
 
 ---
 
@@ -184,7 +206,7 @@ idempotent, so existing SQLite rows are preserved.
 - Run the app as a **Node 22** service (`.nvmrc` is `22`): `npm install`, `npm run build`,
   `npm run start`. The platform's `PORT` is honoured automatically.
 - Attach a **persistent disk** (volume) and set `SQLITE_PATH` to a file on it
-  (e.g. `/var/data/app.db`). The directory must be writable by the service user and survive
+  (e.g. `/var/lib/knight/app.db`). The directory must be writable by the service user and survive
   redeploys. If the volume is not mounted, the app still opens a fresh file inside the deployment
   directory — data is silently lost on the next release. Verify `stores.sqlite.path` in
   `GET /api/health` points at the volume after the first deploy.
@@ -500,17 +522,32 @@ single SQLite database.
 
 ### Independent scheduled publishing
 
-Install the systemd units after the first deployment:
+The systemd timer units are prepared but **must not be enabled yet**. The
+existing website service is `knight`; there is no `knight-next.service`.
+
+Run the read-only preflight first:
 
 ```bash
-sudo /srv/knight/current/ops/install-systemd.sh
+/srv/knight/current/ops/install-systemd.sh --check
 ```
 
-This enables `knight-next.service`, the minute-level
-`knight-publish-due.timer`, and the daily `knight-backup.timer`. The publishing
-script also catches every missed schedule on its next run; the application's
-lazy publish-on-read remains a fallback. The timer is what makes publication
-independent of website visitors.
+After separate approval, the units can be installed without starting them:
+
+```bash
+sudo /srv/knight/current/ops/install-systemd.sh --install-timers
+```
+
+Only `knight-publish-due.timer` and `knight-backup.timer` are installed. The
+installer never enables timers. Enabling them is a separate, explicitly approved
+post-deployment action using `/usr/bin/systemctl enable --now` after inspecting the
+units. The publishing script catches missed schedules on its next run; lazy
+publish-on-read remains a fallback.
+
+The timer services run as `knight` and read `/etc/knight/deploy.env` (never the
+application secrets file). The `knight` account must be in the shared
+`knight-backup` group so `knight-backup.timer` can write
+`/var/backups/knight`. The backup unit uses `UMask=0027`; the shared backup root
+is setgid (`2770`) so new snapshots inherit `knight-backup` and remain group-only.
 
 ### Search / Search Console configuration
 
@@ -523,24 +560,54 @@ volume, keyword difficulty, rankings or citations.
 
 ### GitHub Actions deployment
 
-`ops/github-actions-deploy.yml` is a ready-to-use manual workflow template
-(`workflow_dispatch`). Copy it to `.github/workflows/deploy-vps.yml` after
-granting the repository token/actor GitHub Actions workflow permission. It was
-not activated in this repository because the available push token lacks the
-GitHub `workflow` scope. It requires these repository/environment secrets:
+The active workflow is prepared at `.github/workflows/deploy-vps.yml`. It runs on
+an approved `push` to `main` (and supports manual dispatch on `main`), requires
+the protected GitHub Environment named `production`, and runs `npm ci`,
+typecheck, lint and a production build before deployment.
+
+It requires these repository/environment secrets:
 
 - `VPS_HOST`
-- `VPS_USER`
+- `VPS_USER` — the dedicated non-root deploy account, not `knight` admin/root
 - `VPS_SSH_KEY`
-- `VPS_KNOWN_HOSTS` (pinned host key; do not use ad-hoc `ssh-keyscan` in production)
+- `VPS_KNOWN_HOSTS` — pinned host key; never use ad-hoc `ssh-keyscan`
 - optional `VPS_PORT` (defaults to 22)
 
-The deploy script uploads a release without `data/`, `.env`, `.next/` or
-`node_modules/`, runs `npm ci`/`npm run build` on the VPS, backs up
-`/var/lib/knight` before switching, performs an online SQLite backup, restarts
-the systemd service, checks `/api/health`, and rolls back the release plus the
-pre-deployment database on failure. It requires passwordless sudo for the
-deploy user to run `systemctl`.
+Before enabling automatic deployment, configure the `production` environment
+with required reviewers in GitHub. The workflow deliberately uses no `sudo`;
+the deploy script elevates only the exact `/usr/bin/systemctl restart knight` command
+through the restricted sudoers policy described in the server setup section.
+
+The workflow uploads a release without `data/`, media, `.env*`, `.next/` or
+`node_modules/`, and the VPS deploy script builds there. It takes a verified
+online SQLite/media backup, switches the release, checks the exact health JSON,
+and on failure rolls back application code only. **It never restores or overwrites
+the production database automatically.**
+
+### Local preparation vs future VPS setup
+
+The local repository now contains corrected deployment artifacts. None of the
+following server actions have been performed and all require separate approval:
+
+1. Create the dedicated deploy account with read access to the database/media
+   and the **non-secret** `/etc/knight/deploy.env`. Never grant it read access to
+   `/etc/knight/knight.env`.
+2. Install a restricted sudoers policy for only:
+   `/usr/bin/systemctl restart knight`, `/usr/bin/systemctl stop knight`,
+   `/usr/bin/systemctl start knight`, `/usr/bin/systemctl status knight`.
+3. Verify the existing `knight.service` unit; do not create a second website
+   service.
+4. Ensure `/srv/knight/releases` and `/srv/knight/.deploy.lock` are writable by
+   the deploy account, and `/srv/knight/current` is managed by deployment.
+5. Ensure `/var/lib/knight/app.db` and `/var/lib/knight/blog-media` are readable
+   by the backup process and writable by `knight`.
+6. Ensure `/var/backups/knight` is writable by the deploy account and the
+   `knight` application account through the shared `knight-backup` group; configure
+   off-host retention.
+7. Put production secrets in `/etc/knight/knight.env`, never in Git, a release,
+   or GitHub workflow files.
+8. Configure GitHub Environment `production` with required reviewers and the
+   secrets listed above.
 
 ### Nginx client-IP contract
 
@@ -557,3 +624,201 @@ proxy_set_header X-Forwarded-Proto $scheme;
 
 Do not enable additional proxy layers without updating `TRUST_PROXY`; otherwise
 the last hop becomes an internal address and all visitors share one bucket.
+
+---
+
+## 10. Corrected dedicated-server setup (future, explicit approval required)
+
+These steps are documentation only. They have **not** been executed. Do not
+create the account, change sudoers, modify the existing service or enable timers
+until this section is approved.
+
+### Accounts and ownership
+
+```bash
+# Dedicated non-root deployment account. Do not use root or the existing
+# unrestricted administrative SSH account for GitHub deployments.
+sudo adduser --disabled-password --gecos "" deploy
+
+# Shared backup group: both the deploy account (pre-deploy backup) and the
+# application account (scheduled backup) may write this directory.
+sudo groupadd --system knight-backup
+sudo usermod -aG knight deploy          # read DB/media for backup
+sudo usermod -aG knight-backup deploy
+sudo usermod -aG knight-backup knight
+
+# Releases, the current symlink and the deploy lock are managed by the deploy account.
+# The app only reads /srv/knight/current; it does not need write access there.
+sudo install -d -o deploy -g deploy -m 0755 /srv/knight
+sudo install -d -o deploy -g deploy -m 0755 /srv/knight/releases
+sudo chown deploy:deploy /srv/knight
+# Setgid on the shared backup root makes every new backup subdirectory inherit
+# the knight-backup group. Files are created group-readable only (0640).
+sudo install -d -o root -g knight-backup -m 2770 /var/backups/knight
+sudo chown root:knight-backup /var/backups/knight
+sudo chgrp -R knight-backup /var/backups/knight
+sudo find /var/backups/knight -type d -exec chmod 2770 {} +
+sudo find /var/backups/knight -type f -exec chmod 0640 {} +
+
+# Application-owned persistent data.
+sudo install -d -o knight -g knight -m 0750 /var/lib/knight
+sudo chown knight:knight /var/lib/knight/app.db
+sudo chmod 640 /var/lib/knight/app.db
+sudo chown knight:knight /var/lib/knight/app.db-wal /var/lib/knight/app.db-shm 2>/dev/null || true
+sudo chmod 640 /var/lib/knight/app.db-wal /var/lib/knight/app.db-shm 2>/dev/null || true
+sudo chown -R knight:knight /var/lib/knight/blog-media
+sudo find /var/lib/knight/blog-media -type d -exec chmod 0750 {} +
+sudo find /var/lib/knight/blog-media -type f -exec chmod 0640 {} +
+
+# /etc/knight is traversable by the deploy/backup group; the app env itself is
+# root-only. systemd reads EnvironmentFile as root before dropping to knight.
+sudo install -d -o root -g knight-backup -m 0750 /etc/knight
+sudo chown root:knight-backup /etc/knight
+sudo install -m 0640 -o root -g knight-backup /etc/knight/deploy.env
+sudo install -m 0600 -o root -g root /etc/knight/knight.env
+```
+
+`/etc/knight/deploy.env` is non-secret and is readable by the deploy account
+and the backup/publish services. It should contain only:
+
+```env
+SQLITE_PATH=/var/lib/knight/app.db
+BACKUP_DIR=/var/backups/knight
+SQLITE_REQUIRE_EXISTING=1
+NEXT_PUBLIC_SITE_URL=https://www.knightmedicalbilling.com
+```
+
+`SQLITE_REQUIRE_EXISTING=1` is required by `ops/deploy.sh`; without it deployment
+stops before taking a backup or switching releases.
+
+`/etc/knight/knight.env` remains the full runtime environment used by the
+existing `knight.service`, including email/admin secrets. It is `0600 root:root`;
+systemd reads it before dropping privileges to `knight`, so the application
+still receives it but the deploy account cannot read it.
+
+The timer services use `/etc/knight/deploy.env`, not the application secrets file.
+
+### Restricted sudoers
+
+Verify the systemctl path first:
+
+```bash
+command -v systemctl
+```
+
+Then add a narrowly scoped file after approval:
+
+```sudoers
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart knight, /usr/bin/systemctl stop knight, /usr/bin/systemctl start knight, /usr/bin/systemctl status knight
+```
+
+The VPS audit verified `/usr/bin/systemctl`; use that exact path. Do not grant
+`ALL`, shell access, file editing, or unrestricted systemctl.
+
+### Next.js runtime cache and service umask
+
+New releases are deploy-owned and must remain read-only to the application,
+except for Next.js runtime cache data. `ops/deploy.sh` creates
+`<release>/.next/cache`, changes its group to `knight`, sets directories to
+`2770`, and leaves code/database/media paths untouched. This is the only writable
+path inside a release and is required for Next.js image optimisation/cache work.
+
+After a release containing this file is current, install the minimal systemd
+drop-in on the VPS during an approved maintenance window so newly created
+database/WAL/SHM/cache files are not world-readable:
+
+```bash
+sudo install -d -m 0755 /etc/systemd/system/knight.service.d
+sudo install -m 0644 /srv/knight/current/ops/systemd/knight-umask.conf \
+  /etc/systemd/system/knight.service.d/umask.conf
+sudo systemd-analyze verify /etc/systemd/system/knight.service
+sudo /usr/bin/systemctl daemon-reload
+sudo /usr/bin/systemctl restart knight
+```
+
+`UMask=0027` is appropriate for the Next.js application: it does not remove the
+app's ability to write its cache/database, but new files are `0640` and new
+directories are `0750` instead of world-readable. This drop-in does not replace
+the existing unit, change `User`/`Group`, or change `EnvironmentFile`.
+
+Verify after restart:
+
+```bash
+readlink -f /srv/knight/current
+stat -c '%A %U:%G %n' /srv/knight/current/.next/cache
+curl -fsS http://127.0.0.1:3000/api/health
+```
+
+### Deployment SSH key for GitHub Actions
+
+Create a **separate** key for GitHub Actions. Do not reuse the personal Mac
+`~/.ssh/id_ed25519` key or add it to the deploy account.
+
+```bash
+# Run locally, only after approval. Protect the private key.
+ssh-keygen -t ed25519 -a 100 -f ~/.ssh/knight-gha-deploy \
+  -C "github-actions-knight-deploy" -N ""
+
+# Install only the PUBLIC key for the deploy account:
+sudo install -d -m 0700 -o deploy -g deploy /home/deploy/.ssh
+sudo install -m 0600 -o deploy -g deploy \
+  ~/.ssh/knight-gha-deploy.pub /home/deploy/.ssh/authorized_keys
+```
+
+Put the **private** key file's contents into the GitHub secret `VPS_SSH_KEY`.
+Set `VPS_USER=deploy`. Never put a private key in the repository, a release, a
+command line, or this document. Put the verified host key(s) in
+`VPS_KNOWN_HOSTS`; do not use an unverified `ssh-keyscan` result.
+
+### SSH account
+
+After approval, install the dedicated public key for `deploy` only, with:
+
+```text
+~deploy/.ssh/authorized_keys  mode 0600
+~deploy/.ssh                 mode 0700
+```
+
+In `/etc/ssh/sshd_config` (or a drop-in), keep root login disabled, password
+authentication disabled, and limit the deploy key to the deploy account. Do not
+give the GitHub key to a root account. Review the config with `sshd -t` before
+reloading it.
+
+### Existing service
+
+Before any deployment, inspect the existing unit:
+
+```bash
+/usr/bin/systemctl cat knight
+/usr/bin/systemctl show knight -p User -p Group -p WorkingDirectory -p EnvironmentFile -p ExecStart
+```
+
+Do not install `knight-next.service` or create a second website service.
+
+### First bootstrap
+
+The first production database must be created and seeded manually with
+`SQLITE_ALLOW_CREATE=1` and `SQLITE_REQUIRE_EXISTING` unset. After seeding:
+
+```env
+SQLITE_PATH=/var/lib/knight/app.db
+SQLITE_REQUIRE_EXISTING=1
+TRUST_PROXY=1
+NEXT_PUBLIC_SITE_URL=https://www.knightmedicalbilling.com
+```
+
+Then set `SQLITE_REQUIRE_EXISTING=1` permanently. Automatic deployment requires
+this flag and refuses a missing database.
+
+### Migration / code rollback compatibility
+
+- Current schema migrations through v10 are additive; the application applies
+  them in a transaction at startup.
+- Older application code can ignore tables added by v9/v10, but future
+  destructive or column-changing migrations require a separately reviewed
+  rollback plan.
+- The deploy script never restores the database automatically. If a deployment
+  fails, preserve the failed database and its WAL/SHM files before any manual
+  recovery decision.
+- `scripts/copy-sqlite.mjs` is for intentional manual migration only; never use
+  `OVERWRITE_PRODUCTION=1` in a normal deployment.

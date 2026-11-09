@@ -7,7 +7,7 @@
  * startup, so this script can run before or after the first boot.
  *
  *   npm run seed
- *   SQLITE_PATH=/var/data/app.db npm run seed
+ *   SQLITE_PATH=/var/lib/knight/app.db npm run seed
  */
 import "dotenv/config";
 import Database from "better-sqlite3";

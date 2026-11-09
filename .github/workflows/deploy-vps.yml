@@ -1,12 +1,12 @@
 name: Deploy Knight Medical Billing to VPS
 
+# Automatic after a push to main, gated by the protected GitHub Environment
+# named "production". Configure required reviewers on that environment before
+# enabling this workflow. Manual dispatch is restricted to the main branch below.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: "Type deploy to confirm a production deployment"
-        required: true
-        type: string
 
 concurrency:
   group: knight-production
@@ -15,26 +15,38 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION: "22"
+  NEXT_PUBLIC_SITE_URL: "https://www.knightmedicalbilling.com"
+
 jobs:
   verify:
-    if: ${{ inputs.confirm == 'deploy' }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run build
 
   deploy:
     needs: verify
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     environment: production
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Validate deployment secrets
         env:
@@ -44,10 +56,13 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           for name in VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS; do
-            if [ -z "${!name:-}" ]; then echo "Missing repository secret: $name"; exit 1; fi
+            if [ -z "${!name:-}" ]; then
+              echo "Missing repository/environment secret: $name"
+              exit 1
+            fi
           done
 
-      - name: Install restricted SSH identity
+      - name: Install pinned SSH identity
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -60,6 +75,7 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Upload release without production data or secrets
+        timeout-minutes: 15
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
@@ -67,7 +83,8 @@ jobs:
         run: |
           PORT="${VPS_PORT:-22}"
           SHA="${{ github.sha }}"
-          ssh -i ~/.ssh/knight_deploy -p "$PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+          ssh -i ~/.ssh/knight_deploy -p "$PORT" \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$VPS_USER@$VPS_HOST" "mkdir -p /srv/knight/releases/$SHA"
           rsync -az --delete \
             --exclude='.git/' --exclude='.next/' --exclude='node_modules/' \
@@ -76,7 +93,8 @@ jobs:
             -e "ssh -i ~/.ssh/knight_deploy -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
             ./ "$VPS_USER@$VPS_HOST:/srv/knight/releases/$SHA/"
 
-      - name: Backup, build, migrate, health-check or roll back
+      - name: Deploy, health-check and code-only rollback
+        timeout-minutes: 25
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
@@ -84,8 +102,12 @@ jobs:
         run: |
           PORT="${VPS_PORT:-22}"
           SHA="${{ github.sha }}"
-          ssh -i ~/.ssh/knight_deploy -p "$PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$VPS_USER@$VPS_HOST" "sudo /srv/knight/releases/$SHA/ops/deploy.sh $SHA"
+          # The deploy user is non-root. deploy.sh elevates only the exact
+          # systemctl restart via the restricted sudoers policy documented in
+          # DEPLOYMENT.md.
+          ssh -i ~/.ssh/knight_deploy -p "$PORT" \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$VPS_USER@$VPS_HOST" "/srv/knight/releases/$SHA/ops/deploy.sh $SHA"
 
       - name: Remove deployment key
         if: always()
