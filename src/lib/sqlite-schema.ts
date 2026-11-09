@@ -624,3 +624,18 @@ CREATE TABLE IF NOT EXISTS admin_password_resets (
 CREATE INDEX IF NOT EXISTS idx_admin_password_resets_expiry ON admin_password_resets (expires_at);
 CREATE INDEX IF NOT EXISTS idx_admin_password_resets_email ON admin_password_resets (email);
 `;
+
+/* -------------------------------------------------------------------------
+ * v10 — persistent rate-limit buckets for auth/reset/admin write protection.
+ * Public high-volume endpoints keep the in-process limiter; these low-volume
+ * security paths survive restarts and are shared by all requests to this node.
+ * ---------------------------------------------------------------------- */
+
+export const RATE_LIMIT_SCHEMA = `
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  reset_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits (reset_at);
+`;

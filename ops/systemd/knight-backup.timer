@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Knight Medical Billing database and media backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+Unit=knight-backup.service
+
+[Install]
+WantedBy=timers.target

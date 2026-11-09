@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { checkRateLimit, clientKeyFromHeaders } from "@/lib/rate-limit";
+import { checkPersistentRateLimit, clientKeyFromHeaders } from "@/lib/rate-limit";
 import { logAdminAction } from "@/lib/auth";
 import { requestAdminPasswordReset, resetAdminPassword, validateResetPassword } from "@/lib/password-reset";
 
@@ -18,7 +18,7 @@ const GENERIC_SENT =
  */
 export async function requestPasswordResetAction(_prev: ResetRequestState, formData: FormData): Promise<ResetRequestState> {
   const ip = clientKeyFromHeaders(await headers());
-  const limit = checkRateLimit({ key: `admin-password-reset:${ip}`, limit: 3, windowMs: 15 * 60 * 1000 });
+  const limit = checkPersistentRateLimit({ key: `admin-password-reset:${ip}`, limit: 3, windowMs: 15 * 60 * 1000 });
   if (!limit.allowed) {
     await logAdminAction("password.reset_rate_limited", "reset request rate limited", ip);
     return { error: "Too many reset requests. Please wait a few minutes and try again." };
@@ -44,7 +44,7 @@ export async function resetPasswordAction(_prev: ResetPasswordState, formData: F
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirmPassword") ?? "");
   const ip = clientKeyFromHeaders(await headers());
-  const limit = checkRateLimit({ key: `admin-password-reset-confirm:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 });
+  const limit = checkPersistentRateLimit({ key: `admin-password-reset-confirm:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 });
   if (!limit.allowed) {
     await logAdminAction("password.reset_confirm_rate_limited", "reset confirmation rate limited", ip);
     return { error: "Too many attempts. Please wait a few minutes and try again." };

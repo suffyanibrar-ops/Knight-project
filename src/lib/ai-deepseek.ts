@@ -59,6 +59,8 @@ interface StreamOptions {
   maxTokens?: number;
   signal?: AbortSignal;
   onToken?: (token: string) => void;
+  /** Ask DeepSeek for a JSON object response (Content Studio structured stages). */
+  jsonMode?: boolean;
 }
 
 /** One streamed completion. Returns accumulated text, tool calls and usage. */
@@ -78,6 +80,7 @@ export async function streamCompletion(options: StreamOptions): Promise<ChatResu
     body.tools = options.tools;
     body.tool_choice = "auto";
   }
+  if (options.jsonMode) body.response_format = { type: "json_object" };
 
   let response: Response;
   try {

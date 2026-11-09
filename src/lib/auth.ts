@@ -6,6 +6,8 @@ import { adminAudit } from "@/db/schema";
 import { expectedPasswordDigest, FALLBACK_ADMIN_PEPPER, sessionSecret } from "./admin-session";
 import { getStoredPasswordHash, verifyPasswordHash } from "./admin-password";
 import { hasConfiguredAdminPassword } from "./config";
+import { clearPersistentFailure, peekPersistentRateLimit, recordPersistentFailure } from "./rate-limit";
+import { getAdminSessionVersion } from "./admin-session-version";
 
 export const ADMIN_COOKIE = "kmb_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
@@ -75,16 +77,18 @@ function sign(payload: string) {
 
 export function createSessionToken(): string {
   const expires = Date.now() + SESSION_TTL_SECONDS * 1000;
-  const payload = `admin.${expires}`;
+  const version = getAdminSessionVersion();
+  const payload = `admin.${version}.${expires}`;
   return `${payload}.${sign(payload)}`;
 }
 
 export function readSessionToken(token: string | undefined | null): { valid: boolean; expires?: number } {
   if (!token) return { valid: false };
   const parts = token.split(".");
-  if (parts.length !== 3) return { valid: false };
-  const [scope, expiresRaw, signature] = parts;
-  const payload = `${scope}.${expiresRaw}`;
+  if (parts.length !== 4) return { valid: false };
+  const [scope, version, expiresRaw, signature] = parts;
+  if (scope !== "admin" || version !== getAdminSessionVersion()) return { valid: false };
+  const payload = `${scope}.${version}.${expiresRaw}`;
   const expected = sign(payload);
   if (signature.length !== expected.length) return { valid: false };
   if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return { valid: false };
@@ -106,34 +110,20 @@ export async function isAdminAuthenticated(): Promise<boolean> {
   return readSessionToken(store.get(ADMIN_COOKIE)?.value).valid;
 }
 
-/** Simple in-memory brute-force protection (per IP, resets on restart). */
-type Attempt = { count: number; firstAt: number; blockedUntil?: number };
-const attempts = new Map<string, Attempt>();
+/** Persistent login-failure protection, with an in-process fallback in SQLite-less mode. */
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 export function rateLimit(key: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-  const record = attempts.get(key);
-  if (record?.blockedUntil && record.blockedUntil > now) {
-    return { allowed: false, retryAfter: Math.ceil((record.blockedUntil - now) / 1000) };
-  }
-  if (!record || now - record.firstAt > WINDOW_MS) {
-    attempts.set(key, { count: 0, firstAt: now });
-  }
-  return { allowed: true };
+  return peekPersistentRateLimit(`admin-login:${key}`, MAX_ATTEMPTS, WINDOW_MS);
 }
 
 export function recordFailure(key: string) {
-  const now = Date.now();
-  const record = attempts.get(key) ?? { count: 0, firstAt: now };
-  record.count += 1;
-  if (record.count >= MAX_ATTEMPTS) record.blockedUntil = now + WINDOW_MS;
-  attempts.set(key, record);
+  recordPersistentFailure(`admin-login:${key}`, MAX_ATTEMPTS, WINDOW_MS);
 }
 
 export function clearFailures(key: string) {
-  attempts.delete(key);
+  clearPersistentFailure(`admin-login:${key}`);
 }
 
 export async function logAdminAction(action: string, detail: string | null, ip: string | null) {

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { blogPosts, contentWorkflows } from "@/db/schema";
 import { createPost, getAdminPost, listAdminPosts, setPostStatus, type BlogPostSummary } from "./blog";
 import { getArticles } from "./data";
+import type { LiveSearch, SearchConsoleData } from "./search-research";
 import { sanitizeBlogHtml } from "./blog-sanitize";
 import { primaryNav, serviceGroups, site } from "./site";
 
@@ -73,6 +74,8 @@ export type WorkflowDraft = {
 
 export type WorkflowData = {
   blogPostId?: number;
+  liveSearch?: LiveSearch;
+  searchConsole?: SearchConsoleData;
   research?: WorkflowResearch;
   plan?: WorkflowPlan;
   draft?: WorkflowDraft;

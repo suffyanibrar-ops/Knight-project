@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish due Knight Medical Billing blog posts
+After=network.target
+Documentation=file:///srv/knight/current/DEPLOYMENT.md
+
+[Service]
+Type=oneshot
+User=knight
+Group=knight
+WorkingDirectory=/srv/knight/current
+EnvironmentFile=/etc/knight/knight.env
+ExecStart=/usr/bin/npm run blog:publish-due
+Nice=10

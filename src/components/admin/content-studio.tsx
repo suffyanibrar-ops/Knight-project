@@ -31,6 +31,24 @@ type Workflow = {
   updatedAt: string;
   post: { id: number; title: string; slug: string; status: string; scheduledFor: string | null } | null;
   data: {
+    liveSearch?: {
+      available: boolean;
+      provider: string | null;
+      query: string;
+      results: { title: string; url: string; snippet: string; position: number }[];
+      note: string;
+      error?: string;
+      fetchedAt?: string;
+    };
+    searchConsole?: {
+      available: boolean;
+      siteUrl: string | null;
+      metrics: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+      period: string;
+      note: string;
+      error?: string;
+      fetchedAt?: string;
+    };
     research?: {
       summary?: string;
       searchIntent?: string;
@@ -282,6 +300,28 @@ function WorkflowCard({ workflow, busy, onAction, compact = false }: { workflow:
             {(data.research.secondaryKeywords ?? []).slice(0, 5).map((keyword) => <span key={keyword} className="rounded-full border border-mist-200 bg-surface px-2 py-0.5 text-[0.6rem] font-semibold text-ink-600">{keyword}</span>)}
           </div>
           {data.research.contentGaps?.length ? <p className="mt-2 text-[0.66rem] leading-relaxed text-ink-600/70"><strong>Gaps:</strong> {data.research.contentGaps.join(" · ")}</p> : null}
+        </div>
+      )}
+
+      {!compact && (data.liveSearch || data.searchConsole) && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className={cn("rounded-xl border p-3", data.liveSearch?.available ? "border-mint-200 bg-mint-50/60" : "border-amber-200 bg-amber-50/60")}>
+            <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/70">Search-result research</p>
+            <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-700">{data.liveSearch?.available ? `${data.liveSearch.provider ?? "provider"} returned ${data.liveSearch.results.length} live results.` : data.liveSearch?.note ?? "Not available."}</p>
+            {data.liveSearch?.available && data.liveSearch.results.slice(0, 5).map((result) => (
+              <p key={result.url} className="mt-1 truncate text-[0.64rem] text-ink-600/75"><a href={result.url} target="_blank" rel="noopener noreferrer" className="hover:text-brand-700">{result.position}. {result.title}</a></p>
+            ))}
+            {data.liveSearch?.error && <p className="mt-1 text-[0.62rem] text-amber-800">Provider error: {data.liveSearch.error}</p>}
+          </div>
+          <div className={cn("rounded-xl border p-3", data.searchConsole?.available ? "border-mint-200 bg-mint-50/60" : "border-amber-200 bg-amber-50/60")}>
+            <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/70">Verified Search Console metrics</p>
+            <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-700">{data.searchConsole?.available ? `${data.searchConsole.siteUrl ?? "property"} · ${data.searchConsole.period}` : data.searchConsole?.note ?? "Not available."}</p>
+            {data.searchConsole?.available && data.searchConsole.metrics.slice(0, 4).map((metric) => (
+              <p key={metric.query} className="mt-1 text-[0.64rem] text-ink-600/75">{metric.query}: {metric.clicks} clicks · {metric.impressions} impressions · pos {metric.position.toFixed(1)}</p>
+            ))}
+            {data.searchConsole?.available && data.searchConsole.metrics.length === 0 && <p className="mt-1 text-[0.62rem] text-ink-600/60">Property has no matching query rows for this period.</p>}
+            {data.searchConsole?.error && <p className="mt-1 text-[0.62rem] text-amber-800">Search Console error: {data.searchConsole.error}</p>}
+          </div>
         </div>
       )}
 

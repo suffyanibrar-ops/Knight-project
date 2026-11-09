@@ -441,3 +441,9 @@ export const adminPasswordResets = sqliteTable("admin_password_resets", {
 
 export type ContentWorkflowRow = typeof contentWorkflows.$inferSelect;
 export type AdminPasswordResetRow = typeof adminPasswordResets.$inferSelect;
+
+export const rateLimits = sqliteTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: integer("reset_at", { mode: "timestamp_ms" }).notNull(),
+});

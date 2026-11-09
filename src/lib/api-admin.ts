@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { isAdminAuthenticated } from "./auth";
-import { checkRateLimit, clientKeyFromHeaders } from "./rate-limit";
+import { checkPersistentRateLimit, clientKeyFromHeaders } from "./rate-limit";
 import { isSameOrigin } from "./request-security";
 
 /** Shared guard for every /api/admin/blog/* handler. */
@@ -19,7 +19,7 @@ export async function requireAdmin(request: Request): Promise<Response | null> {
 export async function limitAdmin(bucket: string, limit = 120, windowMs = 60_000): Promise<Response | null> {
   const requestHeaders = await headers();
   const key = `admin-blog:${bucket}:${clientKeyFromHeaders(requestHeaders)}`;
-  const result = checkRateLimit({ key, limit, windowMs });
+  const result = checkPersistentRateLimit({ key, limit, windowMs });
   if (result.allowed) return null;
   return Response.json({ ok: false, error: "Too many requests. Please slow down." }, { status: 429, headers: { "Retry-After": String(result.retryAfter) } });
 }

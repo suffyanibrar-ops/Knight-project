@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Knight Medical Billing scheduled publishing every minute
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=60s
+Persistent=true
+Unit=knight-publish-due.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Back up the Knight Medical Billing SQLite database and media
+After=network.target
+Documentation=file:///srv/knight/current/DEPLOYMENT.md
+
+[Service]
+Type=oneshot
+User=knight
+Group=knight
+WorkingDirectory=/srv/knight/current
+EnvironmentFile=/etc/knight/knight.env
+ExecStart=/usr/bin/npm run db:backup
+Nice=10

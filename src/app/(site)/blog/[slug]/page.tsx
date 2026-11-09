@@ -101,6 +101,8 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
   const articleLd = {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": `${canonical}#article`,
+    url: canonical,
     headline: post.seoTitle?.trim() || post.title,
     description: post.seoDescription?.trim() || post.excerpt || site.description,
     image: [imageUrl],
@@ -109,6 +111,7 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
     author: { "@type": "Organization", name: post.author || site.name, url: SITE_URL },
     publisher: { "@id": `${SITE_URL}/#organization` },
     mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+    isAccessibleForFree: true,
     articleSection: post.category?.name,
     keywords: post.tags.map((tag) => tag.name).join(", ") || undefined,
     inLanguage: "en-US",

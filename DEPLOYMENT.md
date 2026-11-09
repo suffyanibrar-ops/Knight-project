@@ -455,7 +455,7 @@ server on port 3101) verifies honest calendar-failure handling.
 `/handoffs`, `/knowledge`, `/settings`. Google Calendar sync is intentionally not part of v1; the
 appointments table already has an `external_event_id` column for a future adapter.
 
-## AI Content Studio and admin password recovery (schema v9)
+## AI Content Studio and admin password recovery (schema v9 + v10)
 
 Schema v9 adds two additive tables without rewriting existing content or auth rows:
 `content_workflows` and `admin_password_resets`.
@@ -478,3 +478,79 @@ Research → Topic Plan → Draft → SEO Review → Human Approval → Publish.
 - Requests are rate-limited per client. The public response does not reveal whether the address exists.
 - A successful reset or panel password change invalidates outstanding reset tokens.
 - If `NEXT_PUBLIC_SITE_URL` is wrong, the reset link points to the wrong host; set it before deployment.
+
+## Additional production hardening (schema v10)
+
+### Session invalidation
+
+Schema v10 adds a server-side `admin_session_version` setting. Every admin cookie
+contains the current generation; a successful password reset or panel password
+change rotates the generation, invalidating all previously issued sessions on
+their next request. The proxy can only verify the signature, so page/layout/API
+guards enforce the generation check. The login page now lets the server decide
+whether a cookie is still valid, avoiding redirect loops after rotation.
+
+### Persistent rate limits
+
+Schema v10 stores security-sensitive rate-limit buckets in SQLite. Login failures,
+password-reset requests/confirmations, and admin API writes survive process
+restarts. High-volume public endpoints continue to use the in-process limiter to
+avoid a database write per analytics event. Run exactly one app process with the
+single SQLite database.
+
+### Independent scheduled publishing
+
+Install the systemd units after the first deployment:
+
+```bash
+sudo /srv/knight/current/ops/install-systemd.sh
+```
+
+This enables `knight-next.service`, the minute-level
+`knight-publish-due.timer`, and the daily `knight-backup.timer`. The publishing
+script also catches every missed schedule on its next run; the application's
+lazy publish-on-read remains a fallback. The timer is what makes publication
+independent of website visitors.
+
+### Search / Search Console configuration
+
+Content Studio can use real search results through `SERPER_API_KEY` or
+`GOOGLE_CUSTOM_SEARCH_API_KEY` + `GOOGLE_CUSTOM_SEARCH_CX`. Optional Search
+Console metrics use `GSC_SITE_URL` and either `GSC_SERVICE_ACCOUNT_JSON` or
+`GSC_SERVICE_ACCOUNT_FILE` (add the service account as a property user). These
+provide clicks, impressions, CTR and position only; the app never invents search
+volume, keyword difficulty, rankings or citations.
+
+### GitHub Actions deployment
+
+`.github/workflows/deploy-vps.yml` is manual (`workflow_dispatch`) and requires
+these repository/environment secrets:
+
+- `VPS_HOST`
+- `VPS_USER`
+- `VPS_SSH_KEY`
+- `VPS_KNOWN_HOSTS` (pinned host key; do not use ad-hoc `ssh-keyscan` in production)
+- optional `VPS_PORT` (defaults to 22)
+
+The deploy script uploads a release without `data/`, `.env`, `.next/` or
+`node_modules/`, runs `npm ci`/`npm run build` on the VPS, backs up
+`/var/lib/knight` before switching, performs an online SQLite backup, restarts
+the systemd service, checks `/api/health`, and rolls back the release plus the
+pre-deployment database on failure. It requires passwordless sudo for the
+deploy user to run `systemctl`.
+
+### Nginx client-IP contract
+
+Rate limits and audit IPs derive the client from the LAST `X-Forwarded-For` hop
+when `TRUST_PROXY=1` (the production default). Keep exactly one trusted reverse
+proxy and configure it with:
+
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
+Do not enable additional proxy layers without updating `TRUST_PROXY`; otherwise
+the last hop becomes an internal address and all visitors share one bucket.

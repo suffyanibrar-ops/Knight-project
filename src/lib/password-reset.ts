@@ -50,7 +50,11 @@ export async function requestAdminPasswordReset(emailInput: string): Promise<voi
   await db.insert(adminPasswordResets).values({ tokenHash, email, expiresAt, createdAt: now });
 
   const resetUrl = `${siteUrl()}/admin/reset-password?token=${encodeURIComponent(token)}`;
-  await sendPasswordResetEmail({ email, resetUrl, expiresMinutes: RESET_EXPIRES_MINUTES });
+  const delivery = await sendPasswordResetEmail({ email, resetUrl, expiresMinutes: RESET_EXPIRES_MINUTES });
+  // Never log the token or reset URL. The delivery status is useful for
+  // operators diagnosing a missing owner email without exposing the secret.
+  if (delivery.status === "sent") console.info(`[password-reset] email accepted by ${delivery.provider ?? "email provider"}`);
+  else console.error(`[password-reset] email not sent: ${delivery.status}${delivery.error ? ` (${delivery.error.slice(0, 120)})` : ""}`);
 }
 
 /** Returns the reset row only if it is present, unused and unexpired. */

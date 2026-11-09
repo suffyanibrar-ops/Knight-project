@@ -26,15 +26,15 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array) {
 async function verifySession(token: string | undefined, secret: string) {
   if (!token) return false;
   const parts = token.split(".");
-  if (parts.length !== 3) return false;
-  const [scope, expiresRaw, signature] = parts;
-  if (scope !== "admin") return false;
+  if (parts.length !== 4) return false;
+  const [scope, version, expiresRaw, signature] = parts;
+  if (scope !== "admin" || !version) return false;
   const expires = Number(expiresRaw);
   if (!Number.isFinite(expires) || expires < Date.now()) return false;
 
   try {
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${scope}.${expiresRaw}`));
+    const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${scope}.${version}.${expiresRaw}`));
     return constantTimeEqual(new Uint8Array(mac), hexToBytes(signature));
   } catch {
     return false;
@@ -56,8 +56,14 @@ export async function proxy(request: NextRequest) {
     const authenticated = await verifySession(request.cookies.get(COOKIE)?.value, sessionSecret());
 
     if (pathname === "/admin/login") {
-      if (authenticated) return NextResponse.redirect(new URL("/admin", request.url));
-      return NextResponse.next();
+      // The login page itself redirects a genuinely valid session to /admin.
+      // Do not redirect solely on a signature here: after a password change the
+      // cookie can be correctly signed but carry an obsolete session generation,
+      // and this layer cannot read the version from SQLite. Redirecting here
+      // would create /admin -> /admin/login -> /admin loops.
+      const response = NextResponse.next();
+      response.headers.set("x-robots-tag", "noindex, nofollow");
+      return response;
     }
 
     if (!authenticated) {

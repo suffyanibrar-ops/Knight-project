@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated, logAdminAction } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkPersistentRateLimit } from "@/lib/rate-limit";
 import { clientKey } from "@/lib/rate-limit";
 import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
 import { getAdminPost } from "@/lib/blog";
 import { generateContentDraft, generateContentResearch, generateEditorialReview } from "@/lib/content-ai";
+import { fetchLiveSearch, fetchSearchConsoleMetrics } from "@/lib/search-research";
 import {
   approveContentWorkflow,
   createContentWorkflow,
@@ -54,7 +55,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   if (!(await isAdminAuthenticated())) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (!isSameOrigin(request)) return forbiddenResponse();
-  const limit = checkRateLimit({ key: `admin-content:${clientKey(request)}`, limit: 12, windowMs: 60_000 });
+  const limit = checkPersistentRateLimit({ key: `admin-content:${clientKey(request)}`, limit: 12, windowMs: 60_000 });
   if (!limit.allowed) return bad("Too many editorial operations. Wait a minute and try again.", 429);
 
   let body: Record<string, unknown>;
@@ -69,6 +70,10 @@ export async function POST(request: NextRequest) {
       const editorNotes = String(body.editorNotes ?? "").trim().slice(0, 4000);
       const providedSources = sourcesFrom(body.sources);
       const existing = await existingArticleContext();
+      const [liveSearch, searchConsole] = await Promise.all([
+        fetchLiveSearch(topic),
+        fetchSearchConsoleMetrics(topic),
+      ]);
       const generated = await generateContentResearch({
         topic,
         audience,
@@ -76,8 +81,10 @@ export async function POST(request: NextRequest) {
         existingPosts: existing.posts,
         existingTitles: existing.titles,
         providedSources,
+        liveSearch,
+        searchConsole,
       });
-      const id = await createContentWorkflow({ topic, audience, data: { research: generated.research, plan: generated.plan }, stage: "topic_plan" });
+      const id = await createContentWorkflow({ topic, audience, data: { liveSearch, searchConsole, research: generated.research, plan: generated.plan }, stage: "topic_plan" });
       await logAdminAction("content.research", `workflow #${id} research/topic plan`, null);
       return NextResponse.json({ ok: true, workflow: await getContentWorkflow(id) });
     }

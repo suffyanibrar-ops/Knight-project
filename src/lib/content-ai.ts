@@ -1,6 +1,7 @@
 import "server-only";
 import { streamCompletion, type ChatMessage } from "./ai-deepseek";
 import { knownInternalPaths, sanitizeDraft, sanitizePlan, sanitizeResearch, type WorkflowDraft, type WorkflowPlan, type WorkflowResearch } from "./content-workflow";
+import type { LiveSearch, SearchConsoleData } from "./search-research";
 
 /**
  * Editorial AI calls. These are server-only and deliberately return structured
@@ -19,14 +20,28 @@ function parseJsonObject<T>(raw: string): T {
   return parsed as T;
 }
 
-async function complete(system: string, user: string, maxTokens = 2000): Promise<string> {
+async function complete(system: string, user: string, maxTokens = 2000, jsonMode = false): Promise<string> {
   const messages: ChatMessage[] = [
     { role: "system", content: system },
     { role: "user", content: user },
   ];
-  const result = await streamCompletion({ messages, temperature: 0.2, maxTokens });
+  const result = await streamCompletion({ messages, temperature: 0.2, maxTokens, jsonMode });
   if (!result.content.trim()) throw new Error("The AI returned an empty response.");
   return result.content;
+}
+
+/** Structured stages get one compact retry if a provider still returns malformed JSON. */
+async function completeJson<T>(system: string, user: string, maxTokens = 2000): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const raw = await complete(system, user, maxTokens, true);
+    try {
+      return parseJsonObject<T>(raw);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("The AI returned malformed structured content.");
 }
 
 const EDITORIAL_RULES = `
@@ -50,6 +65,8 @@ export async function generateContentResearch(input: {
   existingPosts: { title: string; slug: string; excerpt?: string | null }[];
   existingTitles: string[];
   providedSources: { title: string; url: string; note?: string }[];
+  liveSearch?: LiveSearch;
+  searchConsole?: SearchConsoleData;
 }): Promise<{ research: WorkflowResearch; plan: WorkflowPlan }> {
   const user = `Develop the research brief and article plan for this topic.
 
@@ -64,6 +81,18 @@ ${input.editorNotes || "(none supplied — explicitly set competitorNotes to a s
 
 PROVIDED SOURCES (the ONLY sources you may cite):
 ${input.providedSources.length ? input.providedSources.map((source) => `- ${source.title}: ${source.url}${source.note ? ` (${source.note})` : ""}`).join("\n") : "(none — return an empty sources array)"}
+
+LIVE SEARCH-RESULT DATA (real provider output, not invented; use only for competitor/intent analysis):
+${input.liveSearch?.available
+    ? input.liveSearch.results.map((result) => `- #${result.position} ${result.title} — ${result.url}\n  ${result.snippet}`).join("\n") || "(provider returned no results)"
+    : `UNAVAILABLE: ${input.liveSearch?.note ?? "No live search provider configured."}`}
+
+VERIFIED GOOGLE SEARCH CONSOLE METRICS (only if available; these are clicks/impressions/CTR/position, NOT volume/difficulty):
+${input.searchConsole?.available
+    ? input.searchConsole.metrics.map((metric) => `- "${metric.query}": clicks=${metric.clicks}, impressions=${metric.impressions}, ctr=${(metric.ctr * 100).toFixed(1)}%, avgPosition=${metric.position.toFixed(1)}`).join("\n") || "(property has no matching query rows)"
+    : `UNAVAILABLE: ${input.searchConsole?.note ?? "Google Search Console not configured."}`}
+
+Do not invent search volume, keyword difficulty, rankings or competitor facts. If a provider is unavailable, state that plainly in research.competitorNotes and plan.notes.
 
 EXISTING KNIGHT ARTICLE TITLES / SLUGS (avoid duplicate topics and keyword cannibalization):
 ${input.existingPosts.length ? input.existingPosts.map((post) => `- ${post.title} (/blog/${post.slug})`).join("\n") : "(no published or draft blog posts yet)"}
@@ -99,8 +128,7 @@ Return JSON with exactly this shape:
 }
 
 Use 5-9 outline sections. The plan must be genuinely useful, not a generic list. Never invent a statistic or citation.`;
-  const raw = await complete(EDITORIAL_RULES, user, 2000);
-  const parsed = parseJsonObject<{ research?: unknown; plan?: unknown }>(raw);
+  const parsed = await completeJson<{ research?: unknown; plan?: unknown }>(EDITORIAL_RULES, user, 2000);
   const research = sanitizeResearch(parsed.research);
   const plan = sanitizePlan(parsed.plan);
   // Enforce the source allow-list rather than trusting generated citations.
@@ -180,8 +208,7 @@ Return exactly:
 }
 
 Do not invent statistics, citations or source URLs. If no source was supplied, sources must be [].`;
-  const metadataRaw = await complete(EDITORIAL_RULES, metadataPrompt, 900);
-  const parsed = parseJsonObject<unknown>(metadataRaw);
+  const parsed = await completeJson<unknown>(EDITORIAL_RULES, metadataPrompt, 900);
   const draft = sanitizeDraft(parsed);
   draft.contentHtml = contentHtml;
   if (!draft.title) draft.title = input.plan.title;
@@ -224,8 +251,7 @@ Return JSON:
 }
 
 Be critical but practical. Never invent a fact to resolve uncertainty. Flag unsupported statistics, citations, payer rules, guarantees, duplicate intent against the supplied title, missing sources and weak internal linking.`;
-  const raw = await complete(EDITORIAL_RULES, user, 1200);
-  const parsed = parseJsonObject<{ summary?: unknown; score?: unknown; issues?: unknown }>(raw);
+  const parsed = await completeJson<{ summary?: unknown; score?: unknown; issues?: unknown }>(EDITORIAL_RULES, user, 1200);
   const issues = Array.isArray(parsed.issues)
     ? parsed.issues.flatMap((item) => {
       if (!item || typeof item !== "object") return [];
