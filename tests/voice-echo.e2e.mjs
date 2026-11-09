@@ -85,11 +85,12 @@ const installSpeechMock = async (context) => {
 const openVoice = async (page) => {
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(1200);
-  await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-  await page.waitForTimeout(650);
-  await page.getByRole("button", { name: /start voice conversation/i }).click();
-  await page.getByRole("button", { name: /enable microphone/i }).click();
+  await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+  await page.waitForTimeout(900);
   await page.waitForFunction(() => Boolean(window.__speech.recognition?.onresult), undefined, { timeout: 10_000 }).catch(() => {});
+  await page.waitForTimeout(5000);
+  await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('data-voice-state') === 'listening', undefined, { timeout: 10_000 }).catch(() => {});
+  await page.evaluate(() => { window.__speech.utterances = []; window.__speech.cancelCount = 0; });
 };
 
 const waitState = async (page, state, timeout = 20_000) => {
@@ -178,7 +179,7 @@ const countChatRequests = (page) => {
   await page.waitForTimeout(1500);
   ok("short legitimate answer 'yes' is accepted", requests.value > requestsBeforeYes, `${requestsBeforeYes} -> ${requests.value}`);
 
-  await page.getByRole("button", { name: /end voice/i }).click();
+  await page.getByRole("button", { name: /end voice call/i }).click();
   await page.waitForTimeout(350);
   const tracksEnded = await page.evaluate(() => window.__mediaTracks.length > 0 && window.__mediaTracks.every((track) => track.readyState === "ended"));
   ok("ending voice stops the microphone tracks", tracksEnded, String(await page.evaluate(() => window.__mediaTracks.map((track) => track.readyState))));
@@ -254,14 +255,16 @@ const countChatRequests = (page) => {
   const context = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await installSpeechMock(context);
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException("Permission denied by test", "NotAllowedError");
+    };
+  });
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(1200);
-  await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-  await page.waitForTimeout(650);
-  await page.getByRole("button", { name: /start voice conversation/i }).click();
-  await page.getByRole("button", { name: /enable microphone/i }).click();
-  await page.waitForFunction(() => Boolean(window.__speech.recognition?.onerror), undefined, { timeout: 10_000 }).catch(() => {});
-  await page.evaluate(() => window.__speech.recognition.onerror?.({ error: "not-allowed" }));
+  await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+  await page.waitForTimeout(900);
+  await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('data-voice-state') === 'error', undefined, { timeout: 10_000 }).catch(() => {});
   await page.waitForTimeout(400);
   const denialText = await page.locator('[role="dialog"]').innerText();
   ok("microphone denial is surfaced", /permission was denied/i.test(denialText), denialText.slice(0, 300));

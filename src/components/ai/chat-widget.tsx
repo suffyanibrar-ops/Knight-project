@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarCheck, Headphones, Loader2, Mic, MicOff, PhoneCall, Send, Square, UserRound, X } from "lucide-react";
+import { CalendarCheck, Headphones, Loader2, Send, Square, UserRound, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/components/ui";
 import { AppointmentModal, type BookedAppointment } from "./appointment-modal";
 import { MarkdownLite } from "./markdown-lite";
 import { useVoice } from "./use-voice";
+import { VoiceCallOverlay } from "./voice-call-overlay";
 import { trackConversion } from "@/lib/tracking";
 
 interface AiConfig {
@@ -68,12 +69,14 @@ export function AiChatWidget() {
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [voiceIntro, setVoiceIntro] = useState(false);
+  const [textOpen, setTextOpen] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
+  const [callRetrying, setCallRetrying] = useState(false);
+  const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [handoff, setHandoff] = useState({ name: "", email: "", phone: "", reason: "" });
   const [handoffSending, setHandoffSending] = useState(false);
-  const [voiceOptions, setVoiceOptions] = useState<{ name: string; lang: string }[]>([]);
-  const [voiceChoice, setVoiceChoice] = useState("");
+  const welcomeSpokenRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -94,7 +97,7 @@ export function AiChatWidget() {
     onFinalUtterance: (text) => { bargeRef.current = false; sendRef.current(text, true); },
     onBargeIn: () => bargeHandlerRef.current(),
     rate: config?.voiceRate,
-    voiceName: voiceChoice || config?.voiceName,
+    voiceName: config?.voiceName,
   });
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
   useEffect(() => {
@@ -125,8 +128,17 @@ export function AiChatWidget() {
   }, [messages, toolStatus, open]);
 
   useEffect(() => {
-    if (open) window.setTimeout(() => inputRef.current?.focus(), 150);
-  }, [open]);
+    if (open && textOpen) window.setTimeout(() => inputRef.current?.focus(), 150);
+  }, [open, textOpen]);
+
+  useEffect(() => {
+    if (!open || textOpen || callEnded || !config || welcomeSpokenRef.current) return;
+    // Wait until recognition has actually connected, not merely until config
+    // has loaded. This prevents TTS from taking audio focus before permission.
+    if (voice.state !== "listening" || messages.length > 1) return;
+    welcomeSpokenRef.current = true;
+    voice.speak(config.welcome);
+  }, [open, textOpen, callEnded, config, messages.length, voice]);
 
   /**
    * Batch streamed sentences before speaking.
@@ -329,50 +341,80 @@ export function AiChatWidget() {
   }, [busy, flushSpeech, stopEverything, voice]);
   sendRef.current = send;
 
-  function loadVoiceOptions() {
-    setVoiceOptions(voice.getVoices().map((item) => ({ name: item.name, lang: item.lang })));
-    try { setVoiceChoice(window.localStorage.getItem("kmb-voice-choice") ?? ""); } catch { /* storage blocked */ }
-  }
-
-  function chooseVoice(name: string) {
-    setVoiceChoice(name);
-    try { window.localStorage.setItem("kmb-voice-choice", name); } catch { /* storage blocked */ }
-  }
-
-  function handleVoiceButton() {
-    if (!config?.voiceEnabled) return;
-    if (!voice.supported) {
-      setError("Voice isn't supported in this browser. Please use Chrome, Edge or Safari, or keep chatting by text.");
+  async function startCall() {
+    if (config && !config.voiceEnabled) {
+      setOpen(true);
+      setTextOpen(true);
       return;
     }
-    loadVoiceOptions();
-    if (voice.state === "off" || voice.state === "error") setVoiceIntro(true);
-    else setVoiceIntro(false);
-  }
-
-  async function enableVoice() {
-    setVoiceIntro(false);
-    // Start recognition synchronously from the user gesture first. Some Android
-    // browsers can lose audio focus if speech synthesis is started before the
-    // microphone recognizer; recognition must own the capture first.
+    setOpen(true);
+    setTextOpen(false);
+    setCallEnded(false);
+    setCallRetrying(Boolean(voice.error) || callEnded);
+    setMicrophoneError(null);
+    welcomeSpokenRef.current = false;
     voiceModeRef.current = true;
-    const startedPromise = voice.start();
-    // Prime TTS only after recognition has been initiated. On iOS this still
-    // occurs inside the original tap gesture; on Android the unlock is a no-op
-    // so it cannot compete with the microphone session.
-    voice.unlock();
-    const started = await startedPromise;
-    if (!started || !voiceModeRef.current) {
-      voiceModeRef.current = false;
+
+    // A browser without SpeechRecognition cannot run the voice engine. Do not
+    // ask for microphone permission just to show an unsupported error.
+    if (!voice.supported) {
+      const unsupported = voice.start();
+      voice.unlock();
+      void unsupported.then(() => {
+        voiceModeRef.current = false;
+        setCallRetrying(false);
+      });
       return;
     }
-    setMessages((prev) => [...prev, { id: uid(), role: "note", text: "Voice mode is on. Speak naturally — use Stop if you need to interrupt." }]);
+
+    // Explicit native permission request on the user's tap. This is what makes
+    // Chrome/Safari show their browser permission prompt. The probe stream is
+    // released by the hook before SpeechRecognition takes ownership.
+    const access = await voice.requestMicrophoneAccess();
+    if (!voiceModeRef.current) return;
+    if (!access.ok) {
+      voiceModeRef.current = false;
+      setCallRetrying(false);
+      setMicrophoneError(access.message);
+      return;
+    }
+
+    const started = voice.start();
+    voice.unlock();
+    void started.then((ok) => {
+      if (!ok) {
+        voiceModeRef.current = false;
+        setCallRetrying(false);
+      }
+    });
   }
 
-  function endVoice() {
+  function endCall() {
     voice.end();
     voiceModeRef.current = false;
-    setMessages((prev) => [...prev, { id: uid(), role: "note", text: "Voice mode ended. You can keep typing." }]);
+    setCallRetrying(false);
+    setMicrophoneError(null);
+    setCallEnded(true);
+    setTextOpen(false);
+  }
+
+  function closeAll() {
+    voice.end();
+    voiceModeRef.current = false;
+    setMicrophoneError(null);
+    setOpen(false);
+    setTextOpen(false);
+    setCallEnded(false);
+    setCallRetrying(false);
+  }
+
+  function openText() {
+    setTextOpen(true);
+  }
+
+  function backToVoice() {
+    setTextOpen(false);
+    if (!voiceModeRef.current && !callEnded) startCall();
   }
 
   function onBooked(appointment: BookedAppointment) {
@@ -413,28 +455,12 @@ export function AiChatWidget() {
     }
   }
 
-  const voiceActive = voice.state !== "off" && voice.state !== "unsupported";
-  const voiceStatus = voice.state === "starting"
-    ? "Starting microphone…"
-    : voice.state === "listening"
-    ? "Listening…"
-    : voice.state === "user-speaking"
-      ? "Listening to you…"
-      : voice.state === "thinking"
-        ? "Thinking…"
-        : voice.state === "speaking"
-          ? voice.audioMode === "half-duplex" ? "Speaking — tap Stop to interrupt" : "Speaking — interrupt me any time"
-          : voice.state === "interrupted"
-            ? "Interrupted — listening…"
-            : voice.state === "error"
-              ? "Voice error"
-              : "";
 
   return (
     <>
       <div className="fixed bottom-[calc(5.2rem+env(safe-area-inset-bottom))] right-4 z-50 flex flex-col items-end gap-3 md:bottom-6 md:right-6">
         <AnimatePresence>
-          {open && (
+          {open && textOpen && (
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -456,9 +482,16 @@ export function AiChatWidget() {
                       <p className="text-[0.62rem] font-semibold text-white/60">AI assistant · Knight Medical Billing</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setOpen(false)} aria-label="Close chat" className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/80 hover:bg-white/20">
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {!callEnded && (
+                      <button type="button" onClick={backToVoice} aria-label="Back to voice call" className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/80 hover:bg-white/20">
+                        <Headphones className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button type="button" onClick={closeAll} aria-label="Close chat" className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/80 hover:bg-white/20">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="relative mt-2.5 flex items-center gap-1.5 text-[0.65rem] font-semibold text-white/60">
                   <span className="relative flex h-1.5 w-1.5">
@@ -470,6 +503,11 @@ export function AiChatWidget() {
               </div>
 
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-mist-50 p-4">
+                {(microphoneError || voice.error) && (
+                  <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.72rem] font-semibold text-rose-700">
+                    {microphoneError || voice.error}
+                  </p>
+                )}
                 {configError && (
                   <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.76rem] font-semibold text-amber-900">
                     {configError} You can still use the contact form or call (812) 994-0046.
@@ -495,58 +533,11 @@ export function AiChatWidget() {
                 {toolStatus && (
                   <p className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-[0.66rem] font-bold text-brand-700"><Loader2 className="h-3 w-3 animate-spin" /> {toolStatus}</p>
                 )}
-                {voiceActive && voiceStatus && (
-                  <p className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.66rem] font-bold", voice.state === "error" ? "bg-rose-50 text-rose-700" : "bg-night-soft text-white")}>
-                    <span className={cn("h-1.5 w-1.5 rounded-full", voice.state === "speaking" ? "animate-pulse bg-mint-400" : voice.state === "listening" || voice.state === "user-speaking" ? "bg-brand-300" : "bg-amber-300")} />
-                    {voiceStatus}
-                  </p>
-                )}
-                {voiceActive && voice.audioMode === "half-duplex" && (
-                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.68rem] leading-relaxed text-amber-900">
-                    This device has limited echo cancellation, so Riley uses walkie-talkie style half-duplex voice. While Riley is speaking, tap <strong>Stop</strong>, then speak. Voice remains fully usable.
-                  </p>
-                )}
-                {voice.error && (
-                  <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.72rem] font-semibold text-rose-700">
-                    {voice.error}
-                  </p>
-                )}
                 {error && (
                   <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.74rem] font-semibold text-rose-700">
                     {error}{" "}
                     <button type="button" onClick={() => setHandoffOpen(true)} className="underline">Ask for a person</button>
                   </p>
-                )}
-                {voiceIntro && (
-                  <div className="rounded-2xl border border-brand-200 bg-brand-50 p-3 text-[0.74rem] leading-relaxed text-brand-900">
-                    <p className="font-extrabold">Enable voice conversation</p>
-                    <p className="mt-1">Voice uses your microphone to hear you and your speaker to answer. Audio is processed in your browser and is <strong>not recorded or stored</strong>. Microphone permission is requested only after you continue.</p>
-                    {voiceOptions.length > 1 && (
-                      <label className="mt-2.5 block text-[0.66rem] font-bold text-brand-900">
-                        Voice
-                        <select
-                          value={voiceChoice}
-                          onChange={(event) => chooseVoice(event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-brand-200 bg-white px-2.5 py-1.5 text-[0.72rem] font-semibold text-ink-800 outline-none focus:border-brand-400"
-                          aria-label="Choose a free browser voice"
-                        >
-                          <option value="">Auto — best natural voice</option>
-                          {voiceOptions.slice(0, 20).map((item) => (
-                            <option key={`${item.name}-${item.lang}`} value={item.name}>{item.name} ({item.lang})</option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    {voiceOptions.length > 0 && (
-                      <p className="mt-1.5 text-[0.6rem] leading-relaxed text-brand-900/60">
-                        Free voices come from your browser and device. Enhanced or Neural voices usually sound the most natural.
-                      </p>
-                    )}
-                    <div className="mt-2 flex gap-2">
-                      <button type="button" onClick={() => void enableVoice()} className="btn btn-primary px-3 py-2 text-[0.72rem]"><Mic className="h-3.5 w-3.5" /> Enable microphone</button>
-                      <button type="button" onClick={() => setVoiceIntro(false)} className="btn btn-light px-3 py-2 text-[0.72rem]">Not now</button>
-                    </div>
-                  </div>
                 )}
                 {messages.length <= 1 && config?.knowledgeReady !== false && (
                   <div className="grid gap-1.5 pt-1">
@@ -583,30 +574,21 @@ export function AiChatWidget() {
                     ref={inputRef}
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder={voiceActive ? "Speak or type…" : "Ask a question…"}
+                    placeholder="Type a message…"
                     aria-label="Chat message"
                     maxLength={2000}
                     className="min-w-0 flex-1 rounded-full border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[0.8rem] outline-none focus:border-brand-400"
                   />
-                  {config?.voiceEnabled && (
-                    <button type="button" onClick={handleVoiceButton} aria-label={voiceActive ? "Voice controls" : "Start voice conversation"} aria-pressed={voiceActive} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors", voiceActive ? "border-brand-500 bg-brand-50 text-brand-700" : "border-mist-200 bg-surface text-ink-700 hover:border-brand-300")}>
-                      {voiceActive ? <Headphones className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  {!callEnded && (
+                    <button type="button" onClick={backToVoice} aria-label="Back to voice call" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-mist-200 bg-surface text-ink-700 hover:border-brand-300">
+                      <Headphones className="h-4 w-4" />
                     </button>
                   )}
-                  {busy || voiceActive ? (
-                    <button type="button" onClick={stopEverything} aria-label="Stop speaking and cancel the current answer" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-night-soft text-white hover:bg-brand-600"><Square className="h-3.5 w-3.5" /></button>
+                  {busy ? (
+                    <button type="button" onClick={stopEverything} aria-label="Stop the current answer" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-night-soft text-white hover:bg-brand-600"><Square className="h-3.5 w-3.5" /></button>
                   ) : null}
                   <button type="submit" aria-label="Send message" disabled={!input.trim() || busy} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-night-soft text-white transition-colors hover:bg-brand-600 disabled:opacity-40"><Send className="h-3.5 w-3.5" /></button>
                 </form>
-                {voiceActive && (
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <button type="button" onClick={voice.toggleMute} className="flex items-center gap-1.5 rounded-full border border-mist-200 px-2.5 py-1 text-[0.66rem] font-bold text-ink-700 hover:border-brand-300">
-                      {voice.muted ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />} {voice.muted ? "Unmute" : "Mute"}
-                    </button>
-                    <button type="button" onClick={() => { stopEverything(); setVoiceIntro(false); setHandoffOpen(false); }} className="rounded-full border border-mist-200 px-2.5 py-1 text-[0.66rem] font-bold text-ink-700 hover:border-brand-300"><PhoneCall className="mr-1 inline h-3 w-3" />Stop</button>
-                    <button type="button" onClick={endVoice} className="rounded-full border border-rose-200 px-2.5 py-1 text-[0.66rem] font-bold text-rose-700 hover:bg-rose-50">End voice</button>
-                  </div>
-                )}
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <button type="button" onClick={() => setBookingOpen(true)} disabled={!config?.bookingEnabled} className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-[0.68rem] font-bold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-40">
                     <CalendarCheck className="h-3.5 w-3.5" /> Book a 15-min call
@@ -620,10 +602,28 @@ export function AiChatWidget() {
           )}
         </AnimatePresence>
 
+        <VoiceCallOverlay
+          open={open && !textOpen}
+          ended={callEnded}
+          retrying={callRetrying}
+          voiceState={voice.state}
+          voiceError={microphoneError || voice.error}
+          muted={voice.muted}
+          audioMode={voice.audioMode}
+          agentName={config?.agentName ?? "Riley"}
+          welcome={config?.welcome ?? "Hi! I’m Riley. Thanks for calling Knight Medical Billing. How can I help you today?"}
+          onEnd={endCall}
+          onMute={voice.toggleMute}
+          onInterrupt={stopEverything}
+          onText={openText}
+          onRetry={startCall}
+          onClose={closeAll}
+        />
+
         <button
           type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-label={open ? "Close AI assistant" : "Open Knight AI assistant"}
+          onClick={() => (open ? closeAll() : startCall())}
+          aria-label={open ? "Close Riley voice call" : "Talk to Riley voice assistant"}
           aria-expanded={open}
           className="group relative grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-[linear-gradient(145deg,#0d3346_0%,#04141f_100%)] text-white shadow-[0_20px_40px_-15px_rgba(4,20,31,0.7)] transition-colors hover:border-brand-300/40 hover:bg-[linear-gradient(145deg,#0f6988_0%,#071f2f_100%)]"
         >

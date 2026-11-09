@@ -35,7 +35,7 @@ ok("hero shows specific differentiators", /No prepayment/i.test(heroText) && /Yo
 ok("hero shows the new primary actions", /Talk With Knight/i.test(heroText) && /See how it works/i.test(heroText));
 
 // ---------- AI assistant launcher icon ----------
-const launcher = page.getByRole("button", { name: /open knight ai assistant/i });
+const launcher = page.getByRole("button", { name: /talk to riley voice assistant/i });
 ok("AI launcher has an explicit assistant label", await launcher.count() === 1);
 const iconShape = await launcher.locator("svg").first().evaluate((svg) => ({ rects: svg.querySelectorAll("rect").length, circles: svg.querySelectorAll("circle").length }));
 ok("AI launcher uses the custom voice-agent waveform (not a chat bubble)", iconShape.rects >= 4 && iconShape.circles >= 1, JSON.stringify(iconShape));

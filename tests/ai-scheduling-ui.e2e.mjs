@@ -27,7 +27,9 @@ page.on("pageerror", (error) => errors.push(error.message.slice(0, 200)));
 await page.addInitScript(() => { try { sessionStorage.setItem("kmb-intro-seen", "1"); } catch { /* ignore */ } });
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForFunction(() => { const intro = document.querySelector("[data-site-intro]"); return !intro || getComputedStyle(intro).display === "none" || getComputedStyle(intro).visibility === "hidden"; }, undefined, { timeout: 6000 }).catch(() => {});
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: /open text chat/i }).first().click();
 const bookButton = page.getByRole("button", { name: /book a 15-min call/i });
 for (let i = 0; i < 30; i += 1) {
   await page.waitForTimeout(300);

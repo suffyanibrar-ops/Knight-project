@@ -79,7 +79,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 700 }
   const barBox = await cta.boundingBox();
   const mainPadding = await page.locator("#main").evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
   ok("CTA does not cover main content", Boolean(barBox && mainPadding >= barBox.height - 2), `${mainPadding} vs ${barBox?.height}`);
-  const chat = page.getByRole("button", { name: /open knight ai assistant/i });
+  const chat = page.getByRole("button", { name: /talk to riley voice assistant/i });
   const chatBox = await chat.boundingBox();
   ok("AI launcher sits above the CTA bar", Boolean(barBox && chatBox && chatBox.y + chatBox.height <= barBox.y + 2), JSON.stringify({ chatBox, barBox }));
   await page.goto(BASE + "/contact", { waitUntil: "domcontentloaded" });

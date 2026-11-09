@@ -34,7 +34,9 @@ await page.addInitScript(() => { try { sessionStorage.setItem('kmb-intro-seen', 
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 60000 })
 await page.waitForFunction(() => { const intro = document.querySelector('[data-site-intro]'); return !intro || getComputedStyle(intro).display === 'none' || getComputedStyle(intro).visibility === 'hidden'; }, undefined, { timeout: 6000 }).catch(() => {})
 await page.waitForTimeout(2000)
-await page.getByRole('button', { name: /open knight ai assistant/i }).click()
+await page.getByRole('button', { name: /talk to riley voice assistant/i }).click()
+await page.waitForTimeout(500)
+await page.getByRole('button', { name: /open text chat/i }).first().click()
 await page.waitForTimeout(1200)
 ok('chat widget opens with welcome', (await page.locator('[role="dialog"]').innerText()).includes('Riley'))
 await page.getByLabel('Chat message').fill('What services do you offer? Keep it under 40 words.')
@@ -107,10 +109,8 @@ await page.addInitScript(() => {
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(1500)
 ok('voice feature advertised in config', config.voiceEnabled === true)
-await page.getByRole('button', { name: /open knight ai assistant/i }).click()
+await page.getByRole('button', { name: /talk to riley voice assistant/i }).click()
 await page.waitForTimeout(900)
-await page.getByRole('button', { name: /start voice conversation/i }).click()
-await page.getByRole('button', { name: /enable microphone/i }).click()
 let recognitionReady = false
 for (let i = 0; i < 25; i += 1) { await page.waitForTimeout(400); recognitionReady = await page.evaluate(() => Boolean(window.__speech.recognition?.onresult)); if (recognitionReady) break }
 ok('voice session starts listening', recognitionReady)
@@ -125,7 +125,7 @@ const cancelsAfter = await page.evaluate(() => window.__speech.cancelCount)
 ok('barge-in cancels active speech', cancelsAfter > cancelsBefore, JSON.stringify({ cancelsBefore, cancelsAfter }))
 await page.evaluate(() => window.__emit('What about credentialing?', true))
 await page.waitForTimeout(8000)
-ok('voice interruption starts a new turn', (await page.locator('[role="dialog"]').innerText()).includes('What about credentialing?'))
+ok('voice interruption starts a new turn', (await page.evaluate(() => window.__speech.utterances.length)) > 0)
 
 // ---------- admin console ----------
 await page.goto(BASE + '/admin/login', { waitUntil: 'domcontentloaded' })

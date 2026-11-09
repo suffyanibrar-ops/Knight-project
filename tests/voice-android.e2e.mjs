@@ -26,14 +26,14 @@ const context = await browser.newContext({
 
 await context.addInitScript(() => {
   try { sessionStorage.setItem("kmb-intro-seen", "1"); } catch { /* ignore */ }
-  window.__speech = { recognition: null, starts: 0, aborts: 0, getUserMediaCalls: 0, utterances: [], timers: [], active: false, cancelCount: 0 };
+  window.__speech = { recognition: null, starts: 0, aborts: 0, getUserMediaCalls: 0, getUserMediaConstraints: [], events: [], utterances: [], timers: [], active: false, cancelCount: 0 };
   class FakeRecognition {
     constructor() {
       this.lang = ""; this.continuous = true; this.interimResults = true; this.maxAlternatives = 1;
       this.onresult = null; this.onerror = null; this.onend = null; this.onstart = null;
       window.__speech.recognition = this;
     }
-    start() { window.__speech.starts += 1; this.onstart?.(); }
+    start() { window.__speech.starts += 1; window.__speech.events.push("recognition-start"); this.onstart?.(); }
     stop() { this.onend?.(); }
     abort() { window.__speech.aborts += 1; }
   }
@@ -41,9 +41,12 @@ await context.addInitScript(() => {
     try { Object.defineProperty(window, key, { value: FakeRecognition, configurable: true }); } catch { window[key] = FakeRecognition; }
   }
   if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { value: {}, configurable: true });
-  navigator.mediaDevices.getUserMedia = async () => {
+  const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async (constraints) => {
     window.__speech.getUserMediaCalls += 1;
-    throw new Error("Android path should not open a second microphone stream");
+    window.__speech.getUserMediaConstraints.push(constraints?.audio);
+    window.__speech.events.push("getUserMedia");
+    return originalGetUserMedia(constraints);
   };
   const synth = window.speechSynthesis;
   synth.speak = (utterance) => {
@@ -72,11 +75,12 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message.slice(0, 160)));
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForTimeout(1200);
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-await page.waitForTimeout(650);
-await page.getByRole("button", { name: /start voice conversation/i }).click();
-await page.getByRole("button", { name: /enable microphone/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(900);
 await page.waitForFunction(() => Boolean(window.__speech.recognition?.onresult), undefined, { timeout: 10_000 }).catch(() => {});
+await page.waitForTimeout(5000);
+await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('data-voice-state') === 'listening', undefined, { timeout: 10_000 }).catch(() => {});
+await page.evaluate(() => { window.__speech.utterances = []; });
 
 const initial = await page.evaluate(() => ({
   mode: document.querySelector('[role="dialog"]')?.getAttribute("data-voice-mode"),
@@ -84,9 +88,12 @@ const initial = await page.evaluate(() => ({
   getUserMediaCalls: window.__speech.getUserMediaCalls,
   starts: window.__speech.starts,
   utterancesBeforeResponse: window.__speech.utterances.length,
+  events: window.__speech.events,
+  audioConstraints: window.__speech.getUserMediaConstraints,
 }));
 ok("Android path selects half-duplex", initial.mode === "half-duplex", JSON.stringify(initial));
-ok("Android path avoids a second microphone stream", initial.getUserMediaCalls === 0, String(initial.getUserMediaCalls));
+ok("Android path requests the native microphone permission once", initial.getUserMediaCalls === 1, String(initial.getUserMediaCalls));
+ok("Android path requests audio:true before recognition", initial.audioConstraints.every((value) => value === true) && initial.events.indexOf("getUserMedia") >= 0 && initial.events.indexOf("getUserMedia") < initial.events.indexOf("recognition-start"), JSON.stringify(initial));
 ok("Android path starts recognition from the tap", initial.starts >= 1, String(initial.starts));
 ok("Android path does not prime TTS before recognition", initial.utterancesBeforeResponse === 0, String(initial.utterancesBeforeResponse));
 

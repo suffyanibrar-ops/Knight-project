@@ -72,9 +72,10 @@ await context.addInitScript(() => {
   if (!navigator.mediaDevices) {
     Object.defineProperty(navigator, "mediaDevices", { value: {}, configurable: true });
   }
-  navigator.mediaDevices.getUserMedia = async () => {
+  const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async (constraints) => {
     window.__speech.getUserMediaCalls += 1;
-    throw new Error("mobile test should not open a second microphone stream");
+    return originalGetUserMedia(constraints);
   };
 
   const synth = window.speechSynthesis;
@@ -125,12 +126,12 @@ const waitRecognition = async () => {
 
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForTimeout(1200);
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-await page.waitForTimeout(650);
-await page.getByRole("button", { name: /start voice conversation/i }).click();
-await page.getByRole("button", { name: /enable microphone/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(900);
 await waitRecognition();
+await page.waitForTimeout(5000);
 await waitState("listening", 10_000);
+await page.evaluate(() => { window.__speech.utterances = []; });
 
 let state = await page.evaluate(() => ({
   mode: document.querySelector('[role="dialog"]')?.getAttribute("data-voice-mode"),
@@ -140,7 +141,7 @@ let state = await page.evaluate(() => ({
   aborts: window.__speech.recognitionAborts,
 }));
 ok("mobile selects half-duplex mode", state.mode === "half-duplex", JSON.stringify(state));
-ok("mobile does not open a second microphone stream", state.getUserMediaCalls === 0, String(state.getUserMediaCalls));
+ok("mobile requests the native microphone permission once", state.getUserMediaCalls === 1, String(state.getUserMediaCalls));
 ok("mobile starts recognition after the explicit tap", state.starts >= 1, String(state.starts));
 
 await page.evaluate(() => window.__emit("In three short sentences, what services do you offer?", true));
@@ -183,6 +184,8 @@ await waitState("error", 10_000);
 const errorText = await page.locator('[role="dialog"]').innerText();
 ok("audio-capture is reported as a device problem", /No usable microphone/i.test(errorText), errorText.slice(0, 400));
 ok("audio-capture is not misreported as permission denial", !/permission was denied/i.test(errorText), errorText.slice(0, 400));
+await page.getByRole("button", { name: /open text chat/i }).first().click();
+await page.waitForTimeout(500);
 ok("text chat remains available after audio failure", await page.getByRole("textbox", { name: /chat message/i }).count() === 1);
 ok("mobile voice test has no page errors", errors.length === 0, errors.join(" | "));
 

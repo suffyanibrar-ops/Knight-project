@@ -63,9 +63,8 @@ const installSpeech = async (context, { permissions = true } = {}) => {
 const openWidget = async (page) => {
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(1200);
-  await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-  await page.waitForTimeout(650);
-  await page.getByRole("button", { name: /start voice conversation/i }).click();
+  await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+  await page.waitForTimeout(900);
 };
 
 // ---------- permission revoked after grant ----------
@@ -74,13 +73,15 @@ const openWidget = async (page) => {
   await installSpeech(context);
   const page = await context.newPage();
   await openWidget(page);
-  await page.getByRole("button", { name: /enable microphone/i }).click();
   await page.waitForFunction(() => Boolean(window.__speech.recognition?.onresult), undefined, { timeout: 10_000 }).catch(() => {});
   await page.evaluate(() => window.__revokeMicrophone());
   await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute("data-voice-state") === "error", undefined, { timeout: 10_000 }).catch(() => {});
   const text = await page.locator('[role="dialog"]').innerText();
   ok("permission revocation is surfaced", /revoked or blocked/i.test(text), text.slice(0, 400));
-  ok("permission revocation remains recoverable by text", /Microphone permission/i.test(text) && await page.getByRole("textbox", { name: /chat message/i }).count() === 1);
+  await page.getByRole("button", { name: /open text chat/i }).first().click();
+  await page.waitForTimeout(500);
+  const chat = page.getByRole("dialog", { name: /Chat with Riley/i });
+  ok("permission revocation remains recoverable by text", /Microphone permission/i.test(await chat.innerText()) && await page.getByRole("textbox", { name: /chat message/i }).count() === 1);
   await context.close();
 }
 
@@ -95,8 +96,11 @@ const openWidget = async (page) => {
   });
   const page = await context.newPage();
   await openWidget(page);
-  const text = await page.locator('[role="dialog"]').innerText();
-  ok("unsupported browser gets a clear text fallback", /Voice isn't supported/i.test(text) && await page.getByRole("textbox", { name: /chat message/i }).count() === 1, text.slice(0, 400));
+  const voiceDialog = page.getByRole("dialog", { name: /Voice call with Riley/i });
+  const text = await voiceDialog.innerText();
+  await page.getByRole("button", { name: /open text chat/i }).first().click();
+  await page.waitForTimeout(500);
+  ok("unsupported browser gets a clear text fallback", /Voice not supported/i.test(text) && await page.getByRole("textbox", { name: /chat message/i }).count() === 1, text.slice(0, 400));
   await context.close();
 }
 

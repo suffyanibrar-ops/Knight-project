@@ -90,7 +90,9 @@ ok("results no longer publish 99.9% or 24-hour claims", !/99\.9%|24 hours|24 hrs
 // ---- AI opening entry points ----
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await waitForIntro();
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: /open text chat/i }).first().click();
 await page.waitForTimeout(1200);
 const widgetText = await page.locator('[role="dialog"]').innerText();
 ok("AI offers concern-led quick starts", /Improve A\/R/i.test(widgetText) && /Reduce denials/i.test(widgetText) && /Not sure where to start/i.test(widgetText));

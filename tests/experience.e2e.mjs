@@ -72,7 +72,9 @@ ok("counter animation never renders NaN or empty values", !/NaN|undefined/.test(
 
 // ---------- appointment progress UI ----------
 await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: /open text chat/i }).first().click();
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: /book a 15-min call/i }).click().catch(async () => {
   const book = page.getByRole("button", { name: /book a 15-min call/i });

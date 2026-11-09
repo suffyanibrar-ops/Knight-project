@@ -1186,3 +1186,24 @@ html[data-motion="reduced"] [data-hero-reveal] {
   opacity: 1 !important;
   transform: none !important;
 }
+
+
+@keyframes voice-bar {
+  from { transform: scaleY(0.35); opacity: 0.55; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+
+.voice-avatar-speaking {
+  animation: voice-avatar-speaking 1.8s ease-in-out infinite;
+}
+
+@keyframes voice-avatar-speaking {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 60px -24px rgba(124, 215, 242, 0.4); }
+  50% { transform: scale(1.025); box-shadow: 0 0 95px -18px rgba(124, 215, 242, 0.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-avatar-speaking { animation: none; }
+  @keyframes voice-bar { from { transform: none; } to { transform: none; } }
+}

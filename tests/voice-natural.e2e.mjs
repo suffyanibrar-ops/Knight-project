@@ -57,11 +57,15 @@ const waitForIntent = async () => {
 
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForTimeout(1300);
-await page.getByRole("button", { name: /open knight ai assistant/i }).click();
-await page.waitForTimeout(700);
-await page.getByRole("button", { name: /start voice conversation/i }).click();
-await page.getByRole("button", { name: /enable microphone/i }).click();
+await page.getByRole("button", { name: /talk to riley voice assistant/i }).click();
+await page.waitForTimeout(900);
 await waitForIntent();
+// The immersive call plays Riley's configurable welcome before the first user
+// turn. Wait for that real TTS state to settle, then start measuring the answer.
+await page.waitForFunction(() => ['speaking', 'listening'].includes(document.querySelector('[role="dialog"]')?.getAttribute('data-voice-state') ?? ''), undefined, { timeout: 10_000 }).catch(() => {});
+await page.waitForTimeout(4800);
+await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('data-voice-state') === 'listening', undefined, { timeout: 10_000 }).catch(() => {});
+await page.evaluate(() => { window.__speech.utterances = []; });
 
 const say = async (text) => {
   await page.evaluate((value) => window.__emit(value, true), text);

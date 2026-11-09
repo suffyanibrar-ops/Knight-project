@@ -37,6 +37,10 @@ export type VoiceState =
 
 type AudioMode = "full-duplex" | "half-duplex" | "unknown";
 
+export type MicrophoneAccessResult =
+  | { ok: true; label: string }
+  | { ok: false; reason: "insecure" | "unsupported" | "denied" | "missing" | "busy" | "error"; message: string };
+
 interface SpeechRecognitionResultLike {
   isFinal: boolean;
   0: { transcript: string };
@@ -672,6 +676,59 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     } catch { /* speech unavailable; normal errors surface later */ }
   }, []);
 
+  /**
+   * Explicitly request the browser microphone on a user tap.
+   *
+   * SpeechRecognition owns its own capture. We still need getUserMedia here to
+   * guarantee Chrome/Safari show their native permission prompt and to surface
+   * the real device error. The probe stream is stopped before recognition starts
+   * so Android does not end up with two competing microphone owners.
+   */
+  const requestMicrophoneAccess = useCallback(async (): Promise<MicrophoneAccessResult> => {
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      return { ok: false, reason: "insecure", message: "Microphone access requires HTTPS. Open the secure Knight Medical Billing site and try again." };
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      return { ok: false, reason: "unsupported", message: "This browser does not expose microphone access. Try Chrome or Safari, or continue by text." };
+    }
+    let stream: MediaStream | null = null;
+    try {
+      // The explicit call is intentional: this is what triggers Chrome/Safari's
+      // native microphone permission prompt on the user's tap.
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = stream.getAudioTracks()[0];
+      if (!track) {
+        stream.getTracks().forEach((item) => item.stop());
+        return { ok: false, reason: "missing", message: "No microphone was found on this device. Check that a microphone is available, then try again." };
+      }
+      const label = track.label?.trim() || "Microphone";
+      // Release the probe before SpeechRecognition starts its own capture.
+      stream.getTracks().forEach((item) => item.stop());
+      stream = null;
+      return { ok: true, label };
+    } catch (error) {
+      if (stream) stream.getTracks().forEach((item) => item.stop());
+      const name = error instanceof Error ? error.name : "";
+      const detail = error instanceof Error ? error.message : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        if (/dismiss/i.test(detail)) {
+          return { ok: false, reason: "denied", message: "The microphone permission prompt was dismissed. Tap Try again when you are ready, or continue by text." };
+        }
+        return { ok: false, reason: "denied", message: "Microphone permission was denied. In Android Chrome, open the site controls from the address bar, allow Microphone, then tap Riley again. On iPhone, use Settings → Safari → Microphone. Text chat is still available." };
+      }
+      if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        return { ok: false, reason: "missing", message: "No microphone is connected to this device. Connect or enable a microphone, then try again." };
+      }
+      if (name === "NotReadableError" || name === "TrackStartError") {
+        return { ok: false, reason: "busy", message: "The microphone is already being used by another app. Close the other audio app, then try again." };
+      }
+      if (name === "OverconstrainedError") {
+        return { ok: false, reason: "error", message: "This device could not satisfy the microphone request. Try again or use text chat." };
+      }
+      return { ok: false, reason: "error", message: "The microphone could not be started. Check your device audio settings and browser permissions, then try again. Text chat is still available." };
+    }
+  }, []);
+
   /** Begin a voice session (must be called from a user gesture). */
   const start = useCallback(async () => {
     if (!getRecognitionCtor()) {
@@ -932,6 +989,7 @@ export function useVoice({ onFinalUtterance, onBargeIn, lang = "en-US", rate = 1
     audioMode,
     echoCancellation,
     start,
+    requestMicrophoneAccess,
     unlock,
     end,
     stopSpeech,
