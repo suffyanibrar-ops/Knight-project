@@ -21,7 +21,6 @@ export type AnalyticsTotals = {
   submissions7d: number;
   submissions30d: number;
   subscribers: number;
-  roiEstimates: number;
   emailsSent: number;
   emailsBounced: number;
   emailsComplained: number;
@@ -103,7 +102,6 @@ function emptyPayload(available: boolean, error?: string): AnalyticsPayload {
       submissions7d: 0,
       submissions30d: 0,
       subscribers: 0,
-      roiEstimates: 0,
       emailsSent: 0,
       emailsBounced: 0,
       emailsComplained: 0,
@@ -165,7 +163,6 @@ export async function GET() {
       submissions7d: count("SELECT COUNT(*) AS n FROM submissions WHERE datetime(created_at) >= datetime('now', '-7 days')"),
       submissions30d: count("SELECT COUNT(*) AS n FROM submissions WHERE datetime(created_at) >= datetime('now', '-30 days')"),
       subscribers: count("SELECT COUNT(*) AS n FROM subscribers"),
-      roiEstimates: count("SELECT COUNT(*) AS n FROM roi_estimates"),
       emailsSent,
       emailsBounced,
       emailsComplained,

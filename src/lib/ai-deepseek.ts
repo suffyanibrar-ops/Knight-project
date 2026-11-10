@@ -84,15 +84,22 @@ export async function streamCompletion(options: StreamOptions): Promise<ChatResu
 
   let response: Response;
   try {
-    response = await fetch(`${BASE_URL}/chat/completions`, {
+    // A unique URL prevents any server-side fetch/data cache from replaying a
+    // previous stage's JSON response for the next structured AI stage.
+    const nonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    response = await fetch(`${BASE_URL}/chat/completions?nonce=${nonce}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey()}`,
         Accept: "text/event-stream",
+        "Cache-Control": "no-store",
       },
       body: JSON.stringify(body),
       signal,
+      // Never let Next.js data-cache a POST to the AI endpoint. A cached
+      // response here can return the previous stage's JSON to the next stage.
+      cache: "no-store",
     });
   } catch (error) {
     if ((error as Error)?.name === "AbortError" || (error as Error)?.name === "TimeoutError") throw new DeepSeekError("The AI request timed out. Please try again.", 504);

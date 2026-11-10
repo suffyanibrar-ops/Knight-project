@@ -59,8 +59,6 @@ export type BusinessMetrics = {
   emailQueued: number;
   emailIssues: number;
   subscribers: number;
-  roiEstimates: number;
-  roiAverage: number;
 };
 
 export function getBusinessMetrics(days = 7, bounds?: { startDay: string; endDay: string }): BusinessMetrics {
@@ -89,8 +87,6 @@ export function getBusinessMetrics(days = 7, bounds?: { startDay: string; endDay
     emailQueued: count("SELECT COUNT(*) AS n FROM email_outbox WHERE status IN ('pending','queued')"),
     emailIssues: count("SELECT COUNT(*) AS n FROM email_outbox WHERE status IN ('failed','bounced','complained')"),
     subscribers: count("SELECT COUNT(*) AS n FROM subscribers"),
-    roiEstimates: count(`SELECT COUNT(*) AS n FROM roi_estimates WHERE ${textInRange}`, textParams),
-    roiAverage: Number(queryAll(`SELECT ROUND(AVG(estimated_annual_uplift), 0) AS n FROM roi_estimates WHERE ${textInRange}`, textParams)[0]?.n ?? 0),
   };
 }
 
@@ -105,7 +101,7 @@ export type OverviewAlert = {
 
 export type ActivityItem = {
   id: string;
-  kind: "enquiry" | "ai_lead" | "appointment" | "handoff" | "subscriber" | "email" | "roi";
+  kind: "enquiry" | "ai_lead" | "appointment" | "handoff" | "subscriber" | "email";
   title: string;
   detail: string;
   href: string;
@@ -197,17 +193,6 @@ function recentActivity(): ActivityItem[] {
       at: number(row.created_at),
     });
   }
-  for (const row of queryAll("SELECT id, email, estimated_annual_uplift, created_at FROM roi_estimates ORDER BY created_at DESC LIMIT 4")) {
-    items.push({
-      id: `roi-${row.id}`,
-      kind: "roi",
-      title: `ROI estimate — ${string(row.email) || "Anonymous"}`,
-      detail: `$${number(row.estimated_annual_uplift).toLocaleString("en-US")} illustrative opportunity`,
-      href: "/admin/estimates",
-      at: sqliteDate(row.created_at)?.getTime() ?? 0,
-    });
-  }
-
   return items.filter((item) => item.at > 0).sort((a, b) => b.at - a.at).slice(0, 10);
 }
 

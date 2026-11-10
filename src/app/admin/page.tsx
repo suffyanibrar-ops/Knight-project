@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarCheck, CheckCircle2, CircleDot, Inbox, LayoutDashboard, Mail, Newspaper, SearchCheck, UserRound, Users, Activity, AlertTriangle, Database, Gauge, TrendingUp, Radar } from "lucide-react";
+import { ArrowRight, Bot, CalendarCheck, CheckCircle2, CircleDot, Inbox, LayoutDashboard, Mail, Newspaper, SearchCheck, UserRound, Users, Activity, AlertTriangle, Database, Gauge, Radar } from "lucide-react";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getAdminOverview } from "@/lib/admin-overview";
 import { AdminPageHeader, EmptyState, StatCard, formatDate } from "@/components/admin/ui";
@@ -26,7 +26,6 @@ const activityIcon = {
   handoff: UserRound,
   subscriber: Users,
   email: Mail,
-  roi: TrendingUp,
 } as const;
 
 function statusTone(ok: boolean) {

@@ -151,7 +151,7 @@ export function BlogWorkspace() {
 
   function updateFrom(workflow: Workflow) { merge(workflow); }
 
-  async function runRemaining(start: Workflow): Promise<void> {
+  async function runRemaining(start: Workflow): Promise<boolean> {
     let current = start;
     const recheck = current.data.automation?.status === "needs_attention";
     for (const step of STEPS) {
@@ -166,10 +166,11 @@ export function BlogWorkspace() {
         updateFrom(current);
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : "The AI workflow stopped.");
-        return;
+        return false;
       }
     }
     setMessage("AI workflow finished. Review the article and approve when you are ready.");
+    return true;
   }
 
   async function createAndRun() {
@@ -180,8 +181,8 @@ export function BlogWorkspace() {
       if (!research.workflow) throw new Error("Research did not return a workflow.");
       setTopic(""); setAudience("");
       updateFrom(research.workflow);
-      await runRemaining(research.workflow);
-      setMessage("Research, draft, review, corrections, categories and tags are complete. Your final review is next.");
+      const completed = await runRemaining(research.workflow);
+      if (completed) setMessage("Research, draft, review, corrections, categories and tags are complete. Your final review is next.");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "The article could not be created.");
     } finally { setBusy(false); setProgress(null); }
@@ -190,8 +191,9 @@ export function BlogWorkspace() {
   async function retry(workflow: Workflow) {
     setBusy(true); setError(null); setMessage(null); setProgress("Starting…");
     try {
-      await runRemaining(workflow);
+      const completed = await runRemaining(workflow);
       await load();
+      if (!completed) return;
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "The workflow could not be resumed.");
     } finally { setBusy(false); setProgress(null); }

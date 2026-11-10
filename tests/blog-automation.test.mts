@@ -29,7 +29,7 @@ let reviewCalls = 0;
 let draftCalls = 0;
 let correctionCalls = 0;
 let taxonomyCalls = 0;
-let failNextReview = false;
+let failNextReview = 0;
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
@@ -85,8 +85,8 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 
   if (prompt.includes("Review this draft as a careful SEO editor")) {
-    if (failNextReview) {
-      failNextReview = false;
+    if (failNextReview > 0) {
+      failNextReview -= 1;
       return new Response("{}", { status: 503 });
     }
     reviewCalls += 1;
@@ -107,7 +107,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       seoTitle: "How to Reduce Claim Denials in Independent Practices",
       seoDescription: "Learn practical claim denial prevention steps for independent medical practices, including eligibility checks, documentation and monthly review.",
       excerpt: "A practical workflow for reducing avoidable claim denials without overpromising outcomes.",
-      contentHtml: "<h2>Why claim denials happen</h2><p>Most denials are preventable when eligibility, coding and documentation are checked before submission. Start with a direct review of your current workflow, and verify payer rules against current official guidance.</p><h2>Build a prevention checklist</h2><p>Use a short pre-submission checklist and review patterns with your <a href=\"/services\">medical billing services</a> team. Keep the process practical and documented.</p><h2>Review denials every month</h2><p>Review denial reasons monthly and correct the upstream process. Do not assume a single fix resolves every payer issue.</p><h2>What to do next</h2><p>If you want help reviewing your workflow, schedule a conversation with Knight Medical Billing.</p>",
+      edits: [{ find: "Most denials are preventable when eligibility, coding and documentation are checked before submission.", replace: "Most denials are preventable when eligibility, coding and documentation are checked before submission. Start with a direct review of your current workflow." }],
       changes: ["Made the opening paragraph more direct."],
       unresolved: [],
     });
@@ -182,7 +182,7 @@ try {
   const failedId = await workflow.createContentWorkflow({ topic: "How to improve eligibility checks", audience: "Practice managers", data: {}, stage: "topic_plan" });
   await automation.runAutomationStep(failedId, "research");
   await automation.runAutomationStep(failedId, "generate");
-  failNextReview = true;
+  failNextReview = 2;
   let failed = false;
   try { await automation.runAutomationStep(failedId, "review"); } catch { failed = true; }
   const failedView = await workflow.getContentWorkflow(failedId);

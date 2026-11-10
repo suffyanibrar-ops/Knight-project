@@ -102,7 +102,6 @@ export async function deleteSubmissionAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/submissions");
   revalidatePath("/admin/subscribers");
-  revalidatePath("/admin/estimates");
 }
 
 export async function sendTestEmailAction() {

@@ -251,7 +251,21 @@ Return JSON:
 }
 
 Be critical but practical. Never invent a fact to resolve uncertainty. Flag unsupported statistics, citations, payer rules, guarantees, duplicate intent against the supplied title, missing sources and weak internal linking.`;
-  const parsed = await completeJson<{ summary?: unknown; score?: unknown; issues?: unknown }>(EDITORIAL_RULES, user, 1200);
+  let parsed: { summary?: unknown; score?: unknown; issues?: unknown };
+  try {
+    parsed = await completeJson<{ summary?: unknown; score?: unknown; issues?: unknown }>(REVIEW_RULES, user, 1400);
+  } catch {
+    parsed = {} as { summary?: unknown; score?: unknown; issues?: unknown };
+  }
+  if (!isReviewShape(parsed)) {
+    const strictUser = `Your previous response was not review JSON. Do not rewrite or summarize the article as an article object. Return ONLY:
+{"summary":"2-3 sentences","score":0,"issues":[{"severity":"warning","area":"seo","message":"..."}]}
+
+REVIEW THIS ARTICLE:
+${user}`;
+    parsed = await completeJson<{ summary?: unknown; score?: unknown; issues?: unknown }>(REVIEW_RULES, strictUser, 1400);
+  }
+  if (!isReviewShape(parsed)) throw new Error("The AI review returned an article draft instead of review JSON.");
   const issues = Array.isArray(parsed.issues)
     ? parsed.issues.flatMap((item) => {
       if (!item || typeof item !== "object") return [];
@@ -386,6 +400,23 @@ Return exactly:
   return { opportunities, summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 1200) : "Opportunity analysis completed." };
 }
 
+const REVIEW_RULES = `
+You are the independent editorial reviewer for Knight Medical Billing. You review an existing article; you never write or rewrite it and you never return article fields such as title, seoTitle, excerpt, contentHtml or slug.
+
+Return exactly one JSON object with:
+- "summary": 2-3 sentences assessing the article
+- "score": integer 0-100
+- "issues": an array of objects with "severity" (critical|warning|info), "area" (seo|accuracy|structure|links|sources|tone|formatting), and "message" (specific actionable issue)
+
+Do not invent facts, statistics, citations, payer rules or guarantees. Flag unsupported claims and anything that needs human verification. If the article is strong, return an empty issues array. Do not return a rewrite or a draft.
+`.trim();
+
+function isReviewShape(value: unknown): value is { summary?: unknown; score?: unknown; issues?: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return ("summary" in row || "issues" in row) && !("contentHtml" in row) && !("seoTitle" in row);
+}
+
 export type AutoCorrectionInput = {
   title: string;
   seoTitle: string;
@@ -397,12 +428,13 @@ export type AutoCorrectionInput = {
   allowedInternalPaths: string[];
 };
 
+export type AutoCorrectionEdit = { find: string; replace: string };
 export type AutoCorrectionResult = {
   title?: string;
   seoTitle?: string;
   seoDescription?: string;
   excerpt?: string;
-  contentHtml?: string;
+  edits: AutoCorrectionEdit[];
   changes: string[];
   unresolved: string[];
 };
@@ -413,7 +445,7 @@ export type AutoCorrectionResult = {
  * improve existing wording, structure and metadata.
  */
 export async function generateAutoCorrection(input: AutoCorrectionInput): Promise<AutoCorrectionResult> {
-  const user = `Correct only safe, objective problems in this article. You MUST NOT invent facts, statistics, sources, citations, payer rules, coding guidance, medical advice, promises or new external links. Do not remove a caveat or source note. Do not add a new claim. If a problem cannot be corrected without new verified information, list it in unresolved.
+  const user = `Correct only safe, objective problems in this article using SMALL EXACT PATCHES. Do not return the full article or a rewrite. You MUST NOT invent facts, statistics, sources, citations, payer rules, coding guidance, medical advice, promises or new external links. Do not remove a caveat or source note. Do not add a new claim. If a problem cannot be corrected without new verified information, list it in unresolved.
 
 TITLE: ${input.title}
 SEO TITLE: ${input.seoTitle}
@@ -436,38 +468,43 @@ Allowed safe corrections:
 - moving existing keyword phrases naturally into headings or prose
 - adding an internal link only to one of the allowed paths when it already supports the sentence
 - formatting with valid HTML
-- adding/improving a short FAQ only when the answer is already supported by the article
 
 Forbidden:
 - adding or changing facts, numbers, dates, sources, citations, payer rules, CPT/ICD claims, legal/medical advice, guarantees or promises
-- inventing URLs
-- adding a new external link
-- removing existing source notes or caveats
-- changing the article's substantive meaning
+- inventing URLs, new external links, or removing source notes/caveats
 
-Return valid JSON only:
+Return valid JSON only. Do not return contentHtml or the entire article. Return at most 8 minimal exact edits:
 {
-  "title": "corrected title (optional)",
-  "seoTitle": "corrected title (optional)",
-  "seoDescription": "corrected meta description (optional)",
-  "excerpt": "corrected excerpt (optional)",
-  "contentHtml": "complete corrected article HTML, including all existing sections and links",
+  "title": "optional corrected title",
+  "seoTitle": "optional corrected title",
+  "seoDescription": "optional corrected meta description",
+  "excerpt": "optional corrected excerpt",
+  "edits": [{"find": "an exact existing substring from the article HTML", "replace": "the minimal safe replacement"}],
   "changes": ["specific safe change made"],
   "unresolved": ["problem that needs human judgment, with reason"]
 }`;
-  const parsed = await completeJson<Record<string, unknown>>(EDITORIAL_RULES, user, 1900);
+  const parsed = await completeJson<Record<string, unknown>>(REVIEW_RULES, user, 1200);
   const changes = Array.isArray(parsed.changes) ? parsed.changes.filter((item): item is string => typeof item === "string").map((item) => item.slice(0, 300)).slice(0, 12) : [];
   const unresolved = Array.isArray(parsed.unresolved) ? parsed.unresolved.filter((item): item is string => typeof item === "string").map((item) => item.slice(0, 400)).slice(0, 12) : [];
+  const edits = Array.isArray(parsed.edits) ? parsed.edits.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const find = typeof row.find === "string" ? row.find.trim() : "";
+    const replace = typeof row.replace === "string" ? row.replace.trim() : "";
+    if (!find || find.length > 1200 || replace.length > 1200) return [];
+    return [{ find, replace }];
+  }).slice(0, 8) : [];
   return {
     title: typeof parsed.title === "string" ? parsed.title.trim().slice(0, 240) : undefined,
     seoTitle: typeof parsed.seoTitle === "string" ? parsed.seoTitle.trim().slice(0, 70) : undefined,
     seoDescription: typeof parsed.seoDescription === "string" ? parsed.seoDescription.trim().slice(0, 200) : undefined,
     excerpt: typeof parsed.excerpt === "string" ? parsed.excerpt.trim().slice(0, 500) : undefined,
-    contentHtml: typeof parsed.contentHtml === "string" && parsed.contentHtml.includes("<") ? parsed.contentHtml : undefined,
+    edits,
     changes,
     unresolved,
   };
 }
+
 
 export type TaxonomyInput = {
   title: string;
@@ -502,8 +539,10 @@ ${input.tags.map((tag) => `- id=${tag.id}: ${tag.name}`).join("\n") || "(none)"}
 
 Rules:
 - exactly one category
-- prefer an existing category by exact id/name
-- createCategory true only when no existing category fits at all
+- prefer an existing category only when it genuinely matches THIS article's subject and search intent
+- do NOT reuse an existing category merely because it is the only category or because both are about medical billing
+- if the existing categories are about a different subject, set createCategory true and propose a specific, reusable category name
+- createCategory true only when no existing category genuinely fits
 - 2-5 tags, preferring existing ids
 - newTags only for a genuinely missing, reusable topic term; max 2
 - no near-duplicates, no broad terms like "medical", "healthcare", "business"

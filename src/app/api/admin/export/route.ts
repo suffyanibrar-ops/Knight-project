@@ -3,7 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { contactMessages, emailOutbox, leads } from "@/db/schema";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { listRoiEstimates, listSubscribers } from "@/lib/sqlite";
+import { listSubscribers } from "@/lib/sqlite";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +56,6 @@ export async function GET(request: Request) {
     const rows = listSubscribers();
     csv = toCsv(["Joined", "Email"], rows.map((row) => [sqliteTimestamp(row.created_at), row.email]));
     filename = "knight-subscribers.csv";
-  } else if (type === "estimates") {
-    // SQLite is the single store for ROI estimates.
-    const rows = listRoiEstimates();
-    csv = toCsv(
-      ["Created", "Email", "Monthly collections", "Denial rate", "Days in A/R", "Annual opportunity"],
-      rows.map((row) => [sqliteTimestamp(row.created_at), row.email, row.monthly_collections, row.denial_rate, row.days_in_ar, row.estimated_annual_uplift]),
-    );
-    filename = "knight-roi-estimates.csv";
   } else if (type === "outbox") {
     const rows = await db.select().from(emailOutbox).orderBy(desc(emailOutbox.createdAt));
     csv = toCsv(["Created", "Type", "Recipient", "Subject", "Status", "Provider", "Sent"], rows.map((row) => [row.createdAt.toISOString(), row.kind, row.toEmail, row.subject, row.status, row.provider, row.sentAt?.toISOString()]));

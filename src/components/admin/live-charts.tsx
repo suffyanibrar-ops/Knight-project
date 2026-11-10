@@ -241,7 +241,6 @@ function KpiGrid({ totals, reduced }: { totals: AnalyticsTotals; reduced: boolea
   const cards: { label: string; value: number; hint: string; tone: Tone }[] = [
     { label: "Website submissions", value: totals.submissions, hint: `${totals.submissions7d} last 7 days · ${totals.submissions30d} last 30 days`, tone: "brand" },
     { label: "Newsletter subscribers", value: totals.subscribers, hint: "Opt-in email list", tone: "good" },
-    { label: "ROI estimates", value: totals.roiEstimates, hint: "Calculator completions", tone: "default" },
     { label: "Emails sent", value: totals.emailsSent, hint: "Delivered to the recipient inbox", tone: "good" },
     { label: "Emails queued", value: totals.emailsQueued, hint: totals.emailsQueued > 0 ? "Waiting for a delivery channel" : "Nothing waiting", tone: totals.emailsQueued > 0 ? "warn" : "default" },
     {

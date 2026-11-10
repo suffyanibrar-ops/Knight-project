@@ -60,7 +60,9 @@ function initialAutomation(data: WorkflowData): WorkflowAutomation {
     corrections: existing?.corrections ?? [],
     unresolved: existing?.unresolved ?? [],
     steps: {
-      research: "pending", generate: "pending", review: "pending", taxonomy: "pending", finalize: "pending",
+      research: data.research && data.plan ? "completed" : "pending",
+      generate: data.blogPostId ? "completed" : "pending",
+      review: "pending", taxonomy: "pending", finalize: "pending",
       ...(existing?.steps ?? {}),
     },
     maxCorrectionPasses: existing?.maxCorrectionPasses ?? MAX_CORRECTION_PASSES,
@@ -232,20 +234,43 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
     automation.steps.review = "running";
     await save(id, data, "draft", automation);
 
+    // Never send factual/medical/payer-risk issues to the rewriter. Those must
+    // stay for human judgment; the correction model only gets objective polish.
+    const safeCorrectionAreas = new Set(["title", "meta", "seo", "structure", "links", "formatting", "tone"]);
+    const correctableIssues = issues.filter((issue) => {
+      const area = (issue.area ?? "").toLowerCase();
+      if (["accuracy", "sources", "policy", "claims", "medical", "legal"].includes(area)) return false;
+      if (!safeCorrectionAreas.has(area)) return false;
+      return !/\b(source|citation|statistic|guarantee|payer|coding|medical|legal|fact|claim)\b/i.test(issue.message);
+    });
+    if (!correctableIssues.length) {
+      unresolved.push(...issues.filter((issue) => issue.severity !== "info").map((issue) => issue.message).slice(0, 5));
+      break;
+    }
     const correction = await generateAutoCorrection({
       title: post.title,
       seoTitle: post.seoTitle ?? "",
       seoDescription: post.seoDescription ?? "",
       excerpt: post.excerpt ?? "",
       contentHtml: post.contentHtml,
-      issues,
+      issues: correctableIssues,
       sources: data.research?.sources ?? [],
       allowedInternalPaths: (await import("./content-workflow")).knownInternalPaths(),
     });
+    let correctedHtml = post.contentHtml;
+    let appliedEdits = 0;
+    for (const edit of correction.edits) {
+      if (!correctedHtml.includes(edit.find) || correctedHtml.indexOf(edit.find) !== correctedHtml.lastIndexOf(edit.find)) {
+        unresolved.push("AI proposed an edit that did not match exactly once; it was not applied.");
+        continue;
+      }
+      correctedHtml = correctedHtml.replace(edit.find, edit.replace);
+      appliedEdits += 1;
+    }
     const changedFields = [
       correction.title ? "title" : "", correction.seoTitle ? "seoTitle" : "",
       correction.seoDescription ? "seoDescription" : "", correction.excerpt ? "excerpt" : "",
-      correction.contentHtml ? "contentHtml" : "",
+      appliedEdits ? "contentHtml" : "",
     ].filter(Boolean);
     unresolved.push(...correction.unresolved.slice(0, 5));
     if (!changedFields.length) {
@@ -254,14 +279,21 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
     }
     const beforeLinks = new Set([...post.contentHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)].map((match) => match[1]));
     const allowedExternal = new Set((data.research?.sources ?? []).map((source) => source.url));
-    const introduced = [...(correction.contentHtml ?? "").matchAll(/href="(https?:\/\/[^"#]+)"/gi)]
+    const introduced = [...correctedHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)]
       .map((match) => match[1])
       .filter((url) => !beforeLinks.has(url) && !allowedExternal.has(url));
     if (introduced.length) {
       unresolved.push("AI proposed an unverified external link; it was not applied.");
       break;
     }
-    await updatePost(post.id, postInputFrom(post, data, correction));
+    const correctionFields = {
+      title: correction.title,
+      seoTitle: correction.seoTitle,
+      seoDescription: correction.seoDescription,
+      excerpt: correction.excerpt,
+      contentHtml: appliedEdits ? correctedHtml : undefined,
+    };
+    await updatePost(post.id, postInputFrom(post, data, correctionFields));
     const corrected = await getAdminPost(post.id);
     if (corrected) data = { ...data, draft: draftFromPost(corrected, data) };
     corrections.push({
