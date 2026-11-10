@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { deletePostForever, getAdminPost, setPostStatus, trashPost, updatePost, type BlogStatus, BLOG_STATUSES } from "@/lib/blog";
 import { failure, limitAdmin, nullableDate, readJson, requireAdmin, str, toId } from "@/lib/api-admin";
+import { revalidateBlogPaths } from "@/lib/blog-revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +66,8 @@ export async function PATCH(request: Request, { params }: Params) {
       socialImage: body.socialImage === undefined ? current.socialImage : str(body.socialImage, 600),
       sourceNotes: body.sourceNotes === undefined ? current.sourceNotes : str(body.sourceNotes, 4000),
     });
+    const updated = await getAdminPost(id);
+    revalidateBlogPaths(updated?.slug ?? current.slug);
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     return failure(error);
@@ -81,9 +84,11 @@ export async function DELETE(request: Request, { params }: Params) {
     const url = new URL(request.url);
     if (url.searchParams.get("permanent") === "1") {
       await deletePostForever(id);
+      revalidateBlogPaths();
       return NextResponse.json({ ok: true, permanent: true });
     }
     await trashPost(id);
+    revalidateBlogPaths();
     return NextResponse.json({ ok: true, trashed: true });
   } catch (error) {
     return failure(error);
@@ -99,6 +104,8 @@ export async function PUT(request: Request, { params }: Params) {
     const status = String(body.status ?? "");
     if (!(BLOG_STATUSES as readonly string[]).includes(status)) throw new Error("Invalid status.");
     await setPostStatus(id, status as BlogStatus, nullableDate(body.scheduledFor));
+    const updated = await getAdminPost(id);
+    revalidateBlogPaths(updated?.slug ?? null);
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     return failure(error);

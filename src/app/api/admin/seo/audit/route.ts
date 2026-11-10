@@ -361,7 +361,7 @@ async function buildRouteInventory(): Promise<{ paths: string[]; truncated: bool
   }
 
   try {
-    for (const tag of await listTags()) {
+    for (const tag of await listTags({ publicOnly: true })) {
       if (tag.postCount > 0) paths.add(`/blog/tag/${tag.slug}`);
     }
   } catch (error) {

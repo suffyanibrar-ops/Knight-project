@@ -172,6 +172,8 @@ export async function POST(request: NextRequest) {
       await publishApprovedWorkflow(id, data);
       await logAdminAction("content.publish", `workflow #${id} published`, null);
       revalidatePath("/blog");
+      revalidatePath("/insights");
+      revalidatePath("/sitemap.xml");
       revalidatePath(`/blog/${view.post?.slug ?? ""}`);
       return NextResponse.json({ ok: true, workflow: await getContentWorkflow(id) });
     }

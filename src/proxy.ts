@@ -21,7 +21,6 @@ const CANONICAL_ALIASES: Record<string, string> = {
   "/specialties/podiatry": "/specialties/podiatry-billing",
   "/insights/switching-medical-billing": "/switching-medical-billing",
   "/case-studies": "/results/case-studies",
-  "/blog": "/insights",
 };
 
 function hexToBytes(hex: string) {

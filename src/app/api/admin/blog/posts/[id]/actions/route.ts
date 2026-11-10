@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { duplicatePost, restorePost, setPostStatus, trashPost } from "@/lib/blog";
+import { duplicatePost, getAdminPost, restorePost, setPostStatus, trashPost } from "@/lib/blog";
+import { revalidateBlogPaths } from "@/lib/blog-revalidate";
 import { failure, limitAdmin, nullableDate, readJson, requireAdmin, toId } from "@/lib/api-admin";
 
 export const runtime = "nodejs";
@@ -23,6 +24,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const newId = await duplicatePost(id);
       return NextResponse.json({ ok: true, id: newId });
     } else throw new Error("Unknown action.");
+    const post = await getAdminPost(id);
+    revalidateBlogPaths(post?.slug ?? null);
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     return failure(error);

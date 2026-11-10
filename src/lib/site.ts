@@ -104,6 +104,10 @@ export const primaryNav: NavItem[] = [
     ],
   },
   {
+    label: "Blog",
+    href: "/blog",
+  },
+  {
     label: "Company",
     href: "/about",
     children: [

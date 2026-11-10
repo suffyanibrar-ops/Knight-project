@@ -37,7 +37,8 @@
     "test:voice:android": "node tests/voice-android.e2e.mjs",
     "test:gsc:oauth": "NODE_OPTIONS=--conditions=react-server tsx tests/gsc-oauth.test.mts && NODE_OPTIONS=--conditions=react-server tsx tests/gsc-oauth-status.test.mts",
     "test:gsc:oauth:e2e": "node tests/gsc-oauth-routes.e2e.mjs",
-    "test:blog:automation": "NODE_OPTIONS=--conditions=react-server tsx tests/blog-automation.test.mts"
+    "test:blog:automation": "NODE_OPTIONS=--conditions=react-server tsx tests/blog-automation.test.mts",
+    "test:blog:visibility": "NODE_OPTIONS=--conditions=react-server tsx tests/blog-visibility.test.mts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

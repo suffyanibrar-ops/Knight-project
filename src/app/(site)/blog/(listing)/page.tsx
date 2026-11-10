@@ -50,11 +50,11 @@ export async function generateMetadata({ searchParams }: { searchParams: BlogSea
   }
 
   return pageMetadata({
-    title: page > 1 ? `Billing insights — page ${page}` : "Medical billing insights, guides and playbooks",
+    title: page > 1 ? `Medical billing blog — page ${page}` : "Medical Billing Blog | Revenue Cycle Guides",
     description:
-      "Practical medical billing, coding and revenue cycle guides from the Knight Medical Billing team: clean claims, eligibility, A/R follow-up, credentialing, out-of-network negotiation and more.",
+      "Field notes and long-form guides from the Knight Medical Billing team on claims, denials, eligibility, A/R follow-up, credentialing and revenue cycle operations.",
     path: canonicalPath(page),
-    keywords: ["medical billing insights", "revenue cycle management guides", "medical billing blog"],
+    keywords: ["medical billing blog", "revenue cycle management guides", "claim denial articles"],
   });
 }
 
@@ -66,7 +66,7 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
   const [result, categories, tags, evergreen] = await Promise.all([
     listPublicPosts({ page, perPage: PER_PAGE, q: query }),
     listCategoriesWithCounts(),
-    listTags(),
+    listTags({ publicOnly: true }),
     !query && page === 1 ? getArticles() : Promise.resolve([]),
   ]);
 

@@ -44,7 +44,7 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pa
   const [result, categories, tags] = await Promise.all([
     listPublicPosts({ page, perPage: PER_PAGE, tagSlug: tag.slug }),
     listCategoriesWithCounts(),
-    listTags(),
+    listTags({ publicOnly: true }),
   ]);
 
   if (result.totalPages > 0 && page > result.totalPages) notFound();

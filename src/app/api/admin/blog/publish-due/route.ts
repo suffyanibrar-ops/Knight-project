@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { countDueScheduled, publishDuePosts } from "@/lib/blog";
 import { limitAdmin, requireAdmin } from "@/lib/api-admin";
+import { revalidateBlogPaths } from "@/lib/blog-revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,5 +14,6 @@ export async function POST(request: Request) {
   if (limited) return limited;
   const before = await countDueScheduled();
   const published = await publishDuePosts();
+  if (published) revalidateBlogPaths();
   return NextResponse.json({ ok: true, due: before, published });
 }

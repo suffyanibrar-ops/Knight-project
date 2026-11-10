@@ -500,8 +500,8 @@ function normalizeStatusInput(input: PostInput): { status: BlogStatus; published
   const now = new Date();
   if (status === "published") return { status, publishedAt: input.publishedAt ?? now, scheduledFor: null };
   if (status === "scheduled") {
-    if (!input.scheduledFor) throw new Error("A scheduled post needs a publication date.");
-    if (input.scheduledFor.getTime() <= now.getTime()) return { status: "published", publishedAt: input.publishedAt ?? now, scheduledFor: null };
+    if (!input.scheduledFor) throw new Error("Choose a future publication date and time.");
+    if (input.scheduledFor.getTime() <= now.getTime()) throw new Error("A scheduled post needs a future publication date and time.");
     return { status, publishedAt: input.publishedAt ?? null, scheduledFor: input.scheduledFor };
   }
   return { status, publishedAt: input.publishedAt ?? null, scheduledFor: input.scheduledFor ?? null };
@@ -555,6 +555,7 @@ export async function updatePost(id: number, input: PostInput): Promise<number> 
   if (!current) throw new Error("Post not found.");
   if (!input.title?.trim()) throw new Error("A title is required.");
   const status = normalizeStatusInput(input);
+  if (status.status === "published" && current.deletedAt) throw new Error("Restore this post from trash before publishing.");
   const requestedSlug = input.slug?.trim();
   let slug = current.slug;
   if (requestedSlug) {
@@ -641,13 +642,13 @@ export async function setPostTaxonomy(id: number, categoryId: number | null, tag
 export async function setPostStatus(id: number, status: BlogStatus, scheduledFor?: Date | null): Promise<void> {
   const now = new Date();
   if (status === "published") {
+    const rows = await db.select({ deletedAt: blogPosts.deletedAt }).from(blogPosts).where(eq(blogPosts.id, id)).limit(1);
+    if (!rows.length) throw new Error("Post not found.");
+    if (rows[0].deletedAt) throw new Error("Restore this post from trash before publishing.");
     await db.update(blogPosts).set({ status: "published", publishedAt: now, scheduledFor: null, deletedAt: null, updatedAt: now }).where(eq(blogPosts.id, id));
   } else if (status === "scheduled") {
-    if (!scheduledFor || scheduledFor.getTime() <= now.getTime()) {
-      await db.update(blogPosts).set({ status: "published", publishedAt: now, scheduledFor: null, updatedAt: now }).where(eq(blogPosts.id, id));
-    } else {
-      await db.update(blogPosts).set({ status: "scheduled", scheduledFor, updatedAt: now }).where(eq(blogPosts.id, id));
-    }
+    if (!scheduledFor || scheduledFor.getTime() <= now.getTime()) throw new Error("Choose a future publication date and time.");
+    await db.update(blogPosts).set({ status: "scheduled", scheduledFor, updatedAt: now }).where(eq(blogPosts.id, id));
   } else {
     await db.update(blogPosts).set({ status, updatedAt: now }).where(eq(blogPosts.id, id));
   }
@@ -728,15 +729,23 @@ export async function deleteCategory(id: number): Promise<void> {
   await db.delete(blogCategories).where(eq(blogCategories.id, id));
 }
 
-export async function listTags(): Promise<(BlogTagRef & { postCount: number })[]> {
+export async function listTags(options: { publicOnly?: boolean } = {}): Promise<(BlogTagRef & { postCount: number })[]> {
   try {
     const rows = await db.select().from(blogTags).orderBy(asc(blogTags.name));
-    const counts = await db
-      .select({ tagId: blogPostTags.tagId, value: count() })
-      .from(blogPostTags)
-      .groupBy(blogPostTags.tagId);
+    const counts = options.publicOnly
+      ? await db
+        .select({ tagId: blogPostTags.tagId, value: count() })
+        .from(blogPostTags)
+        .innerJoin(blogPosts, eq(blogPostTags.postId, blogPosts.id))
+        .where(visiblePublicConditions())
+        .groupBy(blogPostTags.tagId)
+      : await db
+        .select({ tagId: blogPostTags.tagId, value: count() })
+        .from(blogPostTags)
+        .groupBy(blogPostTags.tagId);
     const map = new Map(counts.map((row) => [row.tagId, Number(row.value)]));
-    return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, postCount: map.get(row.id) ?? 0 }));
+    const result = rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, postCount: map.get(row.id) ?? 0 }));
+    return options.publicOnly ? result.filter((tag) => tag.postCount > 0) : result;
   } catch {
     return [];
   }

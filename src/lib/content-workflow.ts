@@ -497,12 +497,14 @@ export async function publishApprovedWorkflow(id: number, data: WorkflowData): P
   if (!data.approvedAt || !data.blogPostId) throw new Error("Approve the workflow before publishing.");
   const post = await getAdminPost(data.blogPostId);
   if (!post) throw new Error("The draft post no longer exists.");
+  if (post.deletedAt) throw new Error("Restore the post from trash before publishing.");
   await setPostStatus(data.blogPostId, "published");
   await updateContentWorkflow(id, { ...data, publishedAt: new Date().toISOString() }, "published");
 }
 
 export async function scheduleApprovedWorkflow(id: number, data: WorkflowData, scheduledFor: Date): Promise<void> {
   if (!data.approvedAt || !data.blogPostId) throw new Error("Approve the workflow before scheduling.");
+  if (!(scheduledFor instanceof Date) || Number.isNaN(scheduledFor.getTime()) || scheduledFor.getTime() <= Date.now()) throw new Error("Choose a future publication date and time.");
   await setPostStatus(data.blogPostId, "scheduled", scheduledFor);
   await updateContentWorkflow(id, { ...data, scheduledFor: scheduledFor.toISOString() }, "scheduled");
 }

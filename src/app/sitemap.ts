@@ -35,6 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/switching-medical-billing": 0.8,
     "/results": 0.8,
     "/about": 0.8,
+    "/blog": 0.7,
     "/insights": 0.7,
     "/faq": 0.7,
     "/contact": 0.7,
@@ -53,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/why-knight",
     "/tools/revenue-leak-calculator",
     "/about",
+    "/blog",
     "/insights",
     "/faq",
     "/contact",
@@ -71,7 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Blog entries come from the same public read layer as the pages, so drafts,
   // scheduled posts and trashed posts can never enter the sitemap.
-  const [blogPosts, blogCategories, blogTags] = await Promise.all([loadPublishedBlogPosts(), listCategoriesWithCounts(), listTags()]);
+  const [blogPosts, blogCategories, blogTags] = await Promise.all([loadPublishedBlogPosts(), listCategoriesWithCounts(), listTags({ publicOnly: true })]);
 
   return [
     ...staticRoutes,

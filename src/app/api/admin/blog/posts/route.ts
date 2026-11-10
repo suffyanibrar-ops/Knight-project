@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createPost, listAdminPosts, type BlogSort, type BlogStatus, BLOG_STATUSES } from "@/lib/blog";
+import { createPost, getAdminPost, listAdminPosts, type BlogSort, type BlogStatus, BLOG_STATUSES } from "@/lib/blog";
+import { revalidateBlogPaths } from "@/lib/blog-revalidate";
 import { failure, limitAdmin, readJson, requireAdmin, str, toId } from "@/lib/api-admin";
 
 export const runtime = "nodejs";
@@ -62,6 +63,8 @@ export async function POST(request: Request) {
       socialImage: str(body.socialImage, 600),
       sourceNotes: str(body.sourceNotes, 4000),
     });
+    const created = await getAdminPost(id);
+    revalidateBlogPaths(created?.slug ?? null);
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (error) {
     return failure(error);
