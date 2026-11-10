@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { siteUrl } from "@/lib/config";
 import {
   GSC_SCOPE,
   GSC_STATE_COOKIE,
@@ -18,8 +19,12 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function response(request: NextRequest, code: string): NextResponse {
-  const url = new URL("/admin/seo", request.url);
+function publicBase(): string {
+  return siteUrl().replace(/\/$/, "");
+}
+
+function response(_request: NextRequest, code: string): NextResponse {
+  const url = new URL("/admin/seo", publicBase());
   url.searchParams.set("google", code);
   const next = NextResponse.redirect(url);
   next.cookies.set(GSC_STATE_COOKIE, "", {
@@ -32,8 +37,8 @@ function response(request: NextRequest, code: string): NextResponse {
   return next;
 }
 
-function login(request: NextRequest): NextResponse {
-  return NextResponse.redirect(new URL("/admin/login?next=%2Fadmin%2Fseo", request.url));
+function login(_request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/admin/login?next=%2Fadmin%2Fseo", publicBase()));
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
