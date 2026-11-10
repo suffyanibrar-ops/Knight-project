@@ -5,6 +5,7 @@ import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Typewriter } from "./motion/typewriter";
 import { HeroCanvas } from "./motion/hero-canvas";
+import { AmbientField } from "./motion/ambient-field";
 import { HeroPanel } from "./hero-panel";
 import { TiltCard } from "./motion/tilt-card";
 import { site } from "@/lib/site";
@@ -30,9 +31,8 @@ export function Hero() {
     <section className="relative overflow-hidden bg-gradient-to-b from-mist-50 via-white to-white">
       <div className="pointer-events-none absolute inset-0">
         <HeroCanvas />
+        <AmbientField variant="hero" intensity={0.8} />
         <div className="grid-lines absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
-        <div aria-hidden className="animated-gradient absolute -right-32 -top-24 h-[34rem] w-[34rem] rounded-full opacity-25 blur-[100px]" />
-        <div className="absolute -left-32 top-40 h-80 w-80 rounded-full bg-mint-100/70 blur-[90px]" />
       </div>
 
       <div data-hero-reveal className="shell relative grid items-center gap-12 pb-14 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-16">

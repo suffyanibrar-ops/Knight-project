@@ -539,7 +539,7 @@ export function AiChatWidget() {
                     <button type="button" onClick={() => setHandoffOpen(true)} className="underline">Ask for a person</button>
                   </p>
                 )}
-                {messages.length <= 1 && config?.knowledgeReady !== false && (
+                {messages.filter((message) => message.role !== "note").length <= 1 && config?.knowledgeReady !== false && (
                   <div className="grid gap-1.5 pt-1">
                     {QUICK_PROMPTS.map((prompt) => (
                       <button key={prompt.label} type="button" onClick={() => void send(prompt.prompt)} className="rounded-xl border border-brand-100 bg-surface px-3 py-2 text-left text-[0.76rem] font-semibold text-brand-700 transition-colors hover:border-brand-300 hover:bg-brand-50">

@@ -1207,3 +1207,157 @@ html[data-motion="reduced"] [data-hero-reveal] {
   .voice-avatar-speaking { animation: none; }
   @keyframes voice-bar { from { transform: none; } to { transform: none; } }
 }
+
+/* ==========================================================================
+   AMBIENT SECTION DEPTH
+   One shared, CSS/SVG-only system. It provides depth without competing with
+   content: pointer light is desktop-only; continuous motion pauses off-screen;
+   reduced motion leaves the static gradient composition.
+   ========================================================================== */
+.ambient-field {
+  --ambient-x: 50%;
+  --ambient-y: 40%;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: paint;
+}
+.ambient-field > * { pointer-events: none; }
+.ambient-field__wash {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(38% 48% at var(--ambient-x) var(--ambient-y), rgba(14, 131, 171, 0.14), transparent 72%),
+    linear-gradient(110deg, transparent 20%, rgba(124, 215, 242, 0.035) 52%, transparent 80%);
+  transition: background-position 350ms ease-out;
+}
+.ambient-field__aurora {
+  position: absolute;
+  width: 44%;
+  height: 60%;
+  border-radius: 999px;
+  filter: blur(88px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.ambient-field__aurora--a {
+  left: -8%;
+  top: -8%;
+  background: rgba(124, 215, 242, 0.26);
+  animation: ambient-drift-a 28s ease-in-out infinite alternate;
+}
+.ambient-field__aurora--b {
+  right: -6%;
+  bottom: -18%;
+  background: rgba(94, 194, 122, 0.16);
+  animation: ambient-drift-b 34s ease-in-out infinite alternate;
+}
+.ambient-field__hero-sweep {
+  position: absolute;
+  left: 12%;
+  top: -42%;
+  width: 62%;
+  height: 110%;
+  transform: rotate(-14deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  opacity: 0.25;
+  animation: ambient-sweep 19s ease-in-out infinite;
+}
+.ambient-field__direction {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, transparent 10%, rgba(14, 131, 171, 0.06) 40%, transparent 72%);
+}
+.ambient-field__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.7;
+}
+.ambient-flow-line { stroke-dasharray: 5 12; animation: ambient-flow 24s linear infinite; opacity: 0.6; }
+.ambient-dash-line { animation: ambient-dash 26s linear infinite; opacity: 0.7; }
+.ambient-node { animation: ambient-node 9s ease-in-out infinite alternate; }
+.ambient-field__result-glow {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: 64%;
+  height: 80%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse, rgba(14, 131, 171, 0.12), rgba(94, 194, 122, 0.05) 42%, transparent 72%);
+  animation: ambient-result-glow 22s ease-in-out infinite;
+}
+.ambient-field__rings { position: absolute; left: 62%; top: 52%; width: 45%; aspect-ratio: 1; transform: translate(-50%, -50%); }
+.ambient-ring {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(14, 131, 171, 0.16);
+  border-radius: 999px;
+  animation: ambient-ring 18s ease-in-out infinite;
+}
+.ambient-field__ring--second { inset: 24%; animation-delay: -6s; border-color: rgba(94, 194, 122, 0.17); }
+.ambient-field__ring--third { inset: 40%; animation-delay: -11s; border-color: rgba(14, 131, 171, 0.12); }
+.ambient-field__rise {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(94, 194, 122, 0.04), transparent 58%);
+  animation: ambient-rise 16s ease-in-out infinite alternate;
+}
+.ambient-field__cta-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(28% 55% at var(--ambient-x) var(--ambient-y), rgba(124, 215, 242, 0.3), rgba(14, 131, 171, 0.12) 36%, transparent 72%);
+  transition: background 300ms ease-out;
+  opacity: 0.75;
+}
+.ambient-field__cta-arc {
+  position: absolute;
+  right: -12%;
+  top: -35%;
+  width: 70%;
+  height: 120%;
+  border: 1px solid rgba(124, 215, 242, 0.16);
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  animation: ambient-arc 26s ease-in-out infinite alternate;
+}
+.ambient-field__cta-arc--two { right: 18%; top: 30%; width: 45%; height: 70%; border-color: rgba(94, 194, 122, 0.12); animation-delay: -9s; }
+.ambient-field__quiet-light {
+  position: absolute;
+  inset: -25%;
+  background: radial-gradient(32% 45% at var(--ambient-x) var(--ambient-y), rgba(14, 131, 171, 0.1), transparent 72%);
+}
+.ambient-field[data-ambient-visible="false"] .ambient-animated { animation-play-state: paused; }
+.ambient-field[data-reduced="true"] .ambient-animated,
+html[data-motion="reduced"] .ambient-animated { animation: none !important; }
+
+html[data-motion="reduced"] .ambient-field__wash,
+html[data-motion="reduced"] .ambient-field__cta-glow { transition: none; }
+
+@keyframes ambient-drift-a { from { transform: translate3d(-2%, -1%, 0) scale(0.96); } to { transform: translate3d(4%, 3%, 0) scale(1.04); } }
+@keyframes ambient-drift-b { from { transform: translate3d(2%, 1%, 0) scale(1.03); } to { transform: translate3d(-3%, -3%, 0) scale(0.97); } }
+@keyframes ambient-sweep { 0%, 100% { transform: translate3d(-4%, 0, 0) rotate(-14deg); opacity: 0.12; } 50% { transform: translate3d(8%, 2%, 0) rotate(-11deg); opacity: 0.28; } }
+@keyframes ambient-flow { to { stroke-dashoffset: -340; } }
+@keyframes ambient-dash { to { stroke-dashoffset: 220; } }
+@keyframes ambient-node { from { opacity: 0.25; } to { opacity: 0.8; } }
+@keyframes ambient-result-glow { 0%, 100% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.7; } 50% { transform: translate(-50%, -52%) scale(1.04); opacity: 1; } }
+@keyframes ambient-ring { 0%, 100% { transform: scale(0.98); opacity: 0.5; } 50% { transform: scale(1.04); opacity: 1; } }
+@keyframes ambient-rise { from { transform: translate3d(0, 2%, 0); opacity: 0.4; } to { transform: translate3d(0, -2%, 0); opacity: 0.85; } }
+@keyframes ambient-arc { from { transform: rotate(-20deg) scale(0.98); opacity: 0.5; } to { transform: rotate(-14deg) scale(1.03); opacity: 0.9; } }
+
+@media (max-width: 767px) {
+  .ambient-field__aurora { filter: blur(52px); opacity: 0.42; }
+  .ambient-field__hero-sweep { display: none; }
+  .ambient-field__lines { opacity: 0.38; }
+  .ambient-field__rings { left: 76%; width: 60%; opacity: 0.55; }
+  .ambient-field__cta-glow { opacity: 0.5; }
+  .ambient-field__cta-arc { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-field__wash,
+  .ambient-field__cta-glow { transition: none; }
+}

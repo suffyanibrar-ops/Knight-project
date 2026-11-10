@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { JsonLd } from "./structured-data";
+import { AmbientField } from "./motion/ambient-field";
 import { breadcrumbSchema } from "@/lib/seo";
 
 export function PageHero({
@@ -41,8 +42,8 @@ export function PageHero({
       {path && crumbs.length > 0 && <JsonLd data={breadcrumbSchema(breadcrumbItems)} />}
     <section className="relative overflow-hidden border-b border-mist-200 bg-gradient-to-b from-mist-50 to-white">
       <div className="pointer-events-none absolute inset-0">
+        <AmbientField variant="quiet" intensity={0.48} />
         <div className="grid-lines absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_70%)]" />
-        <div className="absolute -right-32 -top-24 h-[26rem] w-[26rem] rounded-full bg-brand-200/35 blur-[100px]" />
       </div>
       <div className="shell relative py-10 lg:py-16">
         {crumbs.length > 0 && (

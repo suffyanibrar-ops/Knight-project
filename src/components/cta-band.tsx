@@ -2,6 +2,7 @@ import { ArrowRight, Check, Phone } from "lucide-react";
 import Link from "next/link";
 import { site } from "@/lib/site";
 import { Logo } from "./logo";
+import { AmbientField } from "./motion/ambient-field";
 
 export function CtaBand({
   eyebrow = "Let's get started",
@@ -19,8 +20,7 @@ export function CtaBand({
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
       </div>
       <div className="dot-grid absolute inset-0 opacity-[0.1]" />
-      <div className="pointer-events-none absolute -left-20 top-0 h-80 w-80 rounded-full bg-brand-500/25 blur-[100px]" />
-      <div className="pointer-events-none absolute -right-10 bottom-0 h-80 w-80 rounded-full bg-mint-500/15 blur-[100px]" />
+      <AmbientField variant="cta" intensity={0.85} />
       <div className="shell relative grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
           <div className="flex items-center gap-3">

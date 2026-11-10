@@ -11,6 +11,7 @@ import { AnimatedMetric } from "@/components/interactive/animated-metric";
 import { Icon } from "@/components/icon";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { ParallaxImage } from "@/components/motion/parallax";
+import { AmbientField } from "@/components/motion/ambient-field";
 import { photo } from "@/lib/photos";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { StickySteps } from "@/components/motion/sticky-steps";
@@ -61,8 +62,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-mist-200 bg-mist-50 py-14 sm:py-16">
-        <div className="shell">
+      <section className="relative overflow-hidden border-y border-mist-200 bg-mist-50 py-14 sm:py-16">
+        <AmbientField variant="tension" intensity={0.5} />
+        <div className="shell relative">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-14">
             <Reveal>
               <SectionLabel>Problems we solve</SectionLabel>
@@ -201,7 +203,8 @@ export default async function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-surface py-16 sm:py-20">
-        <div className="shell">
+        <AmbientField variant="results" intensity={0.55} />
+        <div className="shell relative">
           <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-end">
             <Reveal>
               <SectionLabel>What we measure</SectionLabel>
@@ -281,10 +284,7 @@ export default async function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-mist-50 py-16 sm:py-24">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-brand-100/60 blur-[90px]" />
-          <div className="absolute -right-20 bottom-10 h-72 w-72 rounded-full bg-mint-100/70 blur-[90px]" />
-        </div>
+        <AmbientField variant="services" intensity={0.58} />
         <div className="shell relative">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <Reveal className="max-w-2xl">
