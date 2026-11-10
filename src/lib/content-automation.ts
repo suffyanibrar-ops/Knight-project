@@ -23,6 +23,7 @@ import {
   createDraftFromWorkflow,
   existingArticleContext,
   getContentWorkflow,
+  knownInternalPaths,
   normalizeGeneratedHtml,
   runLocalSeoChecks,
   sanitizeDraft,
@@ -33,6 +34,7 @@ import {
   type WorkflowAutomation,
   type WorkflowData,
   type WorkflowDraft,
+  type WorkflowCorrection,
   type WorkflowReview,
   type WorkflowReviewIssue,
   type WorkflowStage,
@@ -194,6 +196,77 @@ async function runGenerate(id: number, data: WorkflowData, automation: WorkflowA
   return data;
 }
 
+type IssueGroup = "auto" | "research" | "human";
+
+function classifyIssue(issue: WorkflowReviewIssue): IssueGroup {
+  const area = (issue.area ?? "").toLowerCase();
+  const text = `${area} ${issue.message}`.toLowerCase();
+  if (/\b(brand|positioning|business[- ]specific|reputation|legal|regulatory|compliance|expert|judgment)\b/.test(text)) return "human";
+  if (/\b(accuracy|source|sources|citation|statistic|study|research|fact|claim|claims|payer|coding|medical|guarantee|guaranteed|evidence|verification)\b/.test(text)) return "research";
+  return "auto";
+}
+
+function normaliseIssues(issues: WorkflowReviewIssue[]): WorkflowReviewIssue[] {
+  const seen = new Set<string>();
+  return issues.flatMap((issue) => {
+    const message = issue.message.trim().slice(0, 600);
+    if (!message) return [];
+    const group = classifyIssue(issue);
+    const key = `${group}|${(issue.area ?? "").toLowerCase()}|${message.toLowerCase()}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ ...issue, message, group }];
+  }).slice(0, 40);
+}
+
+async function applyCorrections(
+  post: Awaited<ReturnType<typeof getAdminPost>>,
+  data: WorkflowData,
+  issues: WorkflowReviewIssue[],
+  mode: "auto" | "qualify",
+): Promise<{ post: NonNullable<Awaited<ReturnType<typeof getAdminPost>>>; correction: Awaited<ReturnType<typeof generateAutoCorrection>>; changedFields: string[] } | null> {
+  if (!post) return null;
+  const correction = await generateAutoCorrection({
+    title: post.title,
+    seoTitle: post.seoTitle ?? "",
+    seoDescription: post.seoDescription ?? "",
+    excerpt: post.excerpt ?? "",
+    contentHtml: post.contentHtml,
+    issues,
+    sources: data.research?.sources ?? [],
+    allowedInternalPaths: knownInternalPaths(),
+    mode,
+  });
+  let correctedHtml = post.contentHtml;
+  for (const edit of correction.edits) {
+    if (!correctedHtml.includes(edit.find) || correctedHtml.indexOf(edit.find) !== correctedHtml.lastIndexOf(edit.find)) continue;
+    correctedHtml = correctedHtml.replace(edit.find, edit.replace);
+  }
+  const changedFields = [
+    correction.title ? "title" : "", correction.seoTitle ? "seoTitle" : "",
+    correction.seoDescription ? "seoDescription" : "", correction.excerpt ? "excerpt" : "",
+    correctedHtml !== post.contentHtml ? "contentHtml" : "",
+  ].filter(Boolean);
+  if (!changedFields.length) return null;
+
+  const beforeLinks = new Set([...post.contentHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)].map((match) => match[1]));
+  const allowedExternal = new Set((data.research?.sources ?? []).map((source) => source.url));
+  const introduced = [...correctedHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)]
+    .map((match) => match[1])
+    .filter((url) => !beforeLinks.has(url) && !allowedExternal.has(url));
+  if (introduced.length) return null;
+
+  await updatePost(post.id, postInputFrom(post, data, {
+    title: correction.title,
+    seoTitle: correction.seoTitle,
+    seoDescription: correction.seoDescription,
+    excerpt: correction.excerpt,
+    contentHtml: correctedHtml !== post.contentHtml ? correctedHtml : undefined,
+  }));
+  const updated = await getAdminPost(post.id);
+  return updated ? { post: updated, correction, changedFields } : null;
+}
+
 async function runReview(id: number, data: WorkflowData, automation: WorkflowAutomation): Promise<WorkflowData> {
   const postId = data.blogPostId;
   if (!postId) throw new Error("Create a draft before reviewing.");
@@ -203,104 +276,85 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
   automation.attempts += 1;
   await save(id, data, "draft", automation);
 
+  const found = new Set<string>();
+  let currentIssues: WorkflowReviewIssue[] = [];
   let review: WorkflowReview | undefined;
-  const unresolved = [...new Set(automation.unresolved)];
-  const corrections = [...automation.corrections];
+  const corrections: WorkflowCorrection[] = [...automation.corrections];
+  const unresolved = new Set<string>();
+  const maxPasses = Math.max(3, automation.maxCorrectionPasses);
 
-  for (let pass = 0; pass <= automation.maxCorrectionPasses; pass += 1) {
+  for (let pass = 0; pass < maxPasses; pass += 1) {
     const post = await getAdminPost(postId);
     if (!post) throw new Error("The draft no longer exists.");
     const draft = reviewDraft(post, data);
     const localIssues = runLocalSeoChecks(draft);
     const aiReview = await generateEditorialReview({ research: data.research ?? {}, plan: data.plan ?? {}, draft, localIssues });
-    const issues = [...localIssues, ...aiReview.issues];
-    const critical = issues.filter((issue) => issue.severity === "critical");
+    const issues = normaliseIssues([...localIssues, ...aiReview.issues]);
+    issues.forEach((issue) => found.add(issue.message));
+    currentIssues = issues;
+    const autoIssues = issues.filter((issue) => issue.group === "auto");
+    const researchIssues = issues.filter((issue) => issue.group === "research");
+    const humanIssues = issues.filter((issue) => issue.group === "human");
     review = {
-      passed: critical.length === 0,
-      score: Math.min(aiReview.score, critical.length ? 60 : 100),
+      passed: false,
+      score: Math.min(aiReview.score, autoIssues.some((issue) => issue.severity === "critical") ? 60 : 100),
       summary: aiReview.summary,
       issues,
       checkedAt: now(),
       aiAssisted: true,
+      foundCount: found.size,
+      correctedCount: 0,
+      humanCount: researchIssues.length + humanIssues.length,
+      autoRemaining: autoIssues.length,
     };
     data = { ...data, review };
     await save(id, data, "draft", automation);
 
-    if (!issues.length) break;
-    if (pass >= automation.maxCorrectionPasses) break;
+    if (!autoIssues.length && !researchIssues.length) break;
+    if (pass >= maxPasses - 1) {
+      for (const issue of autoIssues) unresolved.add(issue.message);
+      break;
+    }
 
     automation.status = "fixing";
     automation.step = `fixing pass ${pass + 1}`;
     automation.steps.review = "running";
     await save(id, data, "draft", automation);
 
-    // Never send factual/medical/payer-risk issues to the rewriter. Those must
-    // stay for human judgment; the correction model only gets objective polish.
-    const safeCorrectionAreas = new Set(["title", "meta", "seo", "structure", "links", "formatting", "tone"]);
-    const correctableIssues = issues.filter((issue) => {
-      const area = (issue.area ?? "").toLowerCase();
-      if (["accuracy", "sources", "policy", "claims", "medical", "legal"].includes(area)) return false;
-      if (!safeCorrectionAreas.has(area)) return false;
-      return !/\b(source|citation|statistic|guarantee|payer|coding|medical|legal|fact|claim)\b/i.test(issue.message);
-    });
-    if (!correctableIssues.length) {
-      unresolved.push(...issues.filter((issue) => issue.severity !== "info").map((issue) => issue.message).slice(0, 5));
-      break;
-    }
-    const correction = await generateAutoCorrection({
-      title: post.title,
-      seoTitle: post.seoTitle ?? "",
-      seoDescription: post.seoDescription ?? "",
-      excerpt: post.excerpt ?? "",
-      contentHtml: post.contentHtml,
-      issues: correctableIssues,
-      sources: data.research?.sources ?? [],
-      allowedInternalPaths: (await import("./content-workflow")).knownInternalPaths(),
-    });
-    let correctedHtml = post.contentHtml;
-    let appliedEdits = 0;
-    for (const edit of correction.edits) {
-      if (!correctedHtml.includes(edit.find) || correctedHtml.indexOf(edit.find) !== correctedHtml.lastIndexOf(edit.find)) {
-        unresolved.push("AI proposed an edit that did not match exactly once; it was not applied.");
-        continue;
+    let changed = false;
+    let correctionSummary: string | undefined;
+    let correctionFields: string[] = [];
+    if (autoIssues.length) {
+      const applied = await applyCorrections(post, data, autoIssues, "auto");
+      if (applied) {
+        changed = true;
+        correctionSummary = applied.correction.changes[0] ?? "Objective editorial corrections applied.";
+        correctionFields = applied.changedFields;
+        for (const message of applied.correction.unresolved.slice(0, 5)) unresolved.add(message);
+        data = { ...data, draft: draftFromPost(applied.post, data) };
       }
-      correctedHtml = correctedHtml.replace(edit.find, edit.replace);
-      appliedEdits += 1;
     }
-    const changedFields = [
-      correction.title ? "title" : "", correction.seoTitle ? "seoTitle" : "",
-      correction.seoDescription ? "seoDescription" : "", correction.excerpt ? "excerpt" : "",
-      appliedEdits ? "contentHtml" : "",
-    ].filter(Boolean);
-    unresolved.push(...correction.unresolved.slice(0, 5));
-    if (!changedFields.length) {
-      if (correction.unresolved.length) break;
-      continue;
+    if (researchIssues.length) {
+      const latest = await getAdminPost(postId);
+      const applied = latest ? await applyCorrections(latest, data, researchIssues, "qualify") : null;
+      if (applied) {
+        changed = true;
+        correctionSummary = correctionSummary ?? applied.correction.changes[0] ?? "Unsupported claims were safely qualified.";
+        correctionFields = [...new Set([...correctionFields, ...applied.changedFields])];
+        for (const message of applied.correction.unresolved.slice(0, 5)) unresolved.add(message);
+        data = { ...data, draft: draftFromPost(applied.post, data) };
+      }
     }
-    const beforeLinks = new Set([...post.contentHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)].map((match) => match[1]));
-    const allowedExternal = new Set((data.research?.sources ?? []).map((source) => source.url));
-    const introduced = [...correctedHtml.matchAll(/href="(https?:\/\/[^"#]+)"/gi)]
-      .map((match) => match[1])
-      .filter((url) => !beforeLinks.has(url) && !allowedExternal.has(url));
-    if (introduced.length) {
-      unresolved.push("AI proposed an unverified external link; it was not applied.");
+
+    if (!changed) {
+      for (const issue of autoIssues) unresolved.add(issue.message);
       break;
     }
-    const correctionFields = {
-      title: correction.title,
-      seoTitle: correction.seoTitle,
-      seoDescription: correction.seoDescription,
-      excerpt: correction.excerpt,
-      contentHtml: appliedEdits ? correctedHtml : undefined,
-    };
-    await updatePost(post.id, postInputFrom(post, data, correctionFields));
-    const corrected = await getAdminPost(post.id);
-    if (corrected) data = { ...data, draft: draftFromPost(corrected, data) };
     corrections.push({
       pass: pass + 1,
-      summary: correction.changes[0] ?? "Safe editorial corrections applied.",
-      changedFields,
-      issuesAddressed: issues.slice(0, 8).map((issue) => issue.message),
+      summary: correctionSummary ?? "Safe editorial corrections applied.",
+      changedFields: correctionFields,
+      issuesAddressed: [...autoIssues, ...researchIssues].slice(0, 12).map((issue) => issue.message),
       at: now(),
     });
     automation.corrections = corrections;
@@ -309,11 +363,27 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
     await save(id, data, "draft", automation);
   }
 
-  automation.unresolved = [...new Set(unresolved)].slice(0, 12);
+  const currentKeys = new Set(currentIssues.map((issue) => issue.message));
+  const correctedCount = Math.max(0, [...found].filter((message) => !currentKeys.has(message)).length);
+  const blockingAuto = currentIssues.filter((issue) => issue.group === "auto" && issue.severity !== "info");
+  const optionalAuto = currentIssues.filter((issue) => issue.group === "auto" && issue.severity === "info");
+  const humanRemaining = currentIssues.filter((issue) => issue.group !== "auto");
+  if (review) {
+    review = {
+      ...review,
+      passed: blockingAuto.length === 0,
+      issues: [...humanRemaining, ...blockingAuto],
+      foundCount: found.size,
+      correctedCount,
+      humanCount: humanRemaining.length,
+      autoRemaining: blockingAuto.length,
+      optionalCount: optionalAuto.length,
+    };
+    data = { ...data, review };
+  }
+  automation.unresolved = [...new Set([...unresolved, ...humanRemaining.map((issue) => issue.message), ...blockingAuto.map((issue) => issue.message)])].slice(0, 16);
   automation.steps.review = "completed";
-  // Taxonomy and final validation still need to run; "ready" is reserved for the
-  // completed pipeline so the admin never sees a prematurely approvable article.
-  automation.status = "idle";
+  automation.status = blockingAuto.length ? "needs_attention" : "idle";
   automation.completedAt = null;
   await save(id, data, "seo_review", automation);
   return data;
@@ -366,11 +436,8 @@ async function runTaxonomy(id: number, data: WorkflowData, automation: WorkflowA
     const existing = categories.find((category) => normalName(category.name) === normalName(choice.categoryName!));
     if (existing) { categoryId = existing.id; categoryName = existing.name; }
     else { categoryId = await createCategory({ name: choice.categoryName }); categoryName = choice.categoryName; categoryCreated = true; }
-  } else if (categories[0]) {
-    categoryId = categories[0].id;
-    categoryName = categories[0].name;
   } else {
-    throw new Error("No suitable blog category is available. Add one category before running taxonomy assignment.");
+    throw new Error("No existing category genuinely matches this article. Retry taxonomy assignment so AI can propose a new category.");
   }
 
   const selected: { id: number; name: string }[] = [];
@@ -393,17 +460,15 @@ async function runTaxonomy(id: number, data: WorkflowData, automation: WorkflowA
     createdTags.push(name);
     selected.push({ id: tagId, name });
   }
-  if (selected.length < 2) {
-    for (const tag of tags.slice(0, 5)) {
-      if (selected.length >= 2) break;
-      if (!selected.some((item) => item.id === tag.id)) selected.push({ id: tag.id, name: tag.name });
-    }
-  }
-  if (!selected.length) throw new Error("No suitable tags are available. Add tags or retry taxonomy assignment.");
+  if (selected.length < 2) throw new Error("AI did not select at least two relevant tags. Retry taxonomy assignment.");
   await setPostTaxonomy(postId, categoryId, selected.map((tag) => tag.id));
+  const taxonomyCheck = await getAdminPost(postId);
+  if (!taxonomyCheck?.category || taxonomyCheck.category.id !== categoryId || taxonomyCheck.tags.length < 2) {
+    throw new Error("Taxonomy was generated but could not be verified on the post.");
+  }
   data = {
     ...data,
-    taxonomy: { categoryId, categoryName, categoryCreated, tagIds: selected.map((tag) => tag.id), tagNames: selected.map((tag) => tag.name), tagsCreated: createdTags, at: now() },
+    taxonomy: { categoryId, categoryName, categoryCreated, tagIds: selected.map((tag) => tag.id), tagNames: selected.map((tag) => tag.name), tagsCreated: createdTags, imageSuggestions: choice.imageSuggestions, at: now() },
   };
   automation.taxonomy = data.taxonomy;
   automation.steps.taxonomy = "completed";
@@ -415,6 +480,7 @@ async function runTaxonomy(id: number, data: WorkflowData, automation: WorkflowA
 async function runFinalize(id: number, data: WorkflowData, automation: WorkflowAutomation): Promise<WorkflowData> {
   const postId = data.blogPostId;
   if (!postId) throw new Error("Create a draft before final validation.");
+  if (automation.steps.review !== "completed" || !data.review?.aiAssisted) throw new Error("Complete the AI review before final validation.");
   automation.status = "reviewing";
   automation.step = "final validation";
   automation.steps.finalize = "running";
@@ -424,24 +490,31 @@ async function runFinalize(id: number, data: WorkflowData, automation: WorkflowA
   const post = await getAdminPost(postId);
   if (!post) throw new Error("The draft no longer exists.");
   const draft = reviewDraft(post, data);
-  const localIssues = runLocalSeoChecks(draft);
   const prior = data.review?.issues ?? [];
-  const issues = [...prior, ...localIssues.filter((issue) => !prior.some((item) => item.message === issue.message))];
-  if (!post.category) issues.push({ severity: "critical", area: "taxonomy", message: "Assign a blog category before approval." });
-  if (!post.tags.length) issues.push({ severity: "critical", area: "taxonomy", message: "Assign at least one blog tag before approval." });
-  const critical = issues.filter((issue) => issue.severity === "critical");
+  const localIssues: WorkflowReviewIssue[] = runLocalSeoChecks(draft);
+  if (!post.category) localIssues.push({ severity: "critical", area: "taxonomy", message: "A relevant category must be assigned before approval." });
+  if (post.tags.length < 2) localIssues.push({ severity: "critical", area: "taxonomy", message: "At least two relevant tags must be assigned before approval." });
+  const issues = normaliseIssues([...prior, ...localIssues]);
+  const blockingAuto = issues.filter((issue) => issue.group === "auto" && issue.severity !== "info");
+  const optionalAuto = issues.filter((issue) => issue.group === "auto" && issue.severity === "info");
+  const humanRemaining = issues.filter((issue) => issue.group !== "auto");
   const review: WorkflowReview = {
-    passed: critical.length === 0 && (data.review?.passed ?? false),
+    passed: blockingAuto.length === 0,
     score: data.review?.score ?? 0,
     summary: data.review?.summary ?? "AI review completed.",
-    issues,
+    issues: [...humanRemaining, ...blockingAuto],
     checkedAt: now(),
     aiAssisted: true,
+    foundCount: Math.max(data.review?.foundCount ?? 0, issues.length),
+    correctedCount: data.review?.correctedCount ?? 0,
+    humanCount: humanRemaining.length,
+    autoRemaining: blockingAuto.length,
+    optionalCount: optionalAuto.length,
   };
-  data = { ...data, review, automation };
-  automation.unresolved = [...new Set([...automation.unresolved, ...issues.filter((issue) => issue.severity === "critical").map((issue) => issue.message)])].slice(0, 12);
+  data = { ...data, review };
+  automation.unresolved = [...new Set([...humanRemaining.map((issue) => issue.message), ...blockingAuto.map((issue) => issue.message)])].slice(0, 16);
   automation.steps.finalize = "completed";
-  automation.status = review.passed ? "ready" : "needs_attention";
+  automation.status = blockingAuto.length ? "needs_attention" : "ready";
   automation.completedAt = now();
   await save(id, data, "seo_review", automation);
   return data;

@@ -426,6 +426,7 @@ export type AutoCorrectionInput = {
   issues: { severity: "critical" | "warning" | "info"; message: string; area?: string }[];
   sources: { title: string; url: string }[];
   allowedInternalPaths: string[];
+  mode?: "auto" | "qualify";
 };
 
 export type AutoCorrectionEdit = { find: string; replace: string };
@@ -445,7 +446,8 @@ export type AutoCorrectionResult = {
  * improve existing wording, structure and metadata.
  */
 export async function generateAutoCorrection(input: AutoCorrectionInput): Promise<AutoCorrectionResult> {
-  const user = `Correct only safe, objective problems in this article using SMALL EXACT PATCHES. Do not return the full article or a rewrite. You MUST NOT invent facts, statistics, sources, citations, payer rules, coding guidance, medical advice, promises or new external links. Do not remove a caveat or source note. Do not add a new claim. If a problem cannot be corrected without new verified information, list it in unresolved.
+  const mode = input.mode ?? "auto";
+  const user = `${mode === "qualify" ? "Resolve ONLY the factual-risk findings below without adding any new facts, sources or citations. Where an unsupported claim can be safely softened, qualified or removed using information already in the article, do that. Never insert a source, statistic, number, quotation or new claim. If safe qualification is impossible, list the issue in unresolved." : "Correct only safe, objective problems in this article using SMALL EXACT PATCHES. Do not return the full article or a rewrite. You MUST NOT invent facts, statistics, sources, citations, payer rules, coding guidance, medical advice, promises or new external links. Do not remove a caveat or source note. Do not add a new claim. If a problem cannot be corrected without new verified information, list it in unresolved."}
 
 TITLE: ${input.title}
 SEO TITLE: ${input.seoTitle}
@@ -514,12 +516,14 @@ export type TaxonomyInput = {
   tags: { id: number; name: string }[];
 };
 
+export type ImageSuggestion = { concept: string; alt: string; placement: string };
 export type TaxonomyResult = {
   categoryId: number | null;
   categoryName: string | null;
   createCategory: boolean;
   tagIds: number[];
   newTags: string[];
+  imageSuggestions: ImageSuggestion[];
   summary: string;
 };
 
@@ -555,8 +559,12 @@ Return:
   "createCategory": false,
   "tagIds": [numbers],
   "newTags": [],
+  "imageSuggestions": [{"concept":"optional image concept","alt":"concise alt text","placement":"after which section"}],
   "summary": "one sentence explaining the taxonomy choice"
-}`;
+}
+
+Image suggestions are optional and must never be generated automatically. Provide 1-2 useful concepts with honest alt text; no stock-photo claims, charts or statistics.
+`;
   const parsed = await completeJson<Record<string, unknown>>(EDITORIAL_RULES, user, 900);
   return {
     categoryId: Number.isInteger(Number(parsed.categoryId)) ? Number(parsed.categoryId) : null,
@@ -564,6 +572,14 @@ Return:
     createCategory: parsed.createCategory === true,
     tagIds: Array.isArray(parsed.tagIds) ? parsed.tagIds.map(Number).filter((id) => Number.isInteger(id) && id > 0).slice(0, 5) : [],
     newTags: Array.isArray(parsed.newTags) ? parsed.newTags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim().slice(0, 80)).filter(Boolean).slice(0, 2) : [],
+    imageSuggestions: Array.isArray(parsed.imageSuggestions) ? parsed.imageSuggestions.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      const concept = typeof row.concept === "string" ? row.concept.trim().slice(0, 240) : "";
+      const alt = typeof row.alt === "string" ? row.alt.trim().slice(0, 240) : "";
+      const placement = typeof row.placement === "string" ? row.placement.trim().slice(0, 160) : "";
+      return concept && alt ? [{ concept, alt, placement }] : [];
+    }).slice(0, 2) : [],
     summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : "Taxonomy selected.",
   };
 }

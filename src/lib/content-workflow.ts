@@ -49,7 +49,16 @@ export type WorkflowPlan = {
   notes?: string;
 };
 
-export type WorkflowReviewIssue = { severity: "critical" | "warning" | "info"; message: string; area?: string };
+export type WorkflowIssueGroup = "auto" | "research" | "human";
+export type WorkflowReviewIssue = {
+  severity: "critical" | "warning" | "info";
+  message: string;
+  area?: string;
+  group?: WorkflowIssueGroup;
+  /** Set when the issue is still open for a human, or was successfully repaired. */
+  status?: "open" | "fixed" | "human";
+  resolution?: string;
+};
 export type WorkflowReview = {
   passed?: boolean;
   score?: number;
@@ -57,6 +66,11 @@ export type WorkflowReview = {
   issues?: WorkflowReviewIssue[];
   checkedAt?: string;
   aiAssisted?: boolean;
+  foundCount?: number;
+  correctedCount?: number;
+  humanCount?: number;
+  autoRemaining?: number;
+  optionalCount?: number;
 };
 
 export type WorkflowDraft = {
@@ -101,6 +115,7 @@ export type WorkflowTaxonomy = {
   tagIds: number[];
   tagNames: string[];
   tagsCreated: string[];
+  imageSuggestions?: { concept: string; alt: string; placement: string }[];
   at: string;
 };
 
@@ -268,7 +283,11 @@ export function runLocalSeoChecks(draft: WorkflowDraft): WorkflowReviewIssue[] {
   if (h2s < 2) issues.push({ severity: "critical", area: "structure", message: "Article needs at least two H2 sections beneath the page H1." });
   const internalLinks = html.match(/href="(\/[^"#?]*)/g) ?? [];
   if (internalLinks.length === 0) issues.push({ severity: "warning", area: "links", message: "Add at least one relevant internal link to a service, specialty or consultation page." });
-  if (/\b(guarantee|guaranteed|100%|always|never)\b/i.test(html)) issues.push({ severity: "warning", area: "claims", message: "Review absolute or guarantee-style claims before publishing." });
+  const absoluteClaims = [...html.matchAll(/\b(guarantee(?:d)?|100%)\b/gi)].filter((match) => {
+    const before = html.slice(Math.max(0, (match.index ?? 0) - 70), match.index ?? 0);
+    return !/\b(?:no|cannot|can't|not|without|avoid)\b(?:[a-z]+\s+){0,4}$/i.test(before);
+  });
+  if (absoluteClaims.length) issues.push({ severity: "warning", area: "claims", message: "Review absolute or guarantee-style claims before publishing." });
   if (/(\$[\d,]+|\b\d+(?:\.\d+)?\s?%|\b(?:statistics|survey|study|research shows|studies show)\b)/i.test(html) && (draft.sources ?? []).length === 0) {
     issues.push({ severity: "critical", area: "sources", message: "Numeric or research-style claims require a credible source. Remove the claim or supply a verified source." });
   }
