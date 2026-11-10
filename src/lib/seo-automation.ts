@@ -8,6 +8,7 @@ import { getArticles } from "./data";
 import { generateOpportunityAnalysis } from "./content-ai";
 import { createContentWorkflow, knownInternalPaths } from "./content-workflow";
 import { jiroConfigured, jiroExtract, jiroHealth, jiroSearch } from "./jiro-client";
+import { getGscConnectionSummary } from "./gsc-oauth";
 import { SITE_URL } from "./seo";
 
 export const SEO_TASK_TYPES = ["opportunity_discovery", "technical_audit", "content_refresh"] as const;
@@ -465,7 +466,7 @@ export async function getSeoAutomationDashboard() {
     jiroHealth(),
     db.select({ id: blogPosts.id, status: blogPosts.status, title: blogPosts.title, slug: blogPosts.slug, updatedAt: blogPosts.updatedAt }).from(blogPosts).where(eq(blogPosts.status, "published")).limit(100),
   ]);
-  const searchConsole = { connected: Boolean(process.env.GSC_SITE_URL && (process.env.GSC_SERVICE_ACCOUNT_JSON || process.env.GSC_SERVICE_ACCOUNT_FILE)), siteUrl: process.env.GSC_SITE_URL ?? null };
+  const searchConsole = getGscConnectionSummary();
   const workflows = await db.select({ id: contentWorkflows.id, stage: contentWorkflows.stage }).from(contentWorkflows).limit(100).catch(() => []);
   return {
     settings,

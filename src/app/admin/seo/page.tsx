@@ -4,6 +4,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { SeoAudit } from "@/components/admin/seo/seo-audit";
 import { SeoControlCenter } from "@/components/admin/seo/seo-control-center";
+import { SearchConsoleConnection } from "@/components/admin/seo/search-console-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function SeoHealthPage() {
         description="Find topics, audit the site, and keep content fresh. You stay in control of every article."
       />
       <SeoControlCenter />
+      <SearchConsoleConnection />
       <details className="group rounded-2xl border border-mist-200 bg-surface">
         <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3.5 text-[0.76rem] font-extrabold text-ink-800">
           Advanced: full technical crawl

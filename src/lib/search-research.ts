@@ -2,6 +2,7 @@ import "server-only";
 import { createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { jiroSearch } from "./jiro-client";
+import { getOAuthAccessToken, tokenFileExists } from "./gsc-oauth";
 
 /**
  * Optional, explicitly configured research providers.
@@ -45,7 +46,7 @@ const NO_SEARCH_PROVIDER =
   "No search provider is configured. Set SERPER_API_KEY or GOOGLE_CUSTOM_SEARCH_API_KEY + GOOGLE_CUSTOM_SEARCH_CX to retrieve real search results. No competitor data or keyword metrics were invented.";
 
 const NO_GSC =
-  "Google Search Console is not configured. Set GSC_SITE_URL and GSC_SERVICE_ACCOUNT_JSON to retrieve verified query performance. Search volume and keyword difficulty are not available from this integration.";
+  "Google Search Console is not connected. Connect it in Admin → SEO, or configure the existing service-account fallback. Search volume and keyword difficulty are not available from this integration.";
 
 function cleanText(value: unknown, max = 500): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
@@ -159,6 +160,15 @@ function base64url(input: string): string {
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function gscAccessToken(): Promise<{ token: string; siteUrl: string } | null> {
+  // Prefer the admin-connected OAuth account. If an OAuth token file exists but
+  // is invalid, do not silently fall through to a different credential source.
+  try {
+    const oauth = await getOAuthAccessToken();
+    if (oauth) return oauth;
+  } catch (error) {
+    if (tokenFileExists()) throw error;
+  }
+
   let raw = process.env.GSC_SERVICE_ACCOUNT_JSON?.trim();
   const credentialFile = process.env.GSC_SERVICE_ACCOUNT_FILE?.trim();
   if (!raw && credentialFile) {
