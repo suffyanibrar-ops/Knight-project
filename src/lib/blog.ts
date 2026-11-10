@@ -632,6 +632,12 @@ export async function saveRevision(postId: number, note: string): Promise<void> 
   }
 }
 
+/** Assign the category and tag set produced by the editorial automation. */
+export async function setPostTaxonomy(id: number, categoryId: number | null, tagIds: number[]): Promise<void> {
+  await db.update(blogPosts).set({ categoryId, updatedAt: new Date() }).where(eq(blogPosts.id, id));
+  await syncTags(id, tagIds);
+}
+
 export async function setPostStatus(id: number, status: BlogStatus, scheduledFor?: Date | null): Promise<void> {
   const now = new Date();
   if (status === "published") {

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Bot, ChevronDown, Inbox, LayoutDashboard, Mail, Menu, Newspaper, PieChart, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, Bot, ChevronDown, Inbox, LayoutDashboard, Mail, Menu, Newspaper, PenLine, PieChart, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -35,7 +35,8 @@ const navGroups: { label: string; links: NavLink[] }[] = [
   {
     label: "Content",
     links: [
-      { label: "Content", href: "/admin/content", icon: Newspaper, match: ["/admin/content", "/admin/blog"] },
+      { label: "Blog Workspace", href: "/admin/blog/workspace", icon: PenLine, match: ["/admin/blog/workspace"] },
+      { label: "Content Tools", href: "/admin/content", icon: Newspaper, match: ["/admin/content"] },
       { label: "SEO", href: "/admin/seo", icon: SearchCheck },
     ],
   },

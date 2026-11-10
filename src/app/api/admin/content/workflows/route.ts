@@ -7,6 +7,7 @@ import { forbiddenResponse, isSameOrigin } from "@/lib/request-security";
 import { getAdminPost } from "@/lib/blog";
 import { generateContentDraft, generateContentResearch, generateEditorialReview } from "@/lib/content-ai";
 import { fetchLiveSearch, fetchSearchConsoleMetrics } from "@/lib/search-research";
+import { AUTOMATION_STEPS, runAutomationStep, type AutomationStep } from "@/lib/content-automation";
 import {
   approveContentWorkflow,
   createContentWorkflow,
@@ -94,6 +95,14 @@ export async function POST(request: NextRequest) {
     const view = await getContentWorkflow(id);
     if (!view) return bad("Content workflow not found.", 404);
     const data = workflowData(view);
+
+    if (action === "automation_step") {
+      const step = String(body.step ?? "") as AutomationStep;
+      if (!(AUTOMATION_STEPS as readonly string[]).includes(step)) return bad("Unknown automation step.");
+      const workflow = await runAutomationStep(id, step);
+      await logAdminAction("content.automation", `workflow #${id} ${step}`, null);
+      return NextResponse.json({ ok: true, workflow });
+    }
 
     if (action === "draft") {
       if (!data.plan || !data.research) return bad("Complete the research/topic plan first.");

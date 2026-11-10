@@ -72,8 +72,57 @@ export type WorkflowDraft = {
   schemaType?: string;
 };
 
+export type WorkflowAutomationStatus =
+  | "idle"
+  | "researching"
+  | "generating"
+  | "reviewing"
+  | "fixing"
+  | "rechecking"
+  | "ready"
+  | "needs_attention"
+  | "failed"
+  | "approved"
+  | "scheduled"
+  | "published";
+
+export type WorkflowCorrection = {
+  pass: number;
+  summary: string;
+  changedFields: string[];
+  issuesAddressed: string[];
+  at: string;
+};
+
+export type WorkflowTaxonomy = {
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryCreated: boolean;
+  tagIds: number[];
+  tagNames: string[];
+  tagsCreated: string[];
+  at: string;
+};
+
+export type WorkflowAutomation = {
+  status: WorkflowAutomationStatus;
+  step: string;
+  startedAt: string | null;
+  updatedAt: string;
+  completedAt?: string | null;
+  attempts: number;
+  lastError?: string | null;
+  corrections: WorkflowCorrection[];
+  unresolved: string[];
+  steps: Record<string, "pending" | "running" | "completed" | "failed" | "skipped">;
+  maxCorrectionPasses: number;
+  taxonomy?: WorkflowTaxonomy;
+};
+
 export type WorkflowData = {
   blogPostId?: number;
+  automation?: WorkflowAutomation;
+  taxonomy?: WorkflowTaxonomy;
   liveSearch?: LiveSearch;
   searchConsole?: SearchConsoleData;
   research?: WorkflowResearch;
@@ -390,6 +439,7 @@ export async function createDraftFromWorkflow(id: number, data: WorkflowData): P
 export async function approveContentWorkflow(id: number, data: WorkflowData): Promise<WorkflowData> {
   if (!data.review) throw new Error("Run the SEO/factual review before approving.");
   if (data.review.passed !== true) throw new Error("Resolve critical review issues before approving.");
+  if (data.automation && data.automation.status !== "ready") throw new Error("Finish the AI review and corrections before approving this workflow.");
   const next = { ...data, approvedAt: new Date().toISOString() };
   await updateContentWorkflow(id, next, "approved");
   return next;

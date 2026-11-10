@@ -385,3 +385,146 @@ Return exactly:
   }).slice(0, Math.min(2, input.maxOpportunities));
   return { opportunities, summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 1200) : "Opportunity analysis completed." };
 }
+
+export type AutoCorrectionInput = {
+  title: string;
+  seoTitle: string;
+  seoDescription: string;
+  excerpt: string;
+  contentHtml: string;
+  issues: { severity: "critical" | "warning" | "info"; message: string; area?: string }[];
+  sources: { title: string; url: string }[];
+  allowedInternalPaths: string[];
+};
+
+export type AutoCorrectionResult = {
+  title?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  excerpt?: string;
+  contentHtml?: string;
+  changes: string[];
+  unresolved: string[];
+};
+
+/**
+ * Make only objective, low-risk editorial corrections. This deliberately does
+ * not receive permission to add facts, citations or new claims; it can only
+ * improve existing wording, structure and metadata.
+ */
+export async function generateAutoCorrection(input: AutoCorrectionInput): Promise<AutoCorrectionResult> {
+  const user = `Correct only safe, objective problems in this article. You MUST NOT invent facts, statistics, sources, citations, payer rules, coding guidance, medical advice, promises or new external links. Do not remove a caveat or source note. Do not add a new claim. If a problem cannot be corrected without new verified information, list it in unresolved.
+
+TITLE: ${input.title}
+SEO TITLE: ${input.seoTitle}
+META DESCRIPTION: ${input.seoDescription}
+EXCERPT: ${input.excerpt}
+ALLOWED INTERNAL PATHS: ${input.allowedInternalPaths.join(", ")}
+SOURCES ALREADY SUPPLIED: ${input.sources.map((source) => `${source.title} (${source.url})`).join(" | ") || "(none)"}
+
+REVIEW ISSUES:
+${input.issues.map((issue) => `- [${issue.severity}] ${issue.area ?? "general"}: ${issue.message}`).join("\n") || "(none)"}
+
+ARTICLE HTML:
+${input.contentHtml.slice(0, 18_000)}
+
+Allowed safe corrections:
+- grammar, spelling, punctuation, clarity and concision
+- repetition and awkward transitions
+- heading hierarchy and descriptive headings
+- SEO title / meta description length where the meaning is unchanged
+- moving existing keyword phrases naturally into headings or prose
+- adding an internal link only to one of the allowed paths when it already supports the sentence
+- formatting with valid HTML
+- adding/improving a short FAQ only when the answer is already supported by the article
+
+Forbidden:
+- adding or changing facts, numbers, dates, sources, citations, payer rules, CPT/ICD claims, legal/medical advice, guarantees or promises
+- inventing URLs
+- adding a new external link
+- removing existing source notes or caveats
+- changing the article's substantive meaning
+
+Return valid JSON only:
+{
+  "title": "corrected title (optional)",
+  "seoTitle": "corrected title (optional)",
+  "seoDescription": "corrected meta description (optional)",
+  "excerpt": "corrected excerpt (optional)",
+  "contentHtml": "complete corrected article HTML, including all existing sections and links",
+  "changes": ["specific safe change made"],
+  "unresolved": ["problem that needs human judgment, with reason"]
+}`;
+  const parsed = await completeJson<Record<string, unknown>>(EDITORIAL_RULES, user, 1900);
+  const changes = Array.isArray(parsed.changes) ? parsed.changes.filter((item): item is string => typeof item === "string").map((item) => item.slice(0, 300)).slice(0, 12) : [];
+  const unresolved = Array.isArray(parsed.unresolved) ? parsed.unresolved.filter((item): item is string => typeof item === "string").map((item) => item.slice(0, 400)).slice(0, 12) : [];
+  return {
+    title: typeof parsed.title === "string" ? parsed.title.trim().slice(0, 240) : undefined,
+    seoTitle: typeof parsed.seoTitle === "string" ? parsed.seoTitle.trim().slice(0, 70) : undefined,
+    seoDescription: typeof parsed.seoDescription === "string" ? parsed.seoDescription.trim().slice(0, 200) : undefined,
+    excerpt: typeof parsed.excerpt === "string" ? parsed.excerpt.trim().slice(0, 500) : undefined,
+    contentHtml: typeof parsed.contentHtml === "string" && parsed.contentHtml.includes("<") ? parsed.contentHtml : undefined,
+    changes,
+    unresolved,
+  };
+}
+
+export type TaxonomyInput = {
+  title: string;
+  excerpt: string;
+  contentText: string;
+  categories: { id: number; name: string }[];
+  tags: { id: number; name: string }[];
+};
+
+export type TaxonomyResult = {
+  categoryId: number | null;
+  categoryName: string | null;
+  createCategory: boolean;
+  tagIds: number[];
+  newTags: string[];
+  summary: string;
+};
+
+/** Choose a small, consistent taxonomy. Existing terms are strongly preferred. */
+export async function generateTaxonomy(input: TaxonomyInput): Promise<TaxonomyResult> {
+  const user = `Choose the best existing category and 2-5 existing tags for this article. Only propose a new category/tag if the existing list genuinely has no suitable term. Never create a category/tag for keyword variation. Return valid JSON only.
+
+TITLE: ${input.title}
+EXCERPT: ${input.excerpt.slice(0, 500)}
+ARTICLE EXCERPT FOR CLASSIFICATION: ${input.contentText.slice(0, 5000)}
+
+EXISTING CATEGORIES:
+${input.categories.map((category) => `- id=${category.id}: ${category.name}`).join("\n") || "(none)"}
+
+EXISTING TAGS:
+${input.tags.map((tag) => `- id=${tag.id}: ${tag.name}`).join("\n") || "(none)"}
+
+Rules:
+- exactly one category
+- prefer an existing category by exact id/name
+- createCategory true only when no existing category fits at all
+- 2-5 tags, preferring existing ids
+- newTags only for a genuinely missing, reusable topic term; max 2
+- no near-duplicates, no broad terms like "medical", "healthcare", "business"
+- no invented medical facts
+
+Return:
+{
+  "categoryId": number or null,
+  "categoryName": "existing name or proposed new name",
+  "createCategory": false,
+  "tagIds": [numbers],
+  "newTags": [],
+  "summary": "one sentence explaining the taxonomy choice"
+}`;
+  const parsed = await completeJson<Record<string, unknown>>(EDITORIAL_RULES, user, 900);
+  return {
+    categoryId: Number.isInteger(Number(parsed.categoryId)) ? Number(parsed.categoryId) : null,
+    categoryName: typeof parsed.categoryName === "string" ? parsed.categoryName.trim().slice(0, 80) : null,
+    createCategory: parsed.createCategory === true,
+    tagIds: Array.isArray(parsed.tagIds) ? parsed.tagIds.map(Number).filter((id) => Number.isInteger(id) && id > 0).slice(0, 5) : [],
+    newTags: Array.isArray(parsed.newTags) ? parsed.newTags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim().slice(0, 80)).filter(Boolean).slice(0, 2) : [],
+    summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : "Taxonomy selected.",
+  };
+}
