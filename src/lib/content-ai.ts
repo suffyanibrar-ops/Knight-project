@@ -471,9 +471,15 @@ Allowed safe corrections:
 - adding an internal link only to one of the allowed paths when it already supports the sentence
 - formatting with valid HTML
 
+Citation rule:
+- You may add at most one inline link to an exact supplied, verified source URL when that source supports the sentence.
+- Use the exact supplied title and URL. Never invent a citation, source, statistic or quotation.
+- If no supplied source supports a factual statement, qualify or remove it instead of citing.
+
 Forbidden:
 - adding or changing facts, numbers, dates, sources, citations, payer rules, CPT/ICD claims, legal/medical advice, guarantees or promises
-- inventing URLs, new external links, or removing source notes/caveats
+- inventing URLs or adding any external link not present in the supplied sources
+- removing source notes or caveats
 
 Return valid JSON only. Do not return contentHtml or the entire article. Return at most 8 minimal exact edits:
 {
@@ -525,6 +531,8 @@ export type TaxonomyResult = {
   newTags: string[];
   imageSuggestions: ImageSuggestion[];
   summary: string;
+  categoryReason: string;
+  tagReasons: { name: string; reason: string }[];
 };
 
 /** Choose a small, consistent taxonomy. Existing terms are strongly preferred. */
@@ -560,7 +568,9 @@ Return:
   "tagIds": [numbers],
   "newTags": [],
   "imageSuggestions": [{"concept":"optional image concept","alt":"concise alt text","placement":"after which section"}],
-  "summary": "one sentence explaining the taxonomy choice"
+  "summary": "one sentence explaining the taxonomy choice",
+  "categoryReason": "why this category is the best-fit subject area",
+  "tagReasons": [{"name":"tag name","reason":"why this tag is useful and distinct"}]
 }
 
 Image suggestions are optional and must never be generated automatically. Provide 1-2 useful concepts with honest alt text; no stock-photo claims, charts or statistics.
@@ -581,5 +591,11 @@ Image suggestions are optional and must never be generated automatically. Provid
       return concept && alt ? [{ concept, alt, placement }] : [];
     }).slice(0, 2) : [],
     summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : "Taxonomy selected.",
+    categoryReason: typeof parsed.categoryReason === "string" ? parsed.categoryReason.slice(0, 500) : "Best-fit existing subject area.",
+    tagReasons: Array.isArray(parsed.tagReasons) ? parsed.tagReasons.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      return typeof row.name === "string" && typeof row.reason === "string" ? [{ name: row.name.slice(0, 80), reason: row.reason.slice(0, 300) }] : [];
+    }).slice(0, 5) : [],
   };
 }

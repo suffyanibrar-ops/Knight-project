@@ -19,6 +19,7 @@ type Workflow = {
   post: { id: number; title: string; slug: string; status: string; scheduledFor: string | null; updatedAt: string } | null;
   data: {
     plan?: { title?: string };
+    research?: { sources?: { title: string; url: string; organization?: string; accessedAt?: string; verified?: boolean }[] };
     review?: { passed?: boolean; score?: number; summary?: string; issues?: Issue[]; checkedAt?: string; foundCount?: number; correctedCount?: number; humanCount?: number; autoRemaining?: number; optionalCount?: number };
     automation?: {
       status: AutomationStatus;
@@ -28,9 +29,9 @@ type Workflow = {
       steps: Record<string, "pending" | "running" | "completed" | "failed" | "skipped">;
       corrections?: { pass: number; summary: string; changedFields: string[]; issuesAddressed: string[] }[];
       unresolved?: string[];
-      taxonomy?: { categoryName: string | null; tagNames: string[]; imageSuggestions?: { concept: string; alt: string; placement: string }[] };
+      taxonomy?: { categoryName: string | null; tagNames: string[]; summary?: string; categoryReason?: string; tagReasons?: { name: string; reason: string }[]; imageSuggestions?: { concept: string; alt: string; placement: string }[] };
     };
-    taxonomy?: { categoryName: string | null; tagNames: string[]; imageSuggestions?: { concept: string; alt: string; placement: string }[] };
+    taxonomy?: { categoryName: string | null; tagNames: string[]; summary?: string; categoryReason?: string; tagReasons?: { name: string; reason: string }[]; imageSuggestions?: { concept: string; alt: string; placement: string }[] };
     approvedAt?: string;
     publishedAt?: string;
     error?: string;
@@ -306,7 +307,7 @@ export function BlogWorkspace() {
                     })}
                   </div>
 
-                  {workflow.data.review ? <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50/60 p-3 text-[0.7rem] leading-relaxed text-ink-700"><p><strong className="text-ink-900">AI review:</strong> {workflow.data.review.summary}</p>{typeof workflow.data.review.foundCount === "number" ? <p className="mt-1.5 font-bold text-ink-900">AI found {workflow.data.review.foundCount} issue{workflow.data.review.foundCount === 1 ? "" : "s"} and corrected {workflow.data.review.correctedCount ?? 0} automatically.{workflow.data.review.humanCount ? ` ${workflow.data.review.humanCount} item${workflow.data.review.humanCount === 1 ? "" : "s"} need your judgment.` : " Nothing routine is waiting for you."}{workflow.data.review.optionalCount ? ` ${workflow.data.review.optionalCount} minor style suggestion${workflow.data.review.optionalCount === 1 ? "" : "s"} remain optional.` : ""}</p> : null}</div> : null}
+                  {workflow.data.review ? <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50/60 p-3 text-[0.7rem] leading-relaxed text-ink-700"><p><strong className="text-ink-900">AI review:</strong> {workflow.data.review.summary}</p>{typeof workflow.data.review.foundCount === "number" ? <p className="mt-1.5 font-bold text-ink-900">AI found {workflow.data.review.foundCount} issue{workflow.data.review.foundCount === 1 ? "" : "s"} and corrected {workflow.data.review.correctedCount ?? 0} automatically.{" "}Verified fixed: {workflow.data.review.correctedCount ?? 0}.{workflow.data.review.autoRemaining ? ` ${workflow.data.review.autoRemaining} automatic finding${workflow.data.review.autoRemaining === 1 ? "" : "s"} still need correction.` : ""}{workflow.data.review.humanCount ? ` ${workflow.data.review.humanCount} item${workflow.data.review.humanCount === 1 ? "" : "s"} need your judgment.` : " Nothing routine is waiting for you."}{workflow.data.review.optionalCount ? ` ${workflow.data.review.optionalCount} optional style suggestion${workflow.data.review.optionalCount === 1 ? "" : "s"}.` : ""}</p> : null}</div> : null}
 
                   {critical.length || warnings.length ? <div className="mt-3 space-y-1.5">
                     {critical.slice(0, 4).map((issue, index) => <p key={`critical-${index}`} className="flex items-start gap-1.5 text-[0.68rem] font-semibold text-red-700"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> <span>{issue.message}</span></p>)}
@@ -321,9 +322,13 @@ export function BlogWorkspace() {
                   {automation?.corrections?.length ? <ul className="mt-1.5 space-y-1">{automation.corrections.slice(-3).map((correction, index) => <li key={`${correction.pass}-${index}`} className="text-[0.66rem] leading-relaxed text-ink-700"><span className="font-bold">Pass {correction.pass}:</span> {correction.summary}</li>)}</ul> : <p className="mt-1 text-[0.66rem] leading-relaxed text-ink-600/65">No automatic corrections yet.</p>}
                   <div className="mt-3 border-t border-mist-200 pt-2">
                     <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.14em] text-ink-600/55">Categories & tags</p>
-                    {workflow.data.taxonomy || automation?.taxonomy ? <p className="mt-1 text-[0.66rem] leading-relaxed text-ink-700">{workflow.data.taxonomy?.categoryName ?? automation?.taxonomy?.categoryName ?? "Unassigned"}{workflow.data.taxonomy?.tagNames?.length || automation?.taxonomy?.tagNames?.length ? <span className="block text-ink-600/70">{(workflow.data.taxonomy?.tagNames ?? automation?.taxonomy?.tagNames ?? []).join(" · ")}</span> : null}</p> : <p className="mt-1 text-[0.66rem] text-ink-600/65">Assigned automatically after review.</p>}
+                    {workflow.data.taxonomy || automation?.taxonomy ? <div className="mt-1 text-[0.66rem] leading-relaxed text-ink-700"><p className="font-bold">{workflow.data.taxonomy?.categoryName ?? automation?.taxonomy?.categoryName ?? "Unassigned"}</p>{workflow.data.taxonomy?.categoryReason ? <p className="text-ink-600/65">Why: {workflow.data.taxonomy.categoryReason}</p> : null}{workflow.data.taxonomy?.tagNames?.length || automation?.taxonomy?.tagNames?.length ? <p className="mt-1 text-ink-600/75">{(workflow.data.taxonomy?.tagNames ?? automation?.taxonomy?.tagNames ?? []).join(" · ")}</p> : null}</div> : <p className="mt-1 text-[0.66rem] text-ink-600/65">Assigned automatically after review.</p>}
                   </div>
                   {(workflow.data.taxonomy?.imageSuggestions?.length ?? 0) > 0 ? <div className="mt-2 space-y-1">{workflow.data.taxonomy?.imageSuggestions?.slice(0, 2).map((suggestion, index) => <p key={`image-${index}`} className="text-[0.62rem] leading-relaxed text-ink-600/75"><span className="font-bold text-ink-800">Image idea:</span> {suggestion.concept} <span className="text-ink-600/55">— {suggestion.placement}</span><span className="block text-ink-600/55">Alt: {suggestion.alt}</span></p>)}</div> : null}
+                  <div className="mt-3 border-t border-mist-200 pt-2">
+                    <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.14em] text-ink-600/55">Authoritative sources</p>
+                    {workflow.data.research?.sources?.length ? <ul className="mt-1 space-y-1">{workflow.data.research.sources.slice(0, 4).map((source, index) => <li key={`source-${index}`} className="text-[0.62rem] leading-relaxed"><a href={source.url} target="_blank" rel="noreferrer" className="font-semibold text-brand-700 hover:underline">{source.title}</a>{source.organization ? <span className="text-ink-600/60"> · {source.organization}</span> : null}{source.verified ? <span className="ml-1 text-mint-700">verified</span> : null}</li>)}</ul> : <p className="mt-1 text-[0.62rem] text-ink-600/65">No verified external sources attached. Unsupported claims remain with you.</p>}
+                  </div>
                   <p className="mt-3 flex items-center gap-1 text-[0.6rem] text-ink-600/55"><ImagePlus className="h-3 w-3" /> Images are optional and always yours.</p>
                 </div>
               </div>

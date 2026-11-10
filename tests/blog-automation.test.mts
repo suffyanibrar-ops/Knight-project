@@ -30,6 +30,7 @@ let draftCalls = 0;
 let correctionCalls = 0;
 let taxonomyCalls = 0;
 let failNextReview = 0;
+let persistentReview = false;
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
@@ -67,7 +68,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (prompt.includes("Write the complete article body")) {
     draftCalls += 1;
-    return sseText("<h2>Why claim denials happen</h2><p>Most denials are preventable when eligibility, coding and documentation are checked before submission. Review the workflow with your billing team and verify payer rules against current official guidance.</p><h2>Build a prevention checklist</h2><p>Use a short pre-submission checklist and review patterns with your <a href=\"/services\">medical billing services</a> team. Keep the process practical and documented.</p><h2>Review denials every month</h2><p>Review denial reasons monthly and correct the upstream process. Do not assume a single fix resolves every payer issue.</p><h2>What to do next</h2><p>If you want help reviewing your workflow, schedule a conversation with Knight Medical Billing.</p>");
+    return sseText("<h2>Why claim denials happen</h2><p>Most denials are preventable when eligibility, coding and documentation are checked before submission. Review the workflow with your billing team and verify payer rules against current official guidance.</p><h2>Build a prevention checklist</h2><p>Use a short pre-submission checklist and review patterns with your <a href=\"/services\">medical billing services</a> team. Keep the process practical and documented. <a href=\"/services\">billing services</a> and <a href=\"/services/does-not-exist\">broken internal example</a>.</p><h2>Review denials every month</h2><p>Review denial reasons monthly and correct the upstream process. Do not assume a single fix resolves every payer issue.</p><h2>What to do next</h2><p>If you want help reviewing your workflow, schedule a conversation with Knight Medical Billing.</p>");
   }
 
   if (prompt.includes("Create the SEO metadata for this finished article")) {
@@ -85,6 +86,9 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 
   if (prompt.includes("Review this draft as a careful SEO editor")) {
+    if (persistentReview) {
+      return sse({ summary: "A persistent structure issue remains.", score: 70, issues: [{ severity: "warning", area: "structure", message: "Persistent structure issue that survives corrections." }] });
+    }
     if (failNextReview > 0) {
       failNextReview -= 1;
       return new Response("{}", { status: 503 });
@@ -169,6 +173,10 @@ try {
   await workflow.publishApprovedWorkflow(id, approved!.data);
   const published = await workflow.getContentWorkflow(id);
   ok("publishing happens only after approval", published?.stage === "published" && published?.post?.status === "published", JSON.stringify({ stage: published?.stage, status: published?.post?.status }));
+  const firstFindings = published?.data.automation?.findings ?? [];
+  ok("findings have stable IDs and verified lifecycle", firstFindings.length > 0 && firstFindings.every((finding) => finding.id.startsWith("f-")) && firstFindings.some((finding) => finding.status === "fixed"), JSON.stringify(firstFindings.slice(0, 4)));
+  const finalPost = await blog.getAdminPost(1);
+  ok("broken and duplicate internal links are removed", finalPost?.contentHtml.includes("does-not-exist") === false && (published?.data.automation?.technicalFixes ?? []).some((fix) => fix.includes("broken internal link")), JSON.stringify(published?.data.automation?.technicalFixes));
 
   // The workspace can see the same workflow and post from the shared data layer.
   const visible = await workflow.listContentWorkflows(50);
@@ -193,6 +201,18 @@ try {
   await automation.runAutomationStep(failedId, "finalize");
   const resumed = await workflow.getContentWorkflow(failedId);
   ok("failed workflow can be resumed without a duplicate draft", resumed?.data.automation?.status === "ready" && resumed?.post?.id === failedPostId, JSON.stringify({ status: resumed?.data.automation?.status, before: failedPostId, after: resumed?.post?.id }));
+
+  // A finding that survives the allowed correction passes must remain visible and block Ready.
+  persistentReview = true;
+  const persistentId = await workflow.createContentWorkflow({ topic: "How to test a persistent editorial finding", audience: "Practice managers", data: {}, stage: "topic_plan" });
+  await automation.runAutomationStep(persistentId, "research");
+  await automation.runAutomationStep(persistentId, "generate");
+  await automation.runAutomationStep(persistentId, "review");
+  const persistentView = await workflow.getContentWorkflow(persistentId);
+  const persistentFindings = persistentView?.data.automation?.findings ?? [];
+  ok("unresolved automatic findings are not hidden", persistentView?.data.automation?.status === "needs_attention" && (persistentView?.data.review?.autoRemaining ?? 0) > 0, JSON.stringify({ status: persistentView?.data.automation?.status, review: persistentView?.data.review }));
+  ok("unresolved findings remain in the lifecycle", persistentFindings.some((finding) => finding.status === "unresolved") && persistentFindings.some((finding) => finding.attempts >= 2), JSON.stringify(persistentFindings.slice(0, 5)));
+  ok("unresolved article remains a draft", persistentView?.post?.status === "draft", persistentView?.post?.status);
 
   console.log(`RESULT pass=${passed} fail=0`);
 } finally {

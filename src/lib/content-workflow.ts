@@ -20,7 +20,14 @@ import { primaryNav, serviceGroups, site } from "./site";
 export const WORKFLOW_STAGES = ["research", "topic_plan", "draft", "seo_review", "approved", "scheduled", "published", "rejected"] as const;
 export type WorkflowStage = (typeof WORKFLOW_STAGES)[number];
 
-export type WorkflowSource = { title: string; url: string; note?: string };
+export type WorkflowSource = {
+  title: string;
+  url: string;
+  note?: string;
+  organization?: string;
+  accessedAt?: string;
+  verified?: boolean;
+};
 export type WorkflowOutlineItem = { heading: string; purpose?: string };
 export type WorkflowInternalLink = { label: string; href: string; reason?: string };
 
@@ -50,6 +57,20 @@ export type WorkflowPlan = {
 };
 
 export type WorkflowIssueGroup = "auto" | "research" | "human";
+export type WorkflowFindingStatus = "open" | "fixed" | "unresolved" | "human" | "optional";
+export type WorkflowFinding = {
+  id: string;
+  key: string;
+  message: string;
+  area?: string;
+  severity: "critical" | "warning" | "info";
+  group: WorkflowIssueGroup;
+  status: WorkflowFindingStatus;
+  attempts: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolution?: string;
+};
 export type WorkflowReviewIssue = {
   severity: "critical" | "warning" | "info";
   message: string;
@@ -71,6 +92,8 @@ export type WorkflowReview = {
   humanCount?: number;
   autoRemaining?: number;
   optionalCount?: number;
+  unresolvedCount?: number;
+  escalationCount?: number;
 };
 
 export type WorkflowDraft = {
@@ -105,6 +128,7 @@ export type WorkflowCorrection = {
   summary: string;
   changedFields: string[];
   issuesAddressed: string[];
+  findingIds?: string[];
   at: string;
 };
 
@@ -116,6 +140,9 @@ export type WorkflowTaxonomy = {
   tagNames: string[];
   tagsCreated: string[];
   imageSuggestions?: { concept: string; alt: string; placement: string }[];
+  summary?: string;
+  categoryReason?: string;
+  tagReasons?: { name: string; reason: string }[];
   at: string;
 };
 
@@ -128,6 +155,8 @@ export type WorkflowAutomation = {
   attempts: number;
   lastError?: string | null;
   corrections: WorkflowCorrection[];
+  findings: WorkflowFinding[];
+  technicalFixes: string[];
   unresolved: string[];
   steps: Record<string, "pending" | "running" | "completed" | "failed" | "skipped">;
   maxCorrectionPasses: number;

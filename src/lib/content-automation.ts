@@ -1,9 +1,11 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import {
   createCategory,
   createTag,
   getAdminPost,
   listAdminCategories,
+  listAdminPosts,
   listTags,
   setPostTaxonomy,
   slugify,
@@ -35,12 +37,15 @@ import {
   type WorkflowData,
   type WorkflowDraft,
   type WorkflowCorrection,
+  type WorkflowFinding,
   type WorkflowReview,
   type WorkflowReviewIssue,
   type WorkflowStage,
   type WorkflowView,
 } from "./content-workflow";
 import { fetchLiveSearch, fetchSearchConsoleMetrics } from "./search-research";
+import { getArticles } from "./data";
+import { jiroExtract } from "./jiro-client";
 
 export const AUTOMATION_STEPS = ["research", "generate", "review", "taxonomy", "finalize"] as const;
 export type AutomationStep = (typeof AUTOMATION_STEPS)[number];
@@ -60,6 +65,8 @@ function initialAutomation(data: WorkflowData): WorkflowAutomation {
     attempts: existing?.attempts ?? 0,
     lastError: existing?.lastError ?? null,
     corrections: existing?.corrections ?? [],
+    findings: existing?.findings ?? [],
+    technicalFixes: existing?.technicalFixes ?? [],
     unresolved: existing?.unresolved ?? [],
     steps: {
       research: data.research && data.plan ? "completed" : "pending",
@@ -67,7 +74,7 @@ function initialAutomation(data: WorkflowData): WorkflowAutomation {
       review: "pending", taxonomy: "pending", finalize: "pending",
       ...(existing?.steps ?? {}),
     },
-    maxCorrectionPasses: existing?.maxCorrectionPasses ?? MAX_CORRECTION_PASSES,
+    maxCorrectionPasses: Math.max(3, existing?.maxCorrectionPasses ?? MAX_CORRECTION_PASSES),
     taxonomy: existing?.taxonomy,
   };
 }
@@ -198,6 +205,75 @@ async function runGenerate(id: number, data: WorkflowData, automation: WorkflowA
 
 type IssueGroup = "auto" | "research" | "human";
 
+function findingKey(issue: WorkflowReviewIssue): string {
+  return `${(issue.area ?? "general").toLowerCase()}|${issue.message.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim()}`;
+}
+
+function findingId(key: string): string {
+  return `f-${createHash("sha1").update(key).digest("hex").slice(0, 12)}`;
+}
+
+function tokenSet(value: string): Set<string> {
+  return new Set(value.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((token) => token.length > 3));
+}
+
+function similarFinding(existing: WorkflowFinding[], issue: WorkflowReviewIssue): WorkflowFinding | undefined {
+  const key = findingKey(issue);
+  const exact = existing.find((finding) => finding.key === key);
+  if (exact) return exact;
+  const tokens = tokenSet(issue.message);
+  if (tokens.size < 3) return undefined;
+  return existing.find((finding) => {
+    if (finding.group !== (issue.group ?? classifyIssue(issue))) return false;
+    if ((finding.area ?? "general") !== (issue.area ?? "general")) return false;
+    const other = tokenSet(finding.message);
+    let overlap = 0;
+    for (const token of tokens) if (other.has(token)) overlap += 1;
+    return overlap / Math.max(tokens.size, other.size || 1) >= 0.6;
+  });
+}
+
+function reconcileFindings(existing: WorkflowFinding[], issues: WorkflowReviewIssue[], correctionRan: boolean): WorkflowFinding[] {
+  const nowIso = now();
+  const next = existing.map((finding) => ({ ...finding }));
+  const seen = new Set<string>();
+  for (const issue of issues) {
+    const match = similarFinding(next, issue);
+    if (match) {
+      match.message = issue.message;
+      match.area = issue.area;
+      match.severity = issue.severity;
+      match.group = issue.group ?? classifyIssue(issue);
+      match.lastSeenAt = nowIso;
+      if (match.status === "fixed") match.status = "open";
+      if (!["fixed", "optional"].includes(match.status)) {
+        match.status = match.group === "human" ? "human" : "open";
+      }
+      if (match.status === "open") match.attempts += correctionRan ? 1 : 0;
+      seen.add(match.id);
+      continue;
+    }
+    const key = findingKey(issue);
+    const id = findingId(key);
+    next.push({
+      id, key, message: issue.message, area: issue.area, severity: issue.severity,
+      group: issue.group ?? classifyIssue(issue),
+      status: issue.group === "human" ? "human" : "open",
+      attempts: 0, firstSeenAt: nowIso, lastSeenAt: nowIso,
+    });
+    seen.add(id);
+  }
+  for (const finding of next) {
+    if (seen.has(finding.id)) continue;
+    if (finding.status === "open" && correctionRan) {
+      finding.status = "fixed";
+      finding.resolution = "Re-review no longer detected this issue after correction.";
+    }
+  }
+  return next;
+}
+
+
 function classifyIssue(issue: WorkflowReviewIssue): IssueGroup {
   const area = (issue.area ?? "").toLowerCase();
   const text = `${area} ${issue.message}`.toLowerCase();
@@ -217,6 +293,71 @@ function normaliseIssues(issues: WorkflowReviewIssue[]): WorkflowReviewIssue[] {
     seen.add(key);
     return [{ ...issue, message, group }];
   }).slice(0, 40);
+}
+
+const OFFICIAL_SOURCE_DOMAINS = [
+  "hhs.gov", "cms.gov", "medicare.gov", "ocr.hhs.gov", "cms.hhs.gov",
+  "ama-assn.org", "hfma.org", "mgma.com", "ahrq.gov", "cdc.gov",
+];
+
+function isOfficialSource(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    return OFFICIAL_SOURCE_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  } catch { return false; }
+}
+
+function claimTokens(message: string): string[] {
+  return [...new Set(message.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/)
+    .filter((token) => token.length >= 5 && !["about", "which", "should", "would", "could", "there", "their", "these", "those", "article", "content", "claim", "claims", "source", "sources"].includes(token)))]
+    .slice(0, 8);
+}
+
+/**
+ * Try to retrieve an official source for factual findings using the existing
+ * Jiro provider. A source is accepted only when it is on an official/recognized
+ * domain and its extracted page contains multiple terms from the finding.
+ * This never fabricates a source and never implies universal payer rules.
+ */
+async function resolveResearchSources(data: WorkflowData, issues: WorkflowReviewIssue[]): Promise<{ data: WorkflowData; found: number; providerError: string | null }> {
+  const sources = [...(data.research?.sources ?? [])];
+  const known = new Set(sources.map((source) => source.url));
+  let found = 0;
+  let providerError: string | null = null;
+  for (const issue of issues.slice(0, 2)) {
+    try {
+      const query = `${data.draft?.title ?? data.plan?.title ?? ""} ${issue.message}`.slice(0, 220);
+      const search = await fetchLiveSearch(query);
+      if (!search.available) { providerError = search.note; continue; }
+      for (const result of search.results.filter((item) => isOfficialSource(item.url)).slice(0, 2)) {
+        if (known.has(result.url)) continue;
+        const extraction = await jiroExtract(result.url);
+        if (!extraction.available || !extraction.content) continue;
+        const haystack = `${extraction.title ?? result.title} ${extraction.content}`.toLowerCase();
+        const tokens = claimTokens(issue.message);
+        const hits = tokens.filter((token) => haystack.includes(token));
+        if (tokens.length && hits.length >= Math.min(3, tokens.length)) {
+          sources.push({
+            title: (extraction.title ?? result.title).slice(0, 200),
+            url: result.url,
+            organization: new URL(result.url).hostname.replace(/^www\./, ""),
+            accessedAt: new Date().toISOString(),
+            verified: true,
+            note: "Retrieved from an official/recognized source by the editorial research step.",
+          });
+          known.add(result.url);
+          found += 1;
+        }
+      }
+    } catch (error) {
+      providerError = error instanceof Error ? error.message.slice(0, 200) : "Research provider unavailable.";
+    }
+  }
+  return {
+    data: { ...data, research: { ...(data.research ?? {}), sources } },
+    found,
+    providerError,
+  };
 }
 
 async function applyCorrections(
@@ -267,6 +408,43 @@ async function applyCorrections(
   return updated ? { post: updated, correction, changedFields } : null;
 }
 
+async function verifiedInternalPaths(): Promise<Set<string>> {
+  const paths = new Set(knownInternalPaths());
+  try {
+    const [posts, articles] = await Promise.all([listAdminPosts({ page: 1, perPage: 100 }), getArticles()]);
+    for (const post of posts.posts) paths.add(`/blog/${post.slug}`);
+    for (const article of articles) paths.add(`/insights/${article.slug}`);
+  } catch { /* Keep the static allow-list; do not remove a link merely because a query failed. */ }
+  return paths;
+}
+
+/** Verify, de-duplicate and cap internal links. Broken destinations are removed. */
+async function repairInternalLinks(post: NonNullable<Awaited<ReturnType<typeof getAdminPost>>>, automation: WorkflowAutomation): Promise<string | null> {
+  const allowed = await verifiedInternalPaths();
+  const seen = new Set<string>();
+  let internalCount = 0;
+  let changed = false;
+  const fixed: string[] = [];
+  const html = post.contentHtml.replace(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (full, href: string, inner: string) => {
+    if (!href.startsWith("/") || href.startsWith("//")) return full;
+    const clean = (href.split(/[?#]/)[0] || "/").replace(/\/$/, "") || "/";
+    const valid = allowed.has(clean);
+    const duplicate = seen.has(clean);
+    internalCount += 1;
+    if (!valid || duplicate || internalCount > 8) {
+      changed = true;
+      fixed.push(!valid ? `Removed broken internal link ${clean}` : `Removed duplicate/excess internal link ${clean}`);
+      return inner;
+    }
+    seen.add(clean);
+    return full;
+  });
+  if (!changed) return null;
+  await updatePost(post.id, postInputFrom(post, {}, { contentHtml: html }));
+  automation.technicalFixes = [...new Set([...automation.technicalFixes, ...fixed])].slice(0, 20);
+  return html;
+}
+
 async function runReview(id: number, data: WorkflowData, automation: WorkflowAutomation): Promise<WorkflowData> {
   const postId = data.blogPostId;
   if (!postId) throw new Error("Create a draft before reviewing.");
@@ -276,45 +454,61 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
   automation.attempts += 1;
   await save(id, data, "draft", automation);
 
-  const found = new Set<string>();
+  let findings: WorkflowFinding[] = [...automation.findings];
   let currentIssues: WorkflowReviewIssue[] = [];
   let review: WorkflowReview | undefined;
   const corrections: WorkflowCorrection[] = [...automation.corrections];
   const unresolved = new Set<string>();
-  const maxPasses = Math.max(3, automation.maxCorrectionPasses);
+  // Three correction opportunities after the initial review.
+  const maxPasses = Math.max(3, automation.maxCorrectionPasses) + 1;
+  let correctionRan = false;
 
   for (let pass = 0; pass < maxPasses; pass += 1) {
-    const post = await getAdminPost(postId);
+    let post = await getAdminPost(postId);
     if (!post) throw new Error("The draft no longer exists.");
+    const repaired = await repairInternalLinks(post, automation);
+    if (repaired) {
+      post = await getAdminPost(postId);
+      if (!post) throw new Error("The draft no longer exists after link validation.");
+    }
     const draft = reviewDraft(post, data);
     const localIssues = runLocalSeoChecks(draft);
     const aiReview = await generateEditorialReview({ research: data.research ?? {}, plan: data.plan ?? {}, draft, localIssues });
     const issues = normaliseIssues([...localIssues, ...aiReview.issues]);
-    issues.forEach((issue) => found.add(issue.message));
     currentIssues = issues;
-    const autoIssues = issues.filter((issue) => issue.group === "auto");
-    const researchIssues = issues.filter((issue) => issue.group === "research");
-    const humanIssues = issues.filter((issue) => issue.group === "human");
+
+    // Reconcile against the persisted findings. A finding is only marked fixed
+    // after a later review no longer detects it following a correction pass.
+    findings = reconcileFindings(findings, issues, correctionRan);
+    correctionRan = false;
+    automation.findings = findings;
+    const openCurrent = findings.filter((finding) => ["open", "unresolved", "human"].includes(finding.status));
+    const blocking = openCurrent.filter((finding) => finding.group === "auto" && finding.severity !== "info");
     review = {
-      passed: false,
-      score: Math.min(aiReview.score, autoIssues.some((issue) => issue.severity === "critical") ? 60 : 100),
+      passed: blocking.length === 0,
+      score: Math.min(aiReview.score, blocking.some((finding) => finding.severity === "critical") ? 60 : 100),
       summary: aiReview.summary,
-      issues,
+      issues: openCurrent.map((finding) => ({
+        severity: finding.severity, message: finding.message, area: finding.area, group: finding.group,
+        status: finding.status === "human" ? "human" : "open", resolution: finding.resolution,
+      })),
       checkedAt: now(),
       aiAssisted: true,
-      foundCount: found.size,
-      correctedCount: 0,
-      humanCount: researchIssues.length + humanIssues.length,
-      autoRemaining: autoIssues.length,
+      foundCount: findings.length,
+      correctedCount: findings.filter((finding) => finding.status === "fixed").length,
+      humanCount: findings.filter((finding) => finding.status === "human").length,
+      autoRemaining: blocking.length,
+      optionalCount: findings.filter((finding) => finding.status === "optional").length,
+      unresolvedCount: findings.filter((finding) => finding.status === "unresolved").length,
+      escalationCount: findings.filter((finding) => finding.status === "human").length,
     };
-    data = { ...data, review };
+    data = { ...data, review, automation };
     await save(id, data, "draft", automation);
 
+    const autoIssues = issues.filter((issue) => issue.group === "auto");
+    const researchIssues = issues.filter((issue) => issue.group === "research");
     if (!autoIssues.length && !researchIssues.length) break;
-    if (pass >= maxPasses - 1) {
-      for (const issue of autoIssues) unresolved.add(issue.message);
-      break;
-    }
+    if (pass >= maxPasses - 1) break;
 
     automation.status = "fixing";
     automation.step = `fixing pass ${pass + 1}`;
@@ -324,6 +518,7 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
     let changed = false;
     let correctionSummary: string | undefined;
     let correctionFields: string[] = [];
+    const addressedIds = new Set<string>();
     if (autoIssues.length) {
       const applied = await applyCorrections(post, data, autoIssues, "auto");
       if (applied) {
@@ -332,9 +527,16 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
         correctionFields = applied.changedFields;
         for (const message of applied.correction.unresolved.slice(0, 5)) unresolved.add(message);
         data = { ...data, draft: draftFromPost(applied.post, data) };
+        for (const issue of autoIssues) {
+          const finding = similarFinding(findings, issue);
+          if (finding) addressedIds.add(finding.id);
+        }
       }
     }
     if (researchIssues.length) {
+      const researchResult = await resolveResearchSources(data, researchIssues).catch(() => ({ data, found: 0, providerError: "Research provider unavailable." }));
+      data = researchResult.data;
+      if (researchResult.providerError && !researchResult.found) unresolved.add(`Research provider unavailable; factual claims were qualified or escalated. ${researchResult.providerError.slice(0, 160)}`);
       const latest = await getAdminPost(postId);
       const applied = latest ? await applyCorrections(latest, data, researchIssues, "qualify") : null;
       if (applied) {
@@ -343,45 +545,65 @@ async function runReview(id: number, data: WorkflowData, automation: WorkflowAut
         correctionFields = [...new Set([...correctionFields, ...applied.changedFields])];
         for (const message of applied.correction.unresolved.slice(0, 5)) unresolved.add(message);
         data = { ...data, draft: draftFromPost(applied.post, data) };
+        for (const issue of researchIssues) {
+          const finding = similarFinding(findings, issue);
+          if (finding) addressedIds.add(finding.id);
+        }
       }
     }
 
-    if (!changed) {
-      for (const issue of autoIssues) unresolved.add(issue.message);
-      break;
-    }
+    if (!changed) break;
     corrections.push({
       pass: pass + 1,
       summary: correctionSummary ?? "Safe editorial corrections applied.",
       changedFields: correctionFields,
       issuesAddressed: [...autoIssues, ...researchIssues].slice(0, 12).map((issue) => issue.message),
+      findingIds: [...addressedIds],
       at: now(),
     });
     automation.corrections = corrections;
+    correctionRan = true;
     automation.status = "rechecking";
     automation.step = `checking pass ${pass + 2}`;
     await save(id, data, "draft", automation);
   }
 
-  const currentKeys = new Set(currentIssues.map((issue) => issue.message));
-  const correctedCount = Math.max(0, [...found].filter((message) => !currentKeys.has(message)).length);
-  const blockingAuto = currentIssues.filter((issue) => issue.group === "auto" && issue.severity !== "info");
-  const optionalAuto = currentIssues.filter((issue) => issue.group === "auto" && issue.severity === "info");
-  const humanRemaining = currentIssues.filter((issue) => issue.group !== "auto");
+  // No automatic finding may silently disappear when the retry limit is hit.
+  const finalFindings = findings.map((finding) => {
+    if (finding.status !== "open") return finding;
+    if (finding.group === "auto" && finding.severity === "info") return { ...finding, status: "optional" as const };
+    if (finding.group === "auto") return { ...finding, status: "unresolved" as const, resolution: "Automatic correction did not resolve this finding after the allowed passes." };
+    return { ...finding, status: "human" as const, resolution: "Requires research or human judgment." };
+  });
+  automation.findings = finalFindings;
+  const blockingAuto = finalFindings.filter((finding) => finding.status === "unresolved" || (finding.status === "open" && finding.group === "auto" && finding.severity !== "info"));
+  const humanRemaining = finalFindings.filter((finding) => finding.status === "human");
+  const optional = finalFindings.filter((finding) => finding.status === "optional");
+  const fixed = finalFindings.filter((finding) => finding.status === "fixed");
+  const displayIssues: WorkflowReviewIssue[] = [...humanRemaining, ...blockingAuto].map((finding) => ({
+    severity: finding.severity,
+    message: finding.message,
+    area: finding.area,
+    group: finding.group,
+    status: finding.status === "human" ? "human" : "open",
+    resolution: finding.resolution,
+  }));
   if (review) {
     review = {
       ...review,
       passed: blockingAuto.length === 0,
-      issues: [...humanRemaining, ...blockingAuto],
-      foundCount: found.size,
-      correctedCount,
+      issues: displayIssues,
+      foundCount: finalFindings.length,
+      correctedCount: fixed.length,
       humanCount: humanRemaining.length,
       autoRemaining: blockingAuto.length,
-      optionalCount: optionalAuto.length,
+      optionalCount: optional.length,
+      unresolvedCount: blockingAuto.length,
+      escalationCount: humanRemaining.length,
     };
     data = { ...data, review };
   }
-  automation.unresolved = [...new Set([...unresolved, ...humanRemaining.map((issue) => issue.message), ...blockingAuto.map((issue) => issue.message)])].slice(0, 16);
+  automation.unresolved = [...new Set([...unresolved, ...humanRemaining.map((finding) => finding.message), ...blockingAuto.map((finding) => finding.message)])].slice(0, 20);
   automation.steps.review = "completed";
   automation.status = blockingAuto.length ? "needs_attention" : "idle";
   automation.completedAt = null;
@@ -405,7 +627,7 @@ async function runTaxonomy(id: number, data: WorkflowData, automation: WorkflowA
   if (post.category && post.tags.length) {
     data = {
       ...data,
-      taxonomy: { categoryId: post.category.id, categoryName: post.category.name, categoryCreated: false, tagIds: post.tags.map((tag) => tag.id), tagNames: post.tags.map((tag) => tag.name), tagsCreated: [], at: now() },
+      taxonomy: { categoryId: post.category.id, categoryName: post.category.name, categoryCreated: false, tagIds: post.tags.map((tag) => tag.id), tagNames: post.tags.map((tag) => tag.name), tagsCreated: [], summary: "Existing taxonomy retained and verified.", categoryReason: "The draft already had a verified category.", tagReasons: post.tags.map((tag) => ({ name: tag.name, reason: "Existing tag already assigned to this article." })), at: now() },
     };
     automation.taxonomy = data.taxonomy;
     automation.steps.taxonomy = "completed";
@@ -468,7 +690,13 @@ async function runTaxonomy(id: number, data: WorkflowData, automation: WorkflowA
   }
   data = {
     ...data,
-    taxonomy: { categoryId, categoryName, categoryCreated, tagIds: selected.map((tag) => tag.id), tagNames: selected.map((tag) => tag.name), tagsCreated: createdTags, imageSuggestions: choice.imageSuggestions, at: now() },
+    taxonomy: {
+      categoryId, categoryName, categoryCreated,
+      tagIds: selected.map((tag) => tag.id), tagNames: selected.map((tag) => tag.name), tagsCreated: createdTags,
+      imageSuggestions: choice.imageSuggestions, summary: choice.summary,
+      categoryReason: choice.categoryReason, tagReasons: choice.tagReasons,
+      at: now(),
+    },
   };
   automation.taxonomy = data.taxonomy;
   automation.steps.taxonomy = "completed";
@@ -495,24 +723,28 @@ async function runFinalize(id: number, data: WorkflowData, automation: WorkflowA
   if (!post.category) localIssues.push({ severity: "critical", area: "taxonomy", message: "A relevant category must be assigned before approval." });
   if (post.tags.length < 2) localIssues.push({ severity: "critical", area: "taxonomy", message: "At least two relevant tags must be assigned before approval." });
   const issues = normaliseIssues([...prior, ...localIssues]);
-  const blockingAuto = issues.filter((issue) => issue.group === "auto" && issue.severity !== "info");
-  const optionalAuto = issues.filter((issue) => issue.group === "auto" && issue.severity === "info");
-  const humanRemaining = issues.filter((issue) => issue.group !== "auto");
+  const findings = automation.findings ?? [];
+  const blockingAuto = findings.filter((finding) => finding.status === "unresolved" || (finding.status === "open" && finding.group === "auto" && finding.severity !== "info"));
+  const humanFindings = findings.filter((finding) => finding.status === "human");
+  const optionalFindings = findings.filter((finding) => finding.status === "optional");
+  const fixedFindings = findings.filter((finding) => finding.status === "fixed");
   const review: WorkflowReview = {
     passed: blockingAuto.length === 0,
     score: data.review?.score ?? 0,
     summary: data.review?.summary ?? "AI review completed.",
-    issues: [...humanRemaining, ...blockingAuto],
+    issues: [...humanFindings, ...blockingAuto].map((finding) => ({ severity: finding.severity, message: finding.message, area: finding.area, group: finding.group, status: finding.status === "human" ? "human" : "open", resolution: finding.resolution })),
     checkedAt: now(),
     aiAssisted: true,
-    foundCount: Math.max(data.review?.foundCount ?? 0, issues.length),
-    correctedCount: data.review?.correctedCount ?? 0,
-    humanCount: humanRemaining.length,
+    foundCount: Math.max(findings.length, data.review?.foundCount ?? 0),
+    correctedCount: fixedFindings.length,
+    humanCount: humanFindings.length,
     autoRemaining: blockingAuto.length,
-    optionalCount: optionalAuto.length,
+    optionalCount: optionalFindings.length,
+    unresolvedCount: blockingAuto.length,
+    escalationCount: humanFindings.length,
   };
   data = { ...data, review };
-  automation.unresolved = [...new Set([...humanRemaining.map((issue) => issue.message), ...blockingAuto.map((issue) => issue.message)])].slice(0, 16);
+  automation.unresolved = [...new Set([...humanFindings.map((finding) => finding.message), ...blockingAuto.map((finding) => finding.message)])].slice(0, 16);
   automation.steps.finalize = "completed";
   automation.status = blockingAuto.length ? "needs_attention" : "ready";
   automation.completedAt = now();
