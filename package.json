@@ -35,7 +35,7 @@
     "test:voice:mobile": "node tests/voice-mobile.e2e.mjs",
     "test:voice:errors": "node tests/voice-errors.e2e.mjs",
     "test:voice:android": "node tests/voice-android.e2e.mjs",
-    "test:gsc:oauth": "NODE_OPTIONS=--conditions=react-server tsx tests/gsc-oauth.test.mts",
+    "test:gsc:oauth": "NODE_OPTIONS=--conditions=react-server tsx tests/gsc-oauth.test.mts && NODE_OPTIONS=--conditions=react-server tsx tests/gsc-oauth-status.test.mts",
     "test:gsc:oauth:e2e": "node tests/gsc-oauth-routes.e2e.mjs"
   },
   "dependencies": {

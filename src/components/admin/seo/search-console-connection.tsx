@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { cn } from "@/components/ui";
 
-type GscStatus = "not_connected" | "connected" | "reconnect_required" | "property_access_unavailable" | "property_selection_required" | "error";
+type GscStatus = "not_connected" | "connected" | "reconnect_required" | "property_access_unavailable" | "property_selection_required" | "temporarily_unavailable" | "error";
 type Property = { siteUrl: string; permissionLevel: string };
 type StatusPayload = {
   configured: boolean;
@@ -16,6 +16,8 @@ type StatusPayload = {
   connectedAt: string | null;
   checkedAt: string;
   error?: string;
+  errorCode?: string;
+  retryable?: boolean;
 };
 
 const STATUS_COPY: Record<GscStatus, string> = {
@@ -24,12 +26,13 @@ const STATUS_COPY: Record<GscStatus, string> = {
   reconnect_required: "Reconnect required",
   property_access_unavailable: "Property access unavailable",
   property_selection_required: "Choose a property",
+  temporarily_unavailable: "Temporarily unavailable",
   error: "Connection check failed",
 };
 
 function statusTone(status: GscStatus) {
   if (status === "connected") return "border-mint-200 bg-mint-50 text-mint-800";
-  if (status === "reconnect_required" || status === "property_access_unavailable" || status === "error") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (status === "reconnect_required" || status === "property_access_unavailable" || status === "temporarily_unavailable" || status === "error") return "border-amber-200 bg-amber-50 text-amber-800";
   return "border-mist-200 bg-mist-50 text-ink-600";
 }
 
@@ -91,6 +94,15 @@ export function SearchConsoleConnection() {
   const properties = data?.properties ?? [];
   const selectedSite = data?.siteUrl ?? "";
   const canConnect = data?.configured !== false && (data?.source === "service_account" || ["not_connected", "reconnect_required", "property_access_unavailable", "error"].includes(status));
+  const statusMessage = status === "reconnect_required"
+    ? "Google authorization needs to be renewed."
+    : status === "property_access_unavailable"
+      ? "Search Console property access is unavailable."
+      : status === "temporarily_unavailable"
+        ? "Search Console is temporarily unavailable. Please try again."
+        : status === "error"
+          ? "We couldn't verify Search Console right now. Please try again."
+          : null;
 
   return (
     <section className="rounded-2xl border border-mist-200 bg-surface p-4 sm:p-5" aria-labelledby="gsc-title">
@@ -127,7 +139,7 @@ export function SearchConsoleConnection() {
         <button type="button" disabled={busy !== null} onClick={() => { setLoading(true); setError(null); void load(); }} className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 px-3 py-2 text-[0.66rem] font-bold text-ink-600 hover:border-brand-300 disabled:opacity-50"><RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} /> Refresh status</button>
       </div>
 
-      {data?.error && <p className="mt-3 flex items-start gap-1.5 text-[0.68rem] leading-relaxed text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {data.error}</p>}
+      {statusMessage && <p className="mt-3 flex items-start gap-1.5 text-[0.68rem] leading-relaxed text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {statusMessage}</p>}
       <p className="mt-2 text-[0.62rem] leading-relaxed text-ink-600/55">Only verified data returned by Google is displayed. No impressions, clicks, positions or traffic estimates are generated locally.</p>
     </section>
   );

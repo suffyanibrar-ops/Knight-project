@@ -34,6 +34,7 @@ export type GscStatus =
   | "reconnect_required"
   | "property_access_unavailable"
   | "property_selection_required"
+  | "temporarily_unavailable"
   | "error";
 
 export type GscConnectionStatus = {
@@ -46,22 +47,100 @@ export type GscConnectionStatus = {
   connectedAt: string | null;
   checkedAt: string;
   error?: string;
+  errorCode?: string;
+  retryable?: boolean;
 };
 
 export type OAuthState = { state: string; verifier: string; challenge: string; cookieValue: string };
 
 export class GscReconnectError extends Error {
-  constructor(message = "Google Search Console authorization expired or was revoked.") {
+  readonly code: string;
+  readonly retryable = false;
+  readonly httpStatus?: number;
+
+  constructor(message = "Google Search Console authorization expired or was revoked.", code = "gsc_reconnect", httpStatus?: number) {
     super(message);
     this.name = "GscReconnectError";
+    this.code = code;
+    this.httpStatus = httpStatus;
   }
 }
 
 export class GscPropertyAccessError extends Error {
-  constructor(message = "This Google account cannot access the selected Search Console property.") {
+  readonly code: string;
+  readonly retryable = false;
+  readonly httpStatus?: number;
+
+  constructor(message = "This Google account cannot access the selected Search Console property.", code = "gsc_property_access", httpStatus?: number) {
     super(message);
     this.name = "GscPropertyAccessError";
+    this.code = code;
+    this.httpStatus = httpStatus;
   }
+}
+
+export class GscTemporaryError extends Error {
+  readonly code: string;
+  readonly retryable = true;
+  readonly httpStatus?: number;
+
+  constructor(code: string, message = "Search Console is temporarily unavailable.", httpStatus?: number) {
+    super(message);
+    this.name = "GscTemporaryError";
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+export class GscOAuthError extends Error {
+  readonly code: string;
+  readonly retryable = false;
+  readonly httpStatus?: number;
+
+  constructor(code: string, message = "Google OAuth returned an unexpected response.", httpStatus?: number) {
+    super(message);
+    this.name = "GscOAuthError";
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+const SAFE_ERROR_CODE = /^[a-z0-9_]{1,80}$/;
+
+function safeErrorCode(value: unknown, fallback: string): string {
+  const code = typeof value === "string" ? value.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 80) : "";
+  return SAFE_ERROR_CODE.test(code) ? code : fallback;
+}
+
+function httpStatusOf(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "httpStatus" in error) {
+    const value = (error as { httpStatus?: unknown }).httpStatus;
+    return typeof value === "number" && Number.isInteger(value) ? value : undefined;
+  }
+  return undefined;
+}
+
+function classifyNetworkError(error: unknown, context: "token" | "sites"): GscTemporaryError | GscOAuthError {
+  const name = error instanceof Error ? error.name : "";
+  if (name === "AbortError" || name === "TimeoutError") return new GscTemporaryError("gsc_timeout", "Google did not respond in time.");
+  if (name === "TypeError" || name === "FetchError" || /fetch failed|network|econn|enotfound|eai_again/i.test(error instanceof Error ? error.message : "")) {
+    return new GscTemporaryError("gsc_network", "Google could not be reached.");
+  }
+  return new GscOAuthError(`${context}_fetch_error`, "Google returned an unexpected network response.");
+}
+
+function logGscFailure(operation: string, error: unknown, property: string | null, retryable: boolean): void {
+  const safe = {
+    event: "gsc_status_check_failed",
+    operation,
+    errorName: error instanceof Error ? error.name.slice(0, 80) : "UnknownError",
+    errorCode: error instanceof GscReconnectError || error instanceof GscPropertyAccessError || error instanceof GscTemporaryError || error instanceof GscOAuthError ? error.code : "gsc_unknown",
+    httpStatus: httpStatusOf(error) ?? null,
+    selectedProperty: property,
+    retryable,
+  };
+  // Structured, sanitized only: no messages, headers, tokens, codes or cookies.
+  console.error("[gsc-oauth]", JSON.stringify(safe));
 }
 
 function clean(value: unknown, max = 500): string {
@@ -209,17 +288,27 @@ export function buildGoogleAuthUrl(config: NonNullable<ReturnType<typeof oauthCo
 type FetchLike = typeof fetch;
 
 async function tokenRequest(params: URLSearchParams, fetchImpl: FetchLike = fetch): Promise<Record<string, unknown>> {
-  const response = await fetchImpl(GOOGLE_TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: params,
-    signal: AbortSignal.timeout(15_000),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl(GOOGLE_TOKEN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: params,
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw classifyNetworkError(error, "token");
+  }
   const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (!response.ok) {
-    const error = clean(body?.error, 120);
-    if (error === "invalid_grant" || response.status === 400) throw new GscReconnectError("Google authorization expired or was revoked. Reconnect Search Console.");
-    throw new Error(`Google token exchange failed (${response.status}).`);
+    const providerError = safeErrorCode(body?.error, "token_error");
+    if (providerError === "invalid_grant" || response.status === 401) {
+      throw new GscReconnectError("Google authorization expired or was revoked. Reconnect Search Console.", providerError === "invalid_grant" ? "gsc_invalid_grant" : "gsc_token_401", response.status);
+    }
+    if (response.status === 429 || response.status >= 500) {
+      throw new GscTemporaryError(`gsc_token_${response.status}`, "Google token service is temporarily unavailable.", response.status);
+    }
+    throw new GscOAuthError(`gsc_token_${response.status}`, "Google rejected the OAuth token request.", response.status);
   }
   return body ?? {};
 }
@@ -273,14 +362,20 @@ export function clearOAuthAccessTokenCache(): void {
 }
 
 export async function fetchGscProperties(accessToken: string, fetchImpl: FetchLike = fetch): Promise<GscProperty[]> {
-  const response = await fetchImpl(SEARCH_CONSOLE_SITES_URL, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl(SEARCH_CONSOLE_SITES_URL, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw classifyNetworkError(error, "sites");
+  }
   const body = (await response.json().catch(() => null)) as { siteEntry?: unknown } | null;
-  if (response.status === 401) throw new GscReconnectError("Google Search Console authorization expired or was revoked.");
-  if (response.status === 403) throw new GscPropertyAccessError();
-  if (!response.ok) throw new Error(`Search Console sites request failed (${response.status}).`);
+  if (response.status === 401) throw new GscReconnectError("Google Search Console authorization expired or was revoked.", "gsc_sites_401", response.status);
+  if (response.status === 403) throw new GscPropertyAccessError("This Google account cannot access Search Console properties.", "gsc_sites_403", response.status);
+  if (response.status === 429 || response.status >= 500) throw new GscTemporaryError(`gsc_sites_${response.status}`, "Search Console is temporarily unavailable.", response.status);
+  if (!response.ok) throw new GscOAuthError(`gsc_sites_${response.status}`, "Search Console returned an unexpected response.", response.status);
   return parseProperties(body?.siteEntry);
 }
 
@@ -351,25 +446,63 @@ export async function getGscConnectionStatus(fetchImpl: FetchLike = fetch): Prom
     return { configured, status: "not_connected", source: null, siteUrl: null, properties: [], accountEmail: null, connectedAt: null, checkedAt };
   }
   if (!configured) {
-    return { configured, status: "reconnect_required", source: "oauth", siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: "Google OAuth environment variables are incomplete." };
+    return { configured, status: "reconnect_required", source: "oauth", siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: "Google OAuth environment variables are incomplete.", errorCode: "gsc_not_configured", retryable: false };
   }
-  try {
-    const auth = await getOAuthAccessToken(fetchImpl);
-    if (!auth) return { configured, status: "not_connected", source: null, siteUrl: null, properties: [], accountEmail: null, connectedAt: null, checkedAt };
-    const properties = await fetchGscProperties(auth.token, fetchImpl);
-    if (!properties.length) return { configured, status: "property_access_unavailable", source: "oauth", siteUrl: record.siteUrl, properties: [], accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: "No Search Console properties are available to this Google account." };
-    if (!record.siteUrl) return { configured, status: "property_selection_required", source: "oauth", siteUrl: null, properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt };
-    if (!properties.some((property) => property.siteUrl === record.siteUrl)) {
-      return { configured, status: "property_access_unavailable", source: "oauth", siteUrl: record.siteUrl, properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: "The selected property is no longer available to this Google account." };
-    }
-    return { configured, status: "connected", source: "oauth", siteUrl: record.siteUrl, properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt };
-  } catch (error) {
+
+  const base = { configured, source: "oauth" as const, siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt };
+  const failure = (error: unknown): GscConnectionStatus => {
     if (error instanceof GscReconnectError) {
-      return { configured, status: "reconnect_required", source: "oauth", siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: error.message };
+      return { ...base, status: "reconnect_required", error: error.message, errorCode: error.code, retryable: false };
     }
     if (error instanceof GscPropertyAccessError) {
-      return { configured, status: "property_access_unavailable", source: "oauth", siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: error.message };
+      return { ...base, status: "property_access_unavailable", error: error.message, errorCode: error.code, retryable: false };
     }
-    return { configured, status: "error", source: "oauth", siteUrl: record.siteUrl, properties: record.properties, accountEmail: record.accountEmail, connectedAt: record.connectedAt, checkedAt, error: "Search Console could not be reached. Check the connection and try again." };
+    if (error instanceof GscTemporaryError) {
+      return { ...base, status: "temporarily_unavailable", error: "Search Console is temporarily unavailable. Please try again.", errorCode: error.code, retryable: true };
+    }
+    if (error instanceof GscOAuthError) {
+      return { ...base, status: "error", error: "We couldn't verify Search Console right now. Please try again.", errorCode: error.code, retryable: false };
+    }
+    return { ...base, status: "error", error: "We couldn't verify Search Console right now. Please try again.", errorCode: "gsc_unknown", retryable: false };
+  };
+
+  const attempt = async (): Promise<GscProperty[] | null> => {
+    const auth = await getOAuthAccessToken(fetchImpl);
+    if (!auth) return null;
+    return fetchGscProperties(auth.token, fetchImpl);
+  };
+
+  let properties: GscProperty[] | null;
+  try {
+    properties = await attempt();
+  } catch (error) {
+    const initial = failure(error);
+    logGscFailure("status_check", error, record.siteUrl, initial.retryable === true);
+    if (!initial.retryable) return initial;
+    // Transient failure: clear only the in-memory access-token cache and retry once.
+    // The persistent refresh token and the selected property are never modified.
+    clearOAuthAccessTokenCache();
+    try {
+      properties = await attempt();
+    } catch (retryError) {
+      logGscFailure("status_retry", retryError, record.siteUrl, true);
+      return failure(retryError);
+    }
   }
+
+  if (!properties) return { configured, status: "not_connected", source: null, siteUrl: null, properties: [], accountEmail: null, connectedAt: null, checkedAt };
+  if (!properties.length) {
+    const error = new GscPropertyAccessError("No Search Console properties are available to this Google account.", "gsc_no_properties");
+    logGscFailure("property_check", error, record.siteUrl, false);
+    return { ...base, status: "property_access_unavailable", properties: [], error: error.message, errorCode: error.code, retryable: false };
+  }
+  if (!record.siteUrl) {
+    return { ...base, status: "property_selection_required", siteUrl: null, properties, retryable: false };
+  }
+  if (!properties.some((property) => property.siteUrl === record.siteUrl)) {
+    const error = new GscPropertyAccessError("The selected property is no longer available to this Google account.", "gsc_property_missing");
+    logGscFailure("property_check", error, record.siteUrl, false);
+    return { ...base, status: "property_access_unavailable", properties, error: error.message, errorCode: error.code, retryable: false };
+  }
+  return { ...base, status: "connected", properties, retryable: false };
 }
