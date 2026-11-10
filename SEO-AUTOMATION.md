@@ -123,6 +123,7 @@ The server has no passwordless sudo, so the systemd timer requested in the speci
 * * * * * /home/knight/jiro/watchdog.sh >/dev/null 2>&1
 */5 * * * * /home/knight/jiro/publish-due.sh >> /home/knight/jiro/logs/publish-due.log 2>&1
 */15 * * * * /home/knight/jiro/automation-tick.sh >> /home/knight/jiro/logs/automation-tick.log 2>&1
+15 2 * * * cd /srv/knight/current && SQLITE_PATH=/var/lib/knight/app.db BACKUP_DIR=/var/backups/knight/daily BACKUP_KEEP_DAYS=14 /usr/bin/node scripts/backup-sqlite.mjs >> /home/knight/jiro/logs/backup.log 2>&1
 ```
 
 The minute-level job is `watchdog.sh`, which checks `/health` with the internal token and restarts Jiro if the process is dead or unhealthy. `@reboot` starts it immediately after boot. `publish-due.sh` runs the existing idempotent scheduled-publication script. `automation-tick.sh` calls:
@@ -132,7 +133,7 @@ POST http://127.0.0.1:3000/api/admin/seo/automation/tick
 X-Knight-Automation-Secret: <file-backed secret>
 ```
 
-A systemd timer can replace cron later if root access is available. The unit templates are:
+Cron secrets live in 0600 curl config files (`watchdog-curl.conf`, `automation-curl.conf`) rather than command-line arguments. A systemd timer can replace cron later if root access is available. The unit templates are:
 
 ```ini
 # /etc/systemd/system/knight-seo-automation.service
@@ -164,6 +165,8 @@ WantedBy=timers.target
 ```
 
 `systemctl daemon-reload && systemctl enable --now knight-seo-automation.timer` requires privileged access.
+
+Daily database backup is scheduled at 02:15 UTC with 14-day retention in `/var/backups/knight/daily`. It is an unencrypted SQLite online backup; protect the backup directory and add encryption if the backup medium is shared.
 
 ## AI Team page
 

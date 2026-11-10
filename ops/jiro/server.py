@@ -25,7 +25,7 @@ class PrivateTokenGate:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
         path = scope.get("path", "")
@@ -34,6 +34,9 @@ class PrivateTokenGate:
             supplied = headers.get(b"x-knight-internal-token", b"").decode("latin1")
             expected = token_value()
             if not expected or not hmac.compare_digest(supplied, expected):
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                    return
                 await send({"type": "http.response.start", "status": 403,
                             "headers": [(b"content-type", b"application/json")]})
                 await send({"type": "http.response.body", "body": b'{"error":"forbidden"}'})
