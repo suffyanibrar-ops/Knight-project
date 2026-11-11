@@ -47,7 +47,7 @@ ok("overview has quick actions", /Quick actions/i.test(overviewText) && /View en
 const navText = await page.locator("aside nav").innerText();
 ok("navigation has command center group", /Command Center/i.test(navText) && /Live Traffic/i.test(navText));
 ok("navigation has business, content, communication and system groups", /Business/i.test(navText) && /Content/i.test(navText) && /Communication/i.test(navText) && /System/i.test(navText));
-ok("navigation includes all requested modules", ["Enquiries", "AI & Conversations", "ROI Opportunities", "SEO", "Email", "Subscribers", "Settings"].every((label) => navText.includes(label)), navText);
+ok("navigation includes all current modules", ["Enquiries", "AI & Conversations", "SEO", "Email", "Subscribers", "Settings"].every((label) => navText.includes(label)), navText);
 
 // Live Traffic
 await page.goto(BASE + "/admin/traffic", { waitUntil: "domcontentloaded" });
@@ -69,7 +69,6 @@ for (const [path, heading, expected] of [
   ["/admin/content", "Content", /Manage blog/i],
   ["/admin/outbox", "Email", /Recent delivery failures|How delivery works/i],
   ["/admin/inbox", "Enquiries", /Total submissions/i],
-  ["/admin/estimates", "ROI Opportunities", /Modeled \/ illustrative opportunity/i],
   ["/admin/settings", "Settings", /First-party tracking/i],
   ["/admin/ai", "AI & Conversations", /Conversations/i],
 ]) {

@@ -43,21 +43,24 @@ export function AmbientField({
     const node = ref.current;
     if (!node || !finePointer || reduced) return;
     let frame = 0;
-    let nextX = 50;
-    let nextY = 40;
+    let clientX = 0;
+    let clientY = 0;
 
+    // Read layout once per animation frame, never inside the pointer event.
+    // The previous version called getBoundingClientRect() for every move and
+    // forced synchronous layout before the visual update.
     const apply = () => {
-      node.style.setProperty("--ambient-x", `${nextX}%`);
-      node.style.setProperty("--ambient-y", `${nextY}%`);
       frame = 0;
+      const rect = node.getBoundingClientRect();
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return;
+      node.style.setProperty("--ambient-x", `${((clientX - rect.left) / rect.width) * 100}%`);
+      node.style.setProperty("--ambient-y", `${((clientY - rect.top) / rect.height) * 100}%`);
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (node.dataset.ambientVisible !== "true") return;
-      const rect = node.getBoundingClientRect();
-      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
-      nextX = ((event.clientX - rect.left) / rect.width) * 100;
-      nextY = ((event.clientY - rect.top) / rect.height) * 100;
+      clientX = event.clientX;
+      clientY = event.clientY;
       if (!frame) frame = window.requestAnimationFrame(apply);
     };
 

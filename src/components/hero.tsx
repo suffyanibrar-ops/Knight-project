@@ -21,11 +21,6 @@ const promises = [
   { title: "Clear reporting", detail: "Monthly review", icon: "LineChart" },
 ];
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: (index: number) => ({ opacity: 1, y: 0, transition: { duration: 0.7, delay: 0.08 * index, ease: [0.22, 1, 0.36, 1] as const } }),
-};
-
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-mist-50 via-white to-white">
@@ -37,37 +32,27 @@ export function Hero() {
 
       <div data-hero-reveal className="shell relative grid items-center gap-12 pb-14 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-16">
         <div>
-          <motion.div initial="hidden" animate="show" custom={0} variants={fadeUp} className="flex flex-wrap items-center gap-2.5">
+          <div className="hero-fade-up flex flex-wrap items-center gap-2.5">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-3 py-1.5 text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-brand-700 shadow-sm">
               <Sparkles className="h-3.5 w-3.5" /> Custom tailored billing
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-white/70 px-3 py-1.5 text-[0.7rem] font-bold text-ink-700">
               <ShieldCheck className="h-3.5 w-3.5 text-mint-600" /> HIPAA compliant
             </span>
-          </motion.div>
+          </div>
 
-          <motion.h1
-            initial="hidden"
-            animate="show"
-            custom={1}
-            variants={fadeUp}
-            className="mt-5 max-w-[18ch] text-[clamp(2rem,5vw,3.75rem)] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink-950"
-          >
+          <h1 className="hero-heading-in mt-5 max-w-[18ch] text-[clamp(2rem,5vw,3.75rem)] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink-950">
             Medical billing and revenue cycle management for{" "}
             <span className="display-serif text-brand-600">independent practices.</span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
+          <p
             aria-hidden="true"
             data-hero-typewriter
-            initial="hidden"
-            animate="show"
-            custom={2}
-            variants={fadeUp}
-            className="mt-3 min-h-[1.5em] text-[0.9rem] font-bold tracking-tight text-brand-700/80 sm:text-[0.98rem]"
+            className="hero-fade-up hero-delay-2 mt-3 min-h-[1.5em] text-[0.9rem] font-bold tracking-tight text-brand-700/80 sm:text-[0.98rem]"
           >
             <Typewriter phrases={typePhrases} className="display-serif" announce={false} />
-          </motion.p>
+          </p>
 
           <svg aria-hidden viewBox="0 0 320 12" className="mt-1 h-2.5 w-[min(18rem,72%)] text-brand-400" fill="none" preserveAspectRatio="none">
             <motion.path
@@ -81,11 +66,11 @@ export function Hero() {
             />
           </svg>
 
-          <motion.p initial="hidden" animate="show" custom={2} variants={fadeUp} className="mt-6 max-w-xl text-[1rem] leading-relaxed text-ink-600/85 sm:text-[1.06rem]">
+          <p className="hero-fade-up hero-delay-2 mt-6 max-w-xl text-[1rem] leading-relaxed text-ink-600/85 sm:text-[1.06rem]">
             Knight Medical Billing is a medical billing and revenue cycle management partner built around independent and growing practices. From eligibility checks to final payment posting, our dedicated team runs the administrative side of revenue in your existing software. We also support multi-provider groups and facility teams where the fit is right.
-          </motion.p>
+          </p>
 
-          <motion.div initial="hidden" animate="show" custom={3} variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="hero-fade-up hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Magnetic strength={7}>
               <Link href="/schedule-form" className="btn btn-primary group px-6 py-4 text-[0.95rem]">
                 Talk With Knight
@@ -98,9 +83,9 @@ export function Hero() {
                 <ArrowRight className="h-4 w-4 text-brand-600 transition-transform group-hover:translate-x-1" strokeWidth={2.2} />
               </Link>
             </Magnetic>
-          </motion.div>
+          </div>
 
-          <motion.div initial="hidden" animate="show" custom={5} variants={fadeUp} className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="hero-fade-up hero-delay-5 mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {promises.map((promise) => (
               <div key={promise.title} className="rounded-2xl border border-mist-200 bg-white/80 p-3 backdrop-blur transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-sm">
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-50 text-brand-700">
@@ -110,20 +95,15 @@ export function Hero() {
                 <p className="mt-0.5 text-[0.62rem] font-semibold text-ink-600/80">{promise.detail}</p>
               </div>
             ))}
-          </motion.div>
+          </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto w-full max-w-[30rem] lg:max-w-none"
-        >
+        <div className="hero-panel-in relative mx-auto w-full max-w-[30rem] lg:max-w-none">
           <div aria-hidden className="absolute -inset-3 -z-10 rounded-[2.2rem] bg-gradient-to-tr from-brand-100/70 via-surface/40 to-mint-100/70" />
           <TiltCard max={4} className="relative">
             <HeroPanel />
           </TiltCard>
-        </motion.div>
+        </div>
       </div>
 
       {/* Revenue-flow rail: the intro's hairline lands here and becomes part of the hero. */}

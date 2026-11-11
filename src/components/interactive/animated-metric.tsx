@@ -55,8 +55,11 @@ export function AnimatedMetric({ value, className }: { value: string; className?
   }, [decimals, reduced, suffix, target, value]);
 
   return (
-    <span ref={ref} className={cn("tabular-nums", className)} aria-label={value}>
+    <span ref={ref} className={cn("tabular-nums", className)}>
       <span aria-hidden="true">{display}</span>
+      {/* A generic span cannot legally carry aria-label. Keep the animated
+          visual and expose the settled value as real text instead. */}
+      <span className="sr-only">{value}</span>
     </span>
   );
 }

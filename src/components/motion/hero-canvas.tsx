@@ -119,11 +119,20 @@ export function HeroCanvas() {
       if (!frame) frame = window.requestAnimationFrame(step);
     };
 
-    const onPointerMove = (event: PointerEvent) => {
+    let pointerFrame = 0;
+    let clientX = 0;
+    let clientY = 0;
+    const applyPointer = () => {
+      pointerFrame = 0;
       const rect = canvas.getBoundingClientRect();
-      pointer.x = event.clientX - rect.left;
-      pointer.y = event.clientY - rect.top;
+      pointer.x = clientX - rect.left;
+      pointer.y = clientY - rect.top;
       pointer.active = true;
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      clientX = event.clientX;
+      clientY = event.clientY;
+      if (!pointerFrame) pointerFrame = window.requestAnimationFrame(applyPointer);
     };
     const onPointerLeave = () => {
       pointer.active = false;
@@ -167,6 +176,7 @@ export function HeroCanvas() {
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
+      if (pointerFrame) window.cancelAnimationFrame(pointerFrame);
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
       window.removeEventListener("pointermove", onPointerMove);

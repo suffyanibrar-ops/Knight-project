@@ -70,7 +70,7 @@ ok("traffic CSV export is authenticated", exported.ok() && /text\/csv/.test(expo
 ok("no browser errors in Live Traffic", errors.length === 0, errors.join(" | "));
 
 // Clean up only the fixture rows and sessions created by this test.
-const db = new Database("data/app.db");
+const db = new Database(process.env.SQLITE_PATH ?? "data/app.db");
 db.prepare("DELETE FROM analytics_events WHERE path LIKE ? OR path LIKE ?").run(`%${UNIQUE_PATH}%`, `%${UNIQUE_PATH}-bot%`);
 db.prepare("DELETE FROM analytics_pageviews WHERE path LIKE ? OR path LIKE ?").run(`%${UNIQUE_PATH}%`, `%${UNIQUE_PATH}-bot%`);
 db.prepare("DELETE FROM analytics_sessions WHERE landing_path LIKE ? OR exit_path LIKE ?").run(`%${UNIQUE_PATH}%`, `%${UNIQUE_PATH}%`);

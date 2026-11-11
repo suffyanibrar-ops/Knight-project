@@ -1,7 +1,5 @@
-import "@fontsource-variable/manrope";
-import "@fontsource/instrument-serif/400.css";
-import "@fontsource/instrument-serif/400-italic.css";
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/motion/toast";
@@ -10,6 +8,28 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { site } from "@/lib/site";
 import { organizationSchema, websiteSchema, SITE_URL } from "@/lib/seo";
 import { JsonLd } from "@/components/structured-data";
+
+// Self-hosted copies of the exact existing fonts. Manrope is the body/LCP font
+// and is preloaded; Instrument Serif is display-only and stays non-preloaded.
+const manrope = localFont({
+  src: "../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2",
+  variable: "--font-manrope",
+  display: "swap",
+  weight: "200 800",
+  preload: true,
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+});
+const instrument = localFont({
+  src: [
+    { path: "../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2", weight: "400", style: "italic" },
+  ],
+  variable: "--font-instrument",
+  display: "swap",
+  weight: "400",
+  preload: false,
+  fallback: ["ui-serif", "Georgia", "serif"],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -63,7 +83,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-US" suppressHydrationWarning>
+    <html lang="en-US" suppressHydrationWarning className={`${manrope.variable} ${instrument.variable}`}>
       <head>
         <script
           // Runs before first paint so the saved theme applies without a flash.

@@ -1,28 +1,31 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import nextDynamic from "next/dynamic";
 import { JsonLd } from "@/components/structured-data";
 import { pageMetadata, faqSchema, breadcrumbSchema } from "@/lib/seo";
 import { AlertCircle, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronRight, Clock, FileCheck2, Headphones, LineChart, Mail, MapPin, Phone, Quote, ShieldCheck, Sparkles, TrendingUp, Workflow } from "lucide-react";
 import Link from "next/link";
 import { CtaBand } from "@/components/cta-band";
 import { Hero } from "@/components/hero";
-import { RevenuePipeline } from "@/components/interactive/revenue-pipeline";
 import { AnimatedMetric } from "@/components/interactive/animated-metric";
 import { Icon } from "@/components/icon";
 import { TiltCard } from "@/components/motion/tilt-card";
-import { ParallaxImage } from "@/components/motion/parallax";
 import { AmbientField } from "@/components/motion/ambient-field";
 import { photo } from "@/lib/photos";
 import { TextReveal } from "@/components/motion/text-reveal";
-import { StickySteps } from "@/components/motion/sticky-steps";
-import { BeforeAfter } from "@/components/motion/before-after";
-import { CardShuffle } from "@/components/motion/card-shuffle";
-import { TestimonialsCarousel } from "@/components/testimonials";
 import { perspectives } from "@/lib/testimonials";
-import { ProcessTimeline } from "@/components/process-timeline";
-import { SpecialtyExplorer } from "@/components/specialty-explorer";
 import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getArticles, getFaqs, getSpecialties } from "@/lib/data";
+// Below-the-fold interactive sections are hydrated from their own chunks instead
+// of increasing the critical hero bundle. They still server-render identically.
+const RevenuePipeline = nextDynamic(() => import("@/components/interactive/revenue-pipeline").then((module) => module.RevenuePipeline));
+const ParallaxImage = nextDynamic(() => import("@/components/motion/parallax").then((module) => module.ParallaxImage));
+const StickySteps = nextDynamic(() => import("@/components/motion/sticky-steps").then((module) => module.StickySteps));
+const BeforeAfter = nextDynamic(() => import("@/components/motion/before-after").then((module) => module.BeforeAfter));
+const CardShuffle = nextDynamic(() => import("@/components/motion/card-shuffle").then((module) => module.CardShuffle));
+const TestimonialsCarousel = nextDynamic(() => import("@/components/testimonials").then((module) => module.TestimonialsCarousel));
+const ProcessTimeline = nextDynamic(() => import("@/components/process-timeline").then((module) => module.ProcessTimeline));
+const SpecialtyExplorer = nextDynamic(() => import("@/components/specialty-explorer").then((module) => module.SpecialtyExplorer));
 import { audiences, benefits, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
 import { softwarePlatforms } from "@/lib/seo-content";
 
