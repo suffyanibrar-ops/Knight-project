@@ -11,7 +11,7 @@ import { ShareLinks } from "@/components/blog/share-links";
 import { TableOfContents } from "@/components/blog/table-of-contents";
 import { JsonLd } from "@/components/structured-data";
 import { getAdjacentPosts, getPublicPost, getRelatedPosts } from "@/lib/blog";
-import { SITE_URL, breadcrumbSchema, stripBrandSuffix } from "@/lib/seo";
+import { SITE_URL, breadcrumbSchema, fitSeoDescription, fitSeoTitle } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -40,14 +40,14 @@ export async function generateMetadata({ params }: { params: ArticleParams }): P
   if ("redirectTo" in result) permanentRedirect(result.redirectTo);
 
   const post = result.post;
-  const title = stripBrandSuffix(post.seoTitle?.trim() || post.title);
-  const description = (post.seoDescription?.trim() || post.excerpt?.trim() || site.description).slice(0, 200);
+  const title = fitSeoTitle(post.seoTitle?.trim() || post.title);
+  const description = fitSeoDescription(post.seoDescription?.trim() || post.excerpt?.trim() || site.description);
   const canonical = canonicalUrlFor(post);
   const image = post.socialImage?.trim() || blogImageUrl(post) || DEFAULT_OG_IMAGE;
   const imageUrl = /^https?:\/\//i.test(image) ? image : `${SITE_URL}${image}`;
 
   const metadata: Metadata = {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },

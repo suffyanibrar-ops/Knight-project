@@ -49,6 +49,7 @@ export function NewsletterForm({ tone = "dark" }: { tone?: "dark" | "light" }) {
             setState("idle");
           }}
           required
+          autoComplete="email"
           placeholder="Work email"
           aria-label="Work email"
           className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${

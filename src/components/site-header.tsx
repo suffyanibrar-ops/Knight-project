@@ -166,7 +166,7 @@ export function SiteHeader() {
               className="grid h-11 w-11 place-items-center rounded-full border border-mist-200 text-ink-900 lg:hidden"
               aria-label="Open menu"
               aria-expanded={mobileOpen}
-              aria-controls="mobile-navigation"
+              aria-controls={mobileOpen ? "mobile-navigation" : undefined}
             >
               <Menu className="h-5 w-5" strokeWidth={2.2} />
             </button>

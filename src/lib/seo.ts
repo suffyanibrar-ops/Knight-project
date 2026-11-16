@@ -18,6 +18,58 @@ export function stripBrandSuffix(title: string): string {
   return cleaned || site.name;
 }
 
+const BRAND_SUFFIX = " | Knight Medical Billing";
+const TITLE_LIMIT = 60;
+const DESCRIPTION_LIMIT = 160;
+
+/**
+ * Shared title budget: keep the primary topic, prefer the lead clause before a
+ * separator, and only then use a word-boundary fit. Brand is appended once.
+ */
+export function fitSeoTitle(title: string): string {
+  const base = stripBrandSuffix(title).replace(/\s+/g, " ").trim();
+  const withBrand = `${base}${BRAND_SUFFIX}`;
+  if (withBrand.length <= TITLE_LIMIT) return withBrand;
+  for (const separator of [" | ", " — ", " – ", ": "]) {
+    const lead = base.split(separator)[0].trim();
+    if (lead && `${lead}${BRAND_SUFFIX}`.length <= TITLE_LIMIT) return `${lead}${BRAND_SUFFIX}`;
+  }
+  // The brand suffix is optional. Prefer the complete primary phrase without it
+  // over an awkward fragment followed by the brand.
+  if (base.length <= TITLE_LIMIT) return base;
+  for (const separator of [" | ", " — ", " – ", ": "]) {
+    const lead = base.split(separator)[0].trim();
+    if (lead && lead.length <= TITLE_LIMIT) return lead;
+  }
+  const words = base.split(" ");
+  const stopWords = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "with"]);
+  let short = "";
+  for (const word of words) {
+    const next = short ? `${short} ${word}` : word;
+    if (next.length > TITLE_LIMIT) break;
+    short = next;
+  }
+  while (short && stopWords.has(short.split(" ").at(-1)!.toLowerCase())) short = short.split(" ").slice(0, -1).join(" ");
+  return short || base.slice(0, TITLE_LIMIT).trim();
+}
+
+/** Keep a useful, unique description at the meta-description budget. */
+export function fitSeoDescription(description: string): string {
+  const clean = description.replace(/\s+/g, " ").trim();
+  if (clean.length <= DESCRIPTION_LIMIT) return clean;
+  const sentence = clean.match(/^.{80,159}?[.!?](?:\s|$)/)?.[0]?.trim();
+  if (sentence && sentence.length >= 90) return sentence;
+  // Prefer a complete clause over cutting mid-word or mid-list.
+  const window = clean.slice(0, DESCRIPTION_LIMIT - 1);
+  const boundaries = [". ", "! ", "? ", "; ", " — ", ", "].map((mark) => window.lastIndexOf(mark)).filter((index) => index >= 90);
+  if (boundaries.length) {
+    const cut = window.slice(0, Math.max(...boundaries)).trim().replace(/[,;:—-]+$/, "").trim();
+    if (cut && cut.length + 1 <= DESCRIPTION_LIMIT) return `${cut}.`;
+  }
+  const cut = window.replace(/\s+\S*$/, "").trim();
+  return `${cut}.`;
+}
+
 type SeoInput = {
   title: string;
   description: string;
@@ -36,15 +88,17 @@ type SeoInput = {
 export function pageMetadata({ title, description, path, image = "/images/og-knight-medical-billing.jpg", keywords = [], type = "website", publishedTime, noindex = false }: SeoInput): Metadata {
   const url = `${SITE_URL}${path === "/" ? "" : path}`;
   const cleanTitle = stripBrandSuffix(title);
+  const fittedTitle = cleanTitle.toLowerCase() === site.name.toLowerCase() ? site.name : fitSeoTitle(cleanTitle);
+  const fittedDescription = fitSeoDescription(description);
   return {
-    title: cleanTitle.toLowerCase() === site.name.toLowerCase() ? { absolute: site.name } : cleanTitle,
-    description,
+    title: { absolute: fittedTitle },
+    description: fittedDescription,
     keywords: keywords.length ? keywords : undefined,
     alternates: { canonical: url },
     robots: noindex ? { index: false, follow: false } : { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
     openGraph: {
-      title,
-      description,
+      title: fittedTitle,
+      description: fittedDescription,
       url,
       siteName: site.name,
       type,
@@ -54,8 +108,8 @@ export function pageMetadata({ title, description, path, image = "/images/og-kni
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      description,
+      title: fittedTitle,
+      description: fittedDescription,
       images: [image],
     },
   };
@@ -70,6 +124,7 @@ export function organizationSchema() {
     alternateName: "Knight Medical Billing (KMB)",
     description: site.description,
     url: SITE_URL,
+    sameAs: Object.values(site.socials),
     logo: `${SITE_URL}${site.logo}`,
     image: `${SITE_URL}/images/og-knight-medical-billing.jpg`,
     telephone: "+1-812-994-0046",

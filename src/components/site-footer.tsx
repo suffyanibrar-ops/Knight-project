@@ -81,14 +81,14 @@ export function SiteFooter() {
 
             <div className="mt-5 flex items-center gap-2">
               <ThemeToggle variant="dark" />
-              <span className="text-[0.7rem] font-semibold text-white/45">Light / dark theme</span>
+              <span className="text-[0.7rem] font-semibold text-white/65">Light / dark theme</span>
             </div>
           </div>
 
           {/* Links + contact */}
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <nav aria-labelledby="footer-services">
-              <p id="footer-services" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/40">
+              <p id="footer-services" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/65">
                 Services
               </p>
               <ul className="space-y-2">
@@ -108,7 +108,7 @@ export function SiteFooter() {
             </nav>
 
             <nav aria-labelledby="footer-serve">
-              <p id="footer-serve" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/40">
+              <p id="footer-serve" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/65">
                 Who we serve
               </p>
               <ul className="space-y-2">
@@ -128,7 +128,7 @@ export function SiteFooter() {
             </nav>
 
             <nav aria-labelledby="footer-company">
-              <p id="footer-company" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/40">
+              <p id="footer-company" className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/65">
                 Company
               </p>
               <ul className="space-y-2">
@@ -143,7 +143,7 @@ export function SiteFooter() {
             </nav>
 
             <div>
-              <p className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/40">Contact</p>
+              <p className="mb-3 text-[0.66rem] font-extrabold uppercase tracking-[0.18em] text-white/65">Contact</p>
               <ul className="space-y-2.5 text-[0.82rem] text-white/65">
                 <li>
                   <a href={site.phoneHref} className="flex items-start gap-2 transition-colors hover:text-white">
@@ -172,7 +172,7 @@ export function SiteFooter() {
               </div>
 
               <div className="mt-4 max-w-[15rem]">
-                <p className="mb-1.5 text-[0.66rem] font-extrabold uppercase tracking-[0.14em] text-white/40">Billing insights</p>
+                <p className="mb-1.5 text-[0.66rem] font-extrabold uppercase tracking-[0.14em] text-white/65">Billing insights</p>
                 <NewsletterForm />
               </div>
             </div>
@@ -180,10 +180,10 @@ export function SiteFooter() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-white/10 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[0.72rem] text-white/40">
+          <p className="text-[0.72rem] text-white/65">
             © {new Date().getFullYear()} {site.name}. All rights reserved.
           </p>
-          <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2 text-[0.72rem] text-white/45">
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2 text-[0.72rem] text-white/65">
             <Link href="/privacy-policy" className="transition-colors hover:text-white">
               Privacy
             </Link>

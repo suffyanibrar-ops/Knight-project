@@ -29,8 +29,8 @@ const SpecialtyExplorer = nextDynamic(() => import("@/components/specialty-explo
 import { audiences, benefits, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
 import { softwarePlatforms } from "@/lib/seo-content";
 
-const homeTitle = "Knight Medical Billing | Custom Tailored Medical Billing & RCM for Independent Practices";
-const homeMetadata = pageMetadata({ title: homeTitle, description: 'Medical billing and revenue cycle management for independent and growing practices. Knight works inside your existing software with claims, denials, A/R, posting, credentialing and clear reporting. No prepayment, no hidden fees.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'medical billing for independent practices'] });
+const homeTitle = "Medical Billing & RCM for Independent Practices";
+const homeMetadata = pageMetadata({ title: homeTitle, description: 'Medical billing and revenue cycle management for independent practices. Claims, denials, A/R, posting and credentialing inside your existing software. No prepayment or hidden fees.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'medical billing for independent practices'] });
 
 // Keep the brand first in the browser tab / search result title. The shared
 // title template appends the brand only when it is not already leading.
@@ -446,7 +446,7 @@ export default async function HomePage() {
             </div>
 
             <div>
-              <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-white/40">Hospitals, systems &amp; facilities</p>
+              <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-white/65">Hospitals, systems &amp; facilities</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {facilityAudiences.map((audience, index) => (
                   <Reveal key={audience.slug} delay={index * 0.05}>

@@ -377,13 +377,13 @@ html[data-motion="reduced"] *::after {
   }
 
   .btn-accent {
-    background-color: var(--color-brand-500);
+    background-color: var(--color-brand-700);
     color: #fff;
-    box-shadow: 0 16px 30px -16px rgba(25, 163, 205, 0.65);
+    box-shadow: 0 16px 30px -16px rgba(15, 105, 136, 0.55);
   }
 
   .btn-accent:hover {
-    background-color: var(--color-brand-400);
+    background-color: var(--color-brand-600);
   }
 
   .btn-light {

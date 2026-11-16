@@ -148,8 +148,8 @@ export function RevenuePipeline() {
           <div className="grid lg:grid-cols-[0.88fr_1.12fr]">
             <div className="min-w-0 border-b border-mist-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
               <div className="flex items-center justify-between px-1">
-                <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.18em] text-ink-600/65">The cycle, in motion</p>
-                <p className="text-[0.58rem] font-bold tracking-[0.08em] text-ink-600/45">{String(active + 1).padStart(2, "0")} / 08</p>
+                <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.18em] text-ink-600/85">The cycle, in motion</p>
+                <p className="text-[0.58rem] font-bold tracking-[0.08em] text-ink-600/80">{String(active + 1).padStart(2, "0")} / 08</p>
               </div>
 
               <div role="tablist" aria-orientation="vertical" aria-label="Revenue cycle stages" className="relative mt-3">
@@ -181,12 +181,12 @@ export function RevenuePipeline() {
                           isActive ? "bg-brand-50/80" : "hover:bg-mist-50",
                         )}
                       >
-                        <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 text-[0.58rem] font-extrabold transition-colors", isDone ? "border-mint-500 bg-mint-500 text-white" : isActive ? "border-brand-500 bg-surface text-brand-700" : "border-mist-200 bg-surface text-ink-600/55")}>
+                        <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 text-[0.58rem] font-extrabold transition-colors", isDone ? "border-mint-500 bg-mint-500 text-white" : isActive ? "border-brand-500 bg-surface text-brand-700" : "border-mist-200 bg-surface text-ink-600/80")}>
                           {isDone ? <Check className="h-3 w-3" strokeWidth={3.5} /> : String(index + 1).padStart(2, "0")}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className={cn("block text-[0.82rem] font-extrabold leading-tight", isActive ? "text-ink-950" : "text-ink-800")}>{item.label}</span>
-                          <span className="mt-0.5 block truncate text-[0.64rem] font-semibold text-ink-600/60">{item.short}</span>
+                          <span className="mt-0.5 block truncate text-[0.64rem] font-semibold text-ink-600/80">{item.short}</span>
                         </span>
                         <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isActive ? "translate-x-0 text-brand-600" : "-translate-x-1 text-ink-600/20 group-hover:translate-x-0 group-hover:text-brand-500")} />
                       </button>
@@ -204,7 +204,7 @@ export function RevenuePipeline() {
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-300/30 bg-brand-500/10 px-2.5 py-1 text-[0.56rem] font-extrabold uppercase tracking-[0.14em] text-brand-200">
                     Stage {String(active + 1).padStart(2, "0")}
                   </span>
-                  <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-white/35">Revenue cycle</span>
+                  <span className="text-[0.56rem] font-bold uppercase tracking-[0.14em] text-white/65">Revenue cycle</span>
                 </div>
 
                 <AnimatePresence mode="wait" initial={false}>
@@ -219,16 +219,16 @@ export function RevenuePipeline() {
                     <p className="mt-1 text-[0.76rem] font-semibold text-brand-200/80">{stage.short}</p>
                     <div className="mt-6 grid gap-4 sm:grid-cols-2">
                       <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-                        <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-white/40">Where it leaks</p>
+                        <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-white/65">Where it leaks</p>
                         <p className="mt-2 text-[0.8rem] leading-relaxed text-white/75">{stage.leak}</p>
-                        <p className="mt-2 text-[0.74rem] leading-relaxed text-white/45">{stage.impact}</p>
+                        <p className="mt-2 text-[0.74rem] leading-relaxed text-white/70">{stage.impact}</p>
                       </div>
                       <div className="rounded-2xl border border-mint-300/20 bg-mint-500/[0.07] p-4">
                         <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-mint-200/70">How Knight closes it</p>
                         <p className="mt-2 text-[0.8rem] leading-relaxed text-white/80">{stage.fix}</p>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:col-span-2">
-                        <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-white/40">What to monitor</p>
+                        <p className="text-[0.54rem] font-extrabold uppercase tracking-[0.16em] text-white/65">What to monitor</p>
                         <p className="mt-2 text-[0.8rem] leading-relaxed text-white/65">{stage.monitor}</p>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ export function RevenuePipeline() {
                       <TrackedLink href={stage.serviceHref} conversion="service_cta" conversionParams={{ surface: "revenue_diagnostic", service: stage.service }} className="group inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-brand-200 transition-colors hover:text-white">
                         Explore {stage.service} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                       </TrackedLink>
-                      <Link href="/schedule-form" className="text-[0.72rem] font-semibold text-white/40 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/80">
+                      <Link href="/schedule-form" className="text-[0.72rem] font-semibold text-white/65 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/80">
                         Talk With Knight about this stage
                       </Link>
                     </div>
