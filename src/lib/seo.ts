@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { site } from "./site";
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? site.url);
+export const SITE_URL = site.url;
 
 /**
  * The root layout appends "| Knight Medical Billing" via the title template.
@@ -53,22 +53,63 @@ export function fitSeoTitle(title: string): string {
   return short || base.slice(0, TITLE_LIMIT).trim();
 }
 
-/** Keep a useful, unique description at the meta-description budget. */
+/**
+ * Dangling connectors left behind by a clause cut ("…reporting and") read as a
+ * broken sentence in a search result, so they are trimmed before the period is added.
+ */
+const DANGLING_WORDS = new Set([
+  "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "nor", "of", "on",
+  "or", "our", "so", "that", "the", "their", "then", "these", "this", "to", "was", "were",
+  "which", "while", "with", "without", "your",
+]);
+
+function endSentence(fragment: string): string {
+  let text = fragment.trim().replace(/[,;:–—-]+$/, "").trim();
+  while (text) {
+    const last = text.split(" ").at(-1)!.toLowerCase().replace(/[^a-z']/g, "");
+    if (!DANGLING_WORDS.has(last)) break;
+    text = text.split(" ").slice(0, -1).join(" ").trim();
+  }
+  return text ? `${text}.` : "";
+}
+
+/**
+ * Keep a useful, unique description at the meta-description budget.
+ *
+ * Priority: keep whole sentences that fit, then close on a clause boundary,
+ * then finally on a whole word. A description is never cut mid-word and never
+ * left hanging on a connector such as "and" or "for".
+ */
 export function fitSeoDescription(description: string): string {
   const clean = description.replace(/\s+/g, " ").trim();
   if (clean.length <= DESCRIPTION_LIMIT) return clean;
-  const sentence = clean.match(/^.{80,159}?[.!?](?:\s|$)/)?.[0]?.trim();
-  if (sentence && sentence.length >= 90) return sentence;
-  // Prefer a complete clause over cutting mid-word or mid-list.
-  const window = clean.slice(0, DESCRIPTION_LIMIT - 1);
-  const boundaries = [". ", "! ", "? ", "; ", " — ", ", "].map((mark) => window.lastIndexOf(mark)).filter((index) => index >= 90);
-  if (boundaries.length) {
-    const cut = window.slice(0, Math.max(...boundaries)).trim().replace(/[,;:—-]+$/, "").trim();
-    if (cut && cut.length + 1 <= DESCRIPTION_LIMIT) return `${cut}.`;
+
+  // 1. Build the description from whole sentences while they fit together.
+  const sentences = clean.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((s) => s.trim()) ?? [];
+  let built = "";
+  for (const sentence of sentences) {
+    const next = built ? `${built} ${sentence}` : sentence;
+    if (next.length > DESCRIPTION_LIMIT) break;
+    built = next;
   }
-  const cut = window.replace(/\s+\S*$/, "").trim();
-  return `${cut}.`;
+  if (built.length >= 90) return built;
+
+  // 2. One very long sentence: close on the last clause boundary that still fits.
+  const window = clean.slice(0, DESCRIPTION_LIMIT + 1);
+  const boundaries = [". ", "! ", "? ", "; ", " — ", ", "]
+    .map((mark) => window.lastIndexOf(mark))
+    .filter((index) => index >= 60 && index < DESCRIPTION_LIMIT);
+  for (const index of boundaries.sort((a, b) => b - a)) {
+    const candidate = endSentence(window.slice(0, index));
+    if (candidate.length >= 100 && candidate.length <= DESCRIPTION_LIMIT) return candidate;
+  }
+
+  // 3. Last resort: end on a whole word and drop trailing connectors.
+  const cut = window.slice(0, DESCRIPTION_LIMIT - 1).replace(/\s+\S*$/, "").trim();
+  return endSentence(cut) || `${cut}.`;
 }
+
+const DEFAULT_OG_IMAGE = "/images/og-knight-medical-billing.jpg";
 
 type SeoInput = {
   title: string;
@@ -85,11 +126,15 @@ type SeoInput = {
  * Central metadata builder so every route ships a canonical URL, Open Graph
  * card, Twitter card and robots directive that agree with the sitemap.
  */
-export function pageMetadata({ title, description, path, image = "/images/og-knight-medical-billing.jpg", keywords = [], type = "website", publishedTime, noindex = false }: SeoInput): Metadata {
+export function pageMetadata({ title, description, path, image = DEFAULT_OG_IMAGE, keywords = [], type = "website", publishedTime, noindex = false }: SeoInput): Metadata {
   const url = `${SITE_URL}${path === "/" ? "" : path}`;
   const cleanTitle = stripBrandSuffix(title);
   const fittedTitle = cleanTitle.toLowerCase() === site.name.toLowerCase() ? site.name : fitSeoTitle(cleanTitle);
   const fittedDescription = fitSeoDescription(description);
+  // The 1200×630 dimensions describe the shared social card only. Article and
+  // guide images have different proportions, so declaring those dimensions for
+  // every image would publish metadata that does not match the asset.
+  const isSocialCard = image === DEFAULT_OG_IMAGE;
   return {
     title: { absolute: fittedTitle },
     description: fittedDescription,
@@ -103,7 +148,7 @@ export function pageMetadata({ title, description, path, image = "/images/og-kni
       siteName: site.name,
       type,
       locale: "en_US",
-      images: [{ url: image, width: 1200, height: 630, alt: `${site.name} — ${title}` }],
+      images: [{ url: image, alt: `${site.name} — ${cleanTitle}`, ...(isSocialCard ? { width: 1200, height: 630 } : {}) }],
       ...(publishedTime ? { publishedTime } : {}),
     },
     twitter: {

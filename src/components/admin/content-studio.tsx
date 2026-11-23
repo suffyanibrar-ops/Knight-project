@@ -282,7 +282,7 @@ function WorkflowCard({ workflow, busy, onAction, compact = false }: { workflow:
           {workflow.audience && <p className="mt-0.5 text-[0.68rem] text-ink-600/65">Audience: {workflow.audience}</p>}
         </div>
         {post && (
-          <Link href={`/admin/blog/${post.id}`} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-mist-200 px-2.5 py-1.5 text-[0.64rem] font-bold text-ink-700 hover:border-brand-300">
+          <Link href={`/admin/blog/editor/${post.id}`} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-mist-200 px-2.5 py-1.5 text-[0.64rem] font-bold text-ink-700 hover:border-brand-300">
             Edit draft <ArrowRight className="h-3 w-3" />
           </Link>
         )}

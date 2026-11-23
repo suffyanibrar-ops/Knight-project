@@ -73,7 +73,7 @@ export default async function BlogDashboardPage({ searchParams }: { searchParams
               <FolderTree className="h-3.5 w-3.5" /> Categories &amp; tags
             </Link>
             <Link
-              href="/admin/blog/new"
+              href="/admin/blog/editor/new"
               className="inline-flex items-center gap-1.5 rounded-full bg-night-soft px-4 py-2.5 text-[0.72rem] font-bold text-white transition-colors hover:bg-brand-600"
             >
               <PenSquare className="h-3.5 w-3.5" /> New post
@@ -156,7 +156,7 @@ export default async function BlogDashboardPage({ searchParams }: { searchParams
           <ul className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
             {stats.recentlyUpdated.map((post) => (
               <li key={post.id} className="min-w-0">
-                <Link href={`/admin/blog/${post.id}`} className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-mist-50">
+                <Link href={`/admin/blog/editor/${post.id}`} className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-mist-50">
                   <BlogStatusBadge status={post.status} />
                   <span className="truncate text-[0.74rem] font-semibold text-ink-800">{post.title}</span>
                   <span className="ml-auto shrink-0 text-[0.62rem] text-ink-600/60">{formatDate(post.updatedAt)}</span>
@@ -201,14 +201,14 @@ export default async function BlogDashboardPage({ searchParams }: { searchParams
                       <div className="flex items-start gap-3">
                         {post.featuredImage ? (
                           // eslint-disable-next-line @next/next/no-img-element -- admin thumbnails may be imported media or trusted hotlinks
-                          <img src={post.featuredImage} alt="" className="h-10 w-14 shrink-0 rounded-lg border border-mist-200 object-cover" />
+                          <img src={post.featuredImage} alt={post.title ? `Featured image for ${post.title}` : "Article featured image"} className="h-10 w-14 shrink-0 rounded-lg border border-mist-200 object-cover" />
                         ) : (
                           <span className="grid h-10 w-14 shrink-0 place-items-center rounded-lg bg-mist-100 text-ink-600/40">
                             <Newspaper className="h-4 w-4" />
                           </span>
                         )}
                         <div className="min-w-0">
-                          <Link href={`/admin/blog/${post.id}`} className="line-clamp-1 text-[0.82rem] font-extrabold text-ink-950 hover:text-brand-700">
+                          <Link href={`/admin/blog/editor/${post.id}`} className="line-clamp-1 text-[0.82rem] font-extrabold text-ink-950 hover:text-brand-700">
                             {post.title}
                           </Link>
                           <p className="truncate text-[0.66rem] text-ink-600/70">/blog/{post.slug}</p>
@@ -227,7 +227,7 @@ export default async function BlogDashboardPage({ searchParams }: { searchParams
                     <td className="px-3 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
-                          href={`/admin/blog/${post.id}`}
+                          href={`/admin/blog/editor/${post.id}`}
                           className="rounded-lg bg-brand-50 px-2.5 py-1.5 text-[0.66rem] font-bold text-brand-700 transition-colors hover:bg-brand-500 hover:text-white"
                         >
                           Edit

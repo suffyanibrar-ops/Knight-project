@@ -17,7 +17,7 @@ import { perspectives } from "@/lib/testimonials";
 export const metadata: Metadata = pageMetadata({
   title: "Results & Performance | How We Measure Billing",
   description:
-    "See how Knight Medical Billing makes the revenue cycle visible: clean-claim review, daily submission worklists, denial follow-up, A/R aging and monthly reporting. Use the illustrative opportunity model to frame a conversation.",
+    "See how Knight Medical Billing makes the revenue cycle visible: clean-claim review, daily worklists, denial follow-up, A/R aging and monthly reporting.",
   path: "/results",
   keywords: ["medical billing results", "revenue cycle reporting", "medical billing performance"],
 });
@@ -109,7 +109,7 @@ export default function ResultsPage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-14 text-white sm:py-20">
-        <ParallaxImage src={photo.analyticsLaptop} distance={32} className="opacity-40" />
+        <ParallaxImage src={photo.analyticsLaptop} alt="Revenue cycle analytics dashboard on a laptop" distance={32} className="opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" aria-hidden />
         <div className="shell relative grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-14">
           <Reveal>
@@ -224,7 +224,9 @@ export default function ResultsPage() {
             </h2>
             <p className="mt-3 text-[0.92rem] leading-relaxed text-ink-600/80">These themes are labelled clearly and are not attributed to named practices. Read more about our publication standard for verified results.</p>
           </Reveal>
-          <div className="mt-6">
+          {/* The carousel is designed for a dark surface; without this panel its
+              white-on-light text rendered at ~1:1 on the light section. */}
+          <div className="mt-6 rounded-[2.5rem] bg-night p-4 text-white sm:p-6">
             <TestimonialsCarousel items={perspectives} />
           </div>
           <Link href="/results/case-studies" className="mt-6 inline-flex items-center gap-1.5 text-[0.8rem] font-extrabold text-brand-700">Case-study publication standard <ArrowRight className="h-3.5 w-3.5" /></Link>

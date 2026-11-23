@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNull, notInArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { blogPosts, contentWorkflows } from "@/db/schema";
 import { createPost, getAdminPost, listAdminPosts, setPostStatus, type BlogPostSummary } from "./blog";
@@ -348,8 +348,16 @@ export function validateInternalLinks(links: WorkflowInternalLink[] | undefined)
   }).slice(0, 8);
 }
 
-export async function listContentWorkflows(limit = 30): Promise<WorkflowView[]> {
+/**
+ * Editorial workspace listing.
+ *
+ * Published (and archived/trashed) articles are excluded in SQL: once a post is
+ * live it belongs to Published Articles, not to the idea/draft queues. Pass
+ * `includePublished` only for an explicit history view.
+ */
+export async function listContentWorkflows(limit = 30, options: { includePublished?: boolean } = {}): Promise<WorkflowView[]> {
   try {
+    const hiddenStatuses = ["published", "archived", "trashed"] as const;
     const rows = await db
       .select({
         id: contentWorkflows.id,
@@ -369,6 +377,7 @@ export async function listContentWorkflows(limit = 30): Promise<WorkflowView[]> 
       })
       .from(contentWorkflows)
       .leftJoin(blogPosts, eq(contentWorkflows.blogPostId, blogPosts.id))
+      .where(options.includePublished ? undefined : or(isNull(blogPosts.status), notInArray(blogPosts.status, [...hiddenStatuses])))
       .orderBy(desc(contentWorkflows.updatedAt))
       .limit(Math.min(Math.max(limit, 1), 100));
     return rows.map((row) => ({
@@ -407,8 +416,12 @@ export async function listContentWorkflows(limit = 30): Promise<WorkflowView[]> 
   }
 }
 
+/**
+ * Direct lookup by id. Published workflows are included here on purpose: the
+ * workspace list hides them, but publishing and audit paths still need the row.
+ */
 export async function getContentWorkflow(id: number): Promise<WorkflowView | null> {
-  const all = await listContentWorkflows(100);
+  const all = await listContentWorkflows(100, { includePublished: true });
   return all.find((row) => row.id === id) ?? null;
 }
 

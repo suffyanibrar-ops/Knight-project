@@ -78,7 +78,7 @@ export function StickySteps({ steps }: { steps: StickyStep[] }) {
                 <span
                   className={cn(
                     "relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 text-[0.7rem] font-extrabold transition-colors",
-                    isActive ? "border-brand-500 bg-brand-500 text-white" : "border-mist-200 bg-surface text-ink-600",
+                    isActive ? "border-brand-600 bg-brand-600 text-white" : "border-mist-200 bg-surface text-ink-600",
                   )}
                   aria-hidden
                 >
@@ -91,7 +91,7 @@ export function StickySteps({ steps }: { steps: StickyStep[] }) {
                   <p className="mt-1 text-[0.83rem] leading-relaxed text-ink-600">{step.body}</p>
                   {/* Mobile: show the image inline for the active step */}
                   <div className="relative mt-3 aspect-[16/10] overflow-hidden rounded-xl lg:hidden">
-                    <Image src={step.image} alt="" aria-hidden fill sizes="(max-width: 1024px) 92vw, 480px" className="object-cover" />
+                    <Image src={step.image} alt={step.alt} aria-hidden fill sizes="(max-width: 1024px) 92vw, 480px" className="object-cover" />
                   </div>
                   <ul className="mt-2.5 grid gap-1.5">
                     {step.points.map((point) => (

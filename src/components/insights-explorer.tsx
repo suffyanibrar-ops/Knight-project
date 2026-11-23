@@ -68,7 +68,7 @@ export function InsightsExplorer({ articles }: { articles: Article[] }) {
             >
               <Link href={`/insights/${article.slug}`} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg">
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  <Image src={article.image} alt="" fill className="object-cover transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                  <Image src={article.image} alt={article.title} fill className="object-cover transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink-950/35 to-transparent" />
                   <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-brand-700 backdrop-blur">{article.category}</span>
                 </div>

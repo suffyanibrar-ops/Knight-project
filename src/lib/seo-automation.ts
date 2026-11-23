@@ -10,8 +10,23 @@ import { createContentWorkflow, knownInternalPaths } from "./content-workflow";
 import { jiroConfigured, jiroExtract, jiroHealth, jiroSearch } from "./jiro-client";
 import { getGscConnectionSummary } from "./gsc-oauth";
 import { SITE_URL } from "./seo";
+import { getOAuthAccessToken } from "./gsc-oauth";
+import { requireBingKey } from "./seo/bing-sync";
+import { settledDates, SYNC_SETTING_DEFAULTS, isSyncTask, runSyncTask, syncIntervalHours, type BingStepInput, type GscStepInput, type SyncTask } from "./seo/scheduler";
+import { runConsolidationTask, runCrawlTask } from "./seo/pipeline";
+import { recordSyncRun } from "./seo/observe";
 
-export const SEO_TASK_TYPES = ["opportunity_discovery", "technical_audit", "content_refresh"] as const;
+export const SEO_TASK_TYPES = [
+  "opportunity_discovery",
+  "technical_audit",
+  "content_refresh",
+  // Sync tasks reuse the same run table, locks and interval mechanism.
+  "gsc_sync",
+  "bing_sync",
+  // Pipeline tasks: crawl produces observations, consolidation produces findings.
+  "crawl_audit",
+  "consolidate_findings",
+] as const;
 export type SeoTaskType = (typeof SEO_TASK_TYPES)[number];
 
 export const SEO_SETTING_DEFAULTS: Record<string, string> = {
@@ -20,26 +35,42 @@ export const SEO_SETTING_DEFAULTS: Record<string, string> = {
   audit_interval_hours: "168",
   refresh_interval_hours: "168",
   refresh_min_age_days: "90",
-  max_queries_per_run: "4",
+  max_queries_per_run: "6",
   max_competitor_pages: "2",
-  max_opportunities_per_run: "6",
-  daily_ai_runs: "4",
+  max_opportunities_per_run: "15",
+  daily_ai_runs: "6",
+  ...SYNC_SETTING_DEFAULTS,
+  crawl_interval_hours: "24",
+  crawl_max_pages: "120",
+  consolidate_interval_hours: "6",
+  findings_lookback_days: "14",
 };
 
 const TASK_LABELS: Record<SeoTaskType, string> = {
   opportunity_discovery: "Opportunity discovery",
   technical_audit: "Technical SEO audit",
   content_refresh: "Content refresh review",
+  gsc_sync: "Search Console sync",
+  bing_sync: "Bing Webmaster sync",
+  crawl_audit: "Technical crawl",
+  consolidate_findings: "Findings consolidation",
 };
 
+/**
+ * Seed queries supply topic breadth, not a fixed reader. They intentionally span
+ * services, facility settings and specialty workflows so generation does not
+ * collapse into a single "independent practice" theme.
+ */
 export const DEFAULT_SEED_QUERIES = [
-  "medical billing services for independent practices",
-  "medical billing company for small practice",
-  "revenue cycle management services independent practice",
+  "medical billing services for healthcare organizations",
+  "revenue cycle management for hospitals",
+  "emergency department billing services",
+  "urgent care billing services",
   "mental health billing services",
+  "behavioral health authorization and denials",
   "physical therapy billing services",
   "podiatry billing services",
-  "medical credentialing services for practices",
+  "medical credentialing services",
   "denial management medical billing services",
   "accounts receivable recovery medical billing",
   "medical billing software support services",
@@ -120,6 +151,10 @@ export async function setSeoSettings(patch: Record<string, unknown>): Promise<Se
 }
 
 function intervalMs(settings: SeoAutomationSettings, task: SeoTaskType): number {
+  // Sync intervals are clamped to 1–168h so a bad setting cannot poll hard or stall forever.
+  if (isSyncTask(task)) return syncIntervalHours(task, settings) * 60 * 60 * 1000;
+  if (task === "crawl_audit") return Math.min(168, Math.max(1, num(settings.crawl_interval_hours, 24))) * 60 * 60 * 1000;
+  if (task === "consolidate_findings") return Math.min(168, Math.max(1, num(settings.consolidate_interval_hours, 6))) * 60 * 60 * 1000;
   const key = task === "opportunity_discovery" ? "discovery_interval_hours" : task === "technical_audit" ? "audit_interval_hours" : "refresh_interval_hours";
   return Math.max(1, num(settings[key], 24)) * 60 * 60 * 1000;
 }
@@ -134,14 +169,19 @@ export async function latestRun(task?: SeoTaskType) {
 export async function dueTasks(now = Date.now()): Promise<SeoTaskType[]> {
   const settings = await getSeoSettings();
   if (settings.enabled !== "true") return [];
-  const due: SeoTaskType[] = [];
-  for (const task of SEO_TASK_TYPES) {
+  const due: { task: SeoTaskType; last: number; index: number }[] = [];
+  for (const [index, task] of SEO_TASK_TYPES.entries()) {
     const latest = await latestRun(task);
     const retryDue = latest?.status === "failed" && latest.retryCount < 3 && now - latest.startedAt.getTime() >= 10 * 60 * 1000;
-    if (!latest || retryDue || now - latest.startedAt.getTime() >= intervalMs(settings, task)) due.push(task);
+    if (!latest || retryDue || now - latest.startedAt.getTime() >= intervalMs(settings, task)) {
+      due.push({ task, last: latest?.startedAt.getTime() ?? 0, index });
+    }
   }
+  // Fair ordering: the task that has waited longest runs first, so adding sync
+  // tasks cannot starve (or be starved by) the original three.
+  due.sort((a, b) => a.last - b.last || a.index - b.index);
   // Keep one tick bounded; the next tick handles the remainder.
-  return due.slice(0, 2);
+  return due.slice(0, 2).map((entry) => entry.task);
 }
 
 async function beginRun(task: SeoTaskType): Promise<{ id: number; executionId: string }> {
@@ -186,9 +226,12 @@ async function runOpportunityDiscovery(settings: SeoAutomationSettings): Promise
   const todayRuns = await db.select({ id: seoAutomationRuns.id }).from(seoAutomationRuns)
     .where(and(eq(seoAutomationRuns.taskType, "opportunity_discovery"), gte(seoAutomationRuns.startedAt, startOfDay)));
   if (todayRuns.length >= Math.max(1, num(settings.daily_ai_runs, 4))) throw new Error("Daily AI discovery run limit reached. Increase the budget deliberately in settings or wait until tomorrow.");
-  const maxQueries = Math.min(6, Math.max(1, num(settings.max_queries_per_run, 4)));
+  const maxQueries = Math.min(10, Math.max(1, num(settings.max_queries_per_run, 6)));
   const maxCompetitors = Math.min(4, Math.max(0, num(settings.max_competitor_pages, 2)));
-  const maxOpportunities = Math.min(2, Math.max(1, num(settings.max_opportunities_per_run, 6)));
+  // 15 is the owner-facing research ceiling. Each AI call returns at most 4
+  // ideas (the model output budget), so discovery makes a few bounded calls and
+  // deduplicates rather than risking a truncated 15-item JSON response.
+  const maxOpportunities = Math.min(15, Math.max(1, num(settings.max_opportunities_per_run, 15)));
   const queries = DEFAULT_SEED_QUERIES.slice(0, maxQueries);
   const searchPackets = [];
   const warnings: string[] = [];
@@ -210,14 +253,33 @@ async function runOpportunityDiscovery(settings: SeoAutomationSettings): Promise
   }
 
   const existing = await existingArticleContextTitles();
-  const analysis = await generateOpportunityAnalysis({
-    evidence: { searchPackets, competitors },
-    existingTitles: existing,
-    maxOpportunities,
-  });
   const known = await existingOpportunityKeys();
+  // Batch the AI calls: the model has a bounded JSON output, so asking for 15
+  // ideas in one response risks truncation. Four per call, deduplicated across
+  // calls, keeps every response valid while still reaching the 15-idea ceiling.
+  const selected: Awaited<ReturnType<typeof generateOpportunityAnalysis>>["opportunities"] = [];
+  const avoid = new Set<string>();
+  for (let batch = 0; batch < Math.ceil(maxOpportunities / 4) && selected.length < maxOpportunities; batch += 1) {
+    const remaining = maxOpportunities - selected.length;
+    const analysis = await generateOpportunityAnalysis({
+      evidence: { searchPackets, competitors },
+      existingTitles: existing,
+      maxOpportunities: Math.min(4, remaining),
+      avoidTopics: [...avoid],
+    });
+    let added = 0;
+    for (const raw of analysis.opportunities) {
+      const keys = [normaliseKey(raw.topic), normaliseKey(raw.primaryKeyword)];
+      if (keys.some((key) => !key || known.has(key) || avoid.has(key))) continue;
+      for (const key of keys) avoid.add(key);
+      selected.push(raw);
+      added += 1;
+      if (selected.length >= maxOpportunities) break;
+    }
+    if (added === 0) break;
+  }
   const inserted: number[] = [];
-  for (const raw of analysis.opportunities) {
+  for (const raw of selected) {
     const topic = clean(raw.topic, 240);
     const keyword = clean(raw.primaryKeyword, 160);
     if (!topic || !keyword) continue;
@@ -349,8 +411,100 @@ async function runContentRefresh(settings: SeoAutomationSettings): Promise<{ rec
   return { recommendations: count };
 }
 
+/**
+ * Provider wiring for the sync tasks. Both functions build the step input from
+ * existing configuration only; no request is made here.
+ */
+async function gscStepDependencies(settings: SeoAutomationSettings): Promise<GscStepInput> {
+  const auth = await getOAuthAccessToken();
+  if (!auth || !auth.siteUrl) throw new Error("gsc_not_connected: Search Console authorization is missing.");
+  const lookback = Math.max(1, Math.min(14, Number(settings.gsc_lookback_days) || 3));
+  const maxRequests = Math.min(60, Math.max(1, Number(settings.gsc_max_requests_per_run) || 20));
+  return {
+    token: auth.token,
+    propertyKey: auth.siteUrl,
+    propertyKind: auth.siteUrl.startsWith("sc-domain:") ? "domain" : "url_prefix",
+    dates: settledDates(lookback),
+    maxRequests,
+    fetchImpl: async ({ url, body, token }) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const json = await response.json().catch(() => null);
+      return { status: response.status, json };
+    },
+  };
+}
+
+async function bingStepDependencies(): Promise<BingStepInput> {
+  const key = requireBingKey();
+  return {
+    key,
+    siteUrl: SITE_URL,
+    verifyFirst: true,
+    fetchImpl: async ({ url }) => {
+      const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
+      const json = await response.json().catch(() => null);
+      return { status: response.status, json };
+    },
+  };
+}
+
 export async function runSeoTask(task: SeoTaskType): Promise<{ ok: boolean; status: string; meta: Record<string, unknown>; error?: string }> {
   const settings = await getSeoSettings();
+
+  // Pipeline tasks use the same run table as the original three, so the
+  // scheduler's history and overlap guard cover them too.
+  if (task === "crawl_audit" || task === "consolidate_findings") {
+    const started = Date.now();
+    const run = await beginRun(task);
+    try {
+      const meta = task === "crawl_audit"
+        ? await (async () => {
+            const result = await runCrawlTask({
+              origin: SITE_URL,
+              maxPages: Math.min(150, Math.max(1, Number(settings.crawl_max_pages) || 120)),
+              fetchImpl: async (url) => {
+                const response = await fetch(url, { headers: { "user-agent": "KnightSeoAudit/1.0" }, signal: AbortSignal.timeout(20_000) });
+                const html = (await response.text()).slice(0, 400_000);
+                return { status: response.status, finalUrl: response.url || url, redirectChain: [url], html };
+              },
+            });
+            recordSyncRun({ provider: "gsc", kind: "crawl", status: "completed", startedAt: started, finishedAt: Date.now(), requests: result.pages, rows: result.stored });
+            return { ...result } as Record<string, unknown>;
+          })()
+        : await (async () => {
+            const result = runConsolidationTask({ sinceDays: Math.min(120, Math.max(1, Number(settings.findings_lookback_days) || 14)) });
+            recordSyncRun({ provider: "gsc", kind: "consolidate", status: "completed", startedAt: started, finishedAt: Date.now(), requests: 0, rows: result.written });
+            return { ...result } as Record<string, unknown>;
+          })();
+      await finishRun(run.id, started, "completed", meta);
+      return { ok: true, status: "completed", meta };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 500) : "Pipeline task failed.";
+      await finishRun(run.id, started, "failed", { task, error: message }, message);
+      return { ok: false, status: "failed", meta: {}, error: message };
+    }
+  }
+
+  // Sync tasks own their run row + lock + quota accounting inside the scheduler.
+  if (isSyncTask(task)) {
+    const outcome = await runSyncTask(task as SyncTask, {
+      settings,
+      gsc: () => gscStepDependencies(settings),
+      bing: () => bingStepDependencies(),
+    });
+    return {
+      ok: outcome.status === "completed",
+      status: outcome.status,
+      meta: outcome.meta,
+      ...(outcome.error ? { error: outcome.error } : {}),
+    };
+  }
+
   const started = Date.now();
   const run = await beginRun(task);
   try {

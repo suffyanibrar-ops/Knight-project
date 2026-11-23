@@ -697,3 +697,192 @@ CREATE TABLE IF NOT EXISTS seo_settings (
   updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 `;
+
+/* -------------------------------------------------------------------------
+ * v12 — appointment and enquiry lifecycle.
+ * Additive only: cancelling keeps the record, deletion is a soft delete so the
+ * history survives, and every enquiry status change is appended to an event log.
+ * ---------------------------------------------------------------------- */
+export const LIFECYCLE_SCHEMA = `
+ALTER TABLE submissions ADD COLUMN status TEXT NOT NULL DEFAULT 'pending';
+CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS enquiry_status_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  record_id INTEGER NOT NULL,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  actor TEXT,
+  note TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_enquiry_status_events_record
+  ON enquiry_status_events (kind, record_id, created_at DESC);
+
+ALTER TABLE ai_appointments ADD COLUMN cancelled_at INTEGER;
+ALTER TABLE ai_appointments ADD COLUMN cancelled_by TEXT;
+ALTER TABLE ai_appointments ADD COLUMN deleted_at INTEGER;
+CREATE INDEX IF NOT EXISTS idx_ai_appointments_deleted ON ai_appointments (deleted_at, starts_at_utc);
+`.replace(/;\s*$/, ';');
+
+/* -------------------------------------------------------------------------
+ * v13 — SEO intelligence: properties, sync bookkeeping, quota ledger, raw
+ * observations, consolidated findings, actions, measurements, IndexNow events.
+ * Additive only: no existing table is altered, so a code rollback still boots.
+ * ---------------------------------------------------------------------- */
+export const SEO_INTELLIGENCE_SCHEMA = `
+CREATE TABLE IF NOT EXISTS seo_properties (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source TEXT NOT NULL,
+  property_key TEXT NOT NULL,
+  property_kind TEXT NOT NULL DEFAULT 'url_prefix',
+  display_name TEXT,
+  verified INTEGER NOT NULL DEFAULT 0,
+  last_ok_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  UNIQUE (source, property_key)
+);
+
+CREATE TABLE IF NOT EXISTS seo_sync_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running',
+  started_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  finished_at INTEGER,
+  requests INTEGER NOT NULL DEFAULT 0,
+  rows_written INTEGER NOT NULL DEFAULT 0,
+  cursor TEXT,
+  error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_seo_sync_runs_provider ON seo_sync_runs (provider, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS seo_quota_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  window_start INTEGER NOT NULL,
+  window_kind TEXT NOT NULL,
+  requests INTEGER NOT NULL DEFAULT 0,
+  rows_read INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (provider, window_start, window_kind)
+);
+
+CREATE TABLE IF NOT EXISTS seo_metrics_daily (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  property_id INTEGER REFERENCES seo_properties(id) ON DELETE CASCADE,
+  source TEXT NOT NULL,
+  date TEXT NOT NULL,
+  search_type TEXT NOT NULL DEFAULT 'web',
+  dimension TEXT NOT NULL,
+  dimension_key TEXT NOT NULL DEFAULT '',
+  aggregation TEXT NOT NULL DEFAULT 'auto',
+  clicks REAL,
+  impressions REAL,
+  ctr REAL,
+  position REAL,
+  completeness TEXT NOT NULL DEFAULT 'complete',
+  synced_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  UNIQUE (property_id, source, date, search_type, dimension, dimension_key, aggregation)
+);
+CREATE INDEX IF NOT EXISTS idx_seo_metrics_daily_date ON seo_metrics_daily (source, date DESC);
+
+CREATE TABLE IF NOT EXISTS seo_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  url TEXT NOT NULL UNIQUE,
+  status INTEGER,
+  final_url TEXT,
+  canonical TEXT,
+  robots TEXT,
+  title TEXT,
+  description TEXT,
+  content_hash TEXT,
+  crawled_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS seo_observations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER,
+  source TEXT NOT NULL,
+  check_id TEXT NOT NULL,
+  subject_type TEXT NOT NULL,
+  subject_key TEXT NOT NULL,
+  observed_at TEXT NOT NULL,
+  window_start TEXT,
+  window_end TEXT,
+  severity TEXT,
+  completeness TEXT,
+  provenance TEXT,
+  metrics_json TEXT,
+  evidence_json TEXT,
+  evidence_hash TEXT NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_seo_obs_subject ON seo_observations (check_id, subject_type, subject_key);
+
+CREATE TABLE IF NOT EXISTS seo_findings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  finding_key TEXT NOT NULL UNIQUE,
+  check_id TEXT NOT NULL,
+  subject_type TEXT NOT NULL,
+  subject_key TEXT NOT NULL,
+  claim_class TEXT NOT NULL,
+  level TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  confidence REAL NOT NULL DEFAULT 0,
+  priority_score REAL NOT NULL DEFAULT 0,
+  priority_version TEXT NOT NULL DEFAULT 'v2.1',
+  factors_json TEXT,
+  explanation TEXT,
+  observation_count INTEGER NOT NULL DEFAULT 0,
+  source_names_json TEXT,
+  disagreement INTEGER NOT NULL DEFAULT 0,
+  first_seen TEXT NOT NULL,
+  last_seen TEXT NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_seo_findings_priority ON seo_findings (status, priority_score DESC);
+
+CREATE TABLE IF NOT EXISTS seo_actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  finding_id INTEGER REFERENCES seo_findings(id) ON DELETE SET NULL,
+  level TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'proposed',
+  before_json TEXT,
+  after_json TEXT,
+  requested_by TEXT,
+  approved_by TEXT,
+  approved_at INTEGER,
+  executed_at INTEGER,
+  verified_at INTEGER,
+  result TEXT,
+  rollback_json TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS seo_measurements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action_id INTEGER REFERENCES seo_actions(id) ON DELETE CASCADE,
+  window_kind TEXT NOT NULL,
+  window_start TEXT NOT NULL,
+  window_end TEXT NOT NULL,
+  metric TEXT NOT NULL,
+  baseline REAL,
+  observed REAL,
+  verdict TEXT NOT NULL DEFAULT 'inconclusive',
+  confounders_json TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS seo_index_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  url TEXT NOT NULL,
+  engine TEXT NOT NULL DEFAULT 'indexnow',
+  http_status INTEGER,
+  submitted_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  content_hash TEXT NOT NULL DEFAULT '',
+  response_json TEXT,
+  UNIQUE (url, content_hash, engine)
+);
+`.replace(/;\s*$/, ';');

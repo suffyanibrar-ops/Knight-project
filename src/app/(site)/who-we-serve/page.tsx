@@ -13,7 +13,7 @@ import { photo } from "@/lib/photos";
 import { ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { audiences, rcmLifecycle, site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Who We Serve | Knight Medical Billing', description: 'Knight Medical Billing supports independent and multi-provider practices, hospitals, healthcare systems, emergency departments, urgent cares and other healthcare organizations across the United States.', path: '/who-we-serve', keywords: ['hospital billing services', 'urgent care billing', 'healthcare system billing'] });
+export const metadata: Metadata = pageMetadata({ title: 'Who We Serve | Knight Medical Billing', description: 'Billing support for independent practices, multi-provider groups, hospitals, health systems, emergency departments and urgent care organizations.', path: '/who-we-serve', keywords: ['hospital billing services', 'urgent care billing', 'healthcare system billing'] });
 
 export default function WhoWeServePage() {
   return (
@@ -23,13 +23,13 @@ export default function WhoWeServePage() {
         eyebrow="Who we serve"
         title={
           <>
-            Independent practices to <span className="display-serif text-brand-600">health systems.</span>
+            Independent practices, growing groups and <span className="display-serif text-brand-600">specialty teams.</span>
           </>
         }
-        description="Knight Medical Billing supports a broad range of healthcare organizations. The care setting changes the workflow and reporting needs; the discipline behind a clean, owned revenue cycle does not."
+        description="Knight is built for independent and growing practices, multi-provider groups and specialty teams. We also support hospitals, emergency departments and urgent care organizations where our operating model fits."
         image={pageHeroVisuals.whoWeServe}
         imageAlt="Photograph of a bright modern hospital corridor"
-        badges={["Hospitals & health systems", "ER & urgent care", "Private practices"]}
+        badges={["Independent & growing practices", "Specialty groups", "Hospitals & systems"]}
         crumbs={[{ label: "Who we serve" }]}
         primaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
         secondaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
@@ -122,7 +122,7 @@ export default function WhoWeServePage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-16 text-white sm:py-20">
-        <ParallaxImage src={photo.deskCharts} distance={32} className="opacity-40" />
+        <ParallaxImage src={photo.deskCharts} alt="Medical charts and reports on a clinic desk" distance={32} className="opacity-40" />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
         <div className="shell relative grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
           <Reveal>

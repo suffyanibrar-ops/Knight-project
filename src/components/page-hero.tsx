@@ -105,7 +105,7 @@ export function PageHero({
             <div className="relative mx-auto w-full max-w-[32rem]">
               <div className="absolute -inset-3 -z-10 rounded-[2.4rem] bg-gradient-to-tr from-brand-100 via-white to-mint-100" />
               <div className="relative aspect-[4/3] overflow-hidden rounded-[1.8rem] border border-white bg-surface shadow-[0_40px_80px_-45px_rgba(4,20,31,0.55)]">
-                <Image src={image} alt={imageAlt ?? ""} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" priority />
+                <Image src={image} alt={imageAlt ?? "Knight Medical Billing"} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" priority />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950/55 via-transparent to-transparent" />
                 {stat && (
                   <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/25 bg-white/15 p-3.5 backdrop-blur-md">

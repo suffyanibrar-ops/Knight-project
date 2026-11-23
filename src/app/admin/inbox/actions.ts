@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { isAdminAuthenticated, logAdminAction, rateLimit, recordFailure } from "@/lib/auth";
 import { clientKeyFromHeaders } from "@/lib/rate-limit";
 import { saveAdminPassword, verifyPasswordHash, getStoredPasswordHash } from "@/lib/admin-password";
-import { deleteSubmission } from "@/lib/sqlite";
+import { deleteSubmission, isEnquiryStatus, updateSubmissionStatus } from "@/lib/sqlite";
 
 export type PasswordState = { ok?: boolean; error?: string; message?: string };
 
@@ -15,11 +15,32 @@ async function requireAdmin() {
   }
 }
 
+/**
+ * Update an enquiry status. The change is written to the authoritative
+ * `submissions` row, appended to the status history and revalidated across every
+ * module that counts enquiries.
+ */
+export async function updateInboxStatusAction(formData: FormData) {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  const status = String(formData.get("status") ?? "");
+  const note = String(formData.get("note") ?? "").slice(0, 500) || null;
+  if (!Number.isInteger(id) || id <= 0 || !isEnquiryStatus(status)) return;
+
+  const updated = updateSubmissionStatus(id, status, "admin", note);
+  if (updated) await logAdminAction("inbox.status", `submission #${id} -> ${status}`, null);
+  revalidatePath("/admin/inbox");
+  revalidatePath("/admin");
+}
+
 /** Delete one SQLite submission from the inbox. */
 export async function deleteInboxSubmissionAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
+  const confirm = String(formData.get("confirm") ?? "");
   if (!Number.isInteger(id) || id <= 0) return;
+  // Irreversible: the admin must type the record token before the row is removed.
+  if (confirm !== `delete-${id}`) return;
 
   const deleted = deleteSubmission(id);
   await logAdminAction("inbox.delete", `submission #${id} deleted=${deleted}`, null);

@@ -24,15 +24,15 @@ page.on("pageerror", (error) => errors.push(error.message.slice(0, 180)));
 // ---------- tab title / brand first ----------
 await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 const title = await page.title();
-ok("homepage tab title starts with the brand", title.startsWith("Knight Medical Billing"), title);
-ok("homepage tab title keeps the service descriptor", /Custom Tailored Medical Billing/i.test(title), title);
-ok("site name is present in the title exactly once", (title.match(/Knight Medical Billing/g) ?? []).length === 1, title);
+ok("homepage tab title names the service", /Medical Billing & RCM/i.test(title), title);
+ok("homepage tab title is not duplicated", (title.match(/Medical Billing/g) ?? []).length === 1, title);
+ok("homepage tab title stays concise", title.length <= 70, String(title.length));
 
 // ---------- hero claims removed ----------
 const heroText = await page.locator("[data-hero-reveal]").innerText();
 ok("hero avoids the old broad check-mark claims", !/no long-term lock-in/i.test(heroText) && !/dedicated billing team/i.test(heroText), heroText.slice(0, 300));
-ok("hero shows specific differentiators", /No prepayment/i.test(heroText) && /Your software|No rip-and-replace/i.test(heroText));
-ok("hero shows the new primary actions", /Talk With Knight/i.test(heroText) && /See how it works/i.test(heroText));
+ok("hero shows specific differentiators", /No prepayment/i.test(heroText) && /systems your practice already uses/i.test(heroText));
+ok("hero shows the new primary actions", /Review Your Revenue Cycle/i.test(heroText) && /See How Knight Works/i.test(heroText));
 
 // ---------- AI assistant launcher icon ----------
 const launcher = page.getByRole("button", { name: /talk to riley voice assistant/i });

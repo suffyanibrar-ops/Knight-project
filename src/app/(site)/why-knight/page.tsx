@@ -10,8 +10,8 @@ import { leadership, processSteps, site } from "@/lib/site";
 import { Reveal, SectionLabel } from "@/components/ui";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Why Independent Practices Choose Knight Medical Billing",
-  description: "Why practices choose Knight Medical Billing: work inside your existing software, a dedicated team, named ownership, clear reporting, disciplined A/R follow-up and a structured onboarding process.",
+  title: "Why Providers Choose Knight Medical Billing",
+  description: "Why practices choose Knight: billing inside your existing software, a dedicated team, named ownership, clear reporting and disciplined A/R follow-up.",
   path: "/why-knight",
   keywords: ["why choose Knight Medical Billing", "medical billing company for independent practices"],
 });
@@ -112,7 +112,7 @@ export default function WhyKnightPage() {
       <section className="border-y border-mist-200 bg-mist-50 py-14 sm:py-20">
         <div className="shell grid gap-8 lg:grid-cols-3">
           {[
-            { icon: ShieldCheck, title: "Security and privacy", detail: "HIPAA-compliant handling, limited access and documented data flow are part of the onboarding conversation.", href: "/hipaa-compliance", label: "HIPAA & security" },
+            { icon: ShieldCheck, title: "Security and privacy", detail: "HIPAA-conscious handling, limited access and documented data flow are part of the onboarding conversation.", href: "/hipaa-compliance", label: "HIPAA & security" },
             { icon: HeartHandshake, title: "Your team stays with patients", detail: "We take the billing work that consumes front-office time so clinical staff can focus on care.", href: "/who-we-serve/private-practices", label: "Independent practices" },
             { icon: Check, title: "Clear next step", detail: "A consultation reviews your current workflow and scope before pricing or commitment.", href: "/schedule-form", label: "Talk With Knight" },
           ].map(({ icon: ItemIcon, title, detail, href, label }) => (

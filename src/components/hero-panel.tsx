@@ -48,7 +48,7 @@ export function HeroPanel() {
 
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">Live claim flow</p>
+          <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">Claim flow overview</p>
           <p className="mt-1 text-[1.02rem] font-extrabold leading-tight tracking-tight text-ink-950">From visit to payment</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1 text-[0.58rem] font-extrabold uppercase tracking-[0.1em] text-mint-700">
@@ -56,7 +56,7 @@ export function HeroPanel() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-mint-500 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-mint-600" />
           </span>
-          {paused ? "Paused" : "Running"}
+          {paused ? "Paused" : "Preview"}
         </span>
       </div>
 
@@ -78,7 +78,7 @@ export function HeroPanel() {
                 >
                   <span
                     className={`relative z-10 grid h-[1.35rem] w-[1.35rem] shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${
-                      done ? "border-mint-500 bg-mint-500 text-white" : isActive ? "border-brand-500 bg-surface text-brand-700" : "border-mist-200 bg-surface text-ink-600/60"
+                      done ? "border-mint-600 bg-mint-600 text-white" : isActive ? "border-brand-500 bg-surface text-brand-700" : "border-mist-200 bg-surface text-ink-600/80"
                     }`}
                     aria-hidden
                   >
@@ -137,7 +137,7 @@ export function HeroPanel() {
                 {stages[active].detail}
               </motion.p>
             </AnimatePresence>
-            <p className="mt-1 text-[0.6rem] font-semibold text-white/45">Every stage has an owner. Nothing sits unworked.</p>
+            <p className="mt-1 text-[0.6rem] font-semibold text-white/65">Every stage has an owner. Nothing sits unworked.</p>
           </div>
         </div>
       </div>

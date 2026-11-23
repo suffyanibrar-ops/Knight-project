@@ -113,15 +113,15 @@ const browser = await chromium.launch();
 
   // Invalid email is rejected
   await page.locator('input[autocomplete="name"]').fill("Browser Tester");
-  await page.locator('input[autocomplete="email"]').fill("not-an-email");
+  await page.locator('main input[autocomplete="email"]').fill("not-an-email");
   await page.locator('form button[type="submit"]').first().click();
   await page.waitForTimeout(350);
   const stillBlocked = (await page.getByText(/Step 1 of 3/i).count()) > 0;
-  const invalid = await page.locator('input[autocomplete="email"]').evaluate((el) => !el.checkValidity());
+  const invalid = await page.locator('main input[autocomplete="email"]').evaluate((el) => !el.checkValidity());
   record("form rejects invalid email", stillBlocked && invalid, `blocked=${stillBlocked} invalid=${invalid}`);
 
   // Valid step 1 advances
-  await page.locator('input[autocomplete="email"]').fill(`browser-${Date.now()}@example.com`);
+  await page.locator('main input[autocomplete="email"]').fill(`browser-${Date.now()}@example.com`);
   await page.locator('form button[type="submit"]').first().click();
   await page.waitForTimeout(450);
   record("form advances to step 2", (await page.getByText(/Step 2 of 3/i).count()) > 0);

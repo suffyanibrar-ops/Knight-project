@@ -227,6 +227,14 @@ const ALLOWED_EVENTS = new Set([
   "switching_page_cta",
   "calculator_started",
   "calculator_completed",
+  "offer_impression",
+  "offer_open",
+  "offer_dismiss",
+  "offer_cta_click",
+  "lead_form_start",
+  "review_concern_select",
+  "lead_form_submit",
+  "cookie_consent_choice",
 ]);
 
 export function isAllowedAnalyticsEvent(name: string): boolean {

@@ -225,7 +225,7 @@ export function SiteIntro() {
       <div className="site-intro__content">
         <div ref={brandRef} className="site-intro__brand">
           <span className="site-intro__mark">
-            <Image src={site.logoWhite} alt="" width={64} height={64} priority style={{ width: 64, height: 64 }} />
+            <Image src={site.logoWhite} alt={site.name} aria-hidden width={64} height={64} priority style={{ width: 64, height: 64 }} />
           </span>
           <span className="site-intro__wordmark">
             <span className="site-intro__name">Knight</span>

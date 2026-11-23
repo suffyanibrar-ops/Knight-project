@@ -22,7 +22,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-night px-4 py-12">
       <div className="absolute inset-0">
-        <Image src="/images/about-team.jpg" alt="" fill className="object-cover opacity-40" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" priority />
+        <Image src="/images/about-team.jpg" alt="Knight Medical Billing team in the office" aria-hidden fill className="object-cover opacity-40" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" priority />
         <div className="absolute inset-0 bg-gradient-to-br from-night via-ink-950/95 to-brand-900/70" />
       </div>
       <div className="dot-grid absolute inset-0 opacity-[0.15]" />

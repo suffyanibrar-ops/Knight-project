@@ -1,7 +1,14 @@
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Compass, Phone } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Page not found",
+  description: "The page you requested does not exist. Browse services, specialties and insights, or contact Knight Medical Billing.",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   return (
@@ -9,7 +16,7 @@ export default function NotFound() {
       <div className="grid-lines pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]" />
       <div className="shell relative flex min-h-[70vh] flex-col items-center justify-center py-16 text-center">
         <div className="flex items-center gap-3">
-          <Image src={site.logo} alt="" width={48} height={48} className="h-11 w-11" />
+          <Image src={site.logo} alt={site.name} width={48} height={48} className="h-11 w-11" />
           <span className="h-8 w-px bg-mist-300" />
           <span className="text-[0.7rem] font-extrabold uppercase tracking-[0.2em] text-ink-600/80">Page not found</span>
         </div>

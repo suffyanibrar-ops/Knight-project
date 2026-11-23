@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ClipboardCheck, FileSearch, Handshake, MessageSquare, ShieldCheck, Workflow } from "lucide-react";
-import { JsonLd } from "@/components/structured-data";
-import { breadcrumbSchema, pageMetadata } from "@/lib/seo";
+import { pageMetadata } from "@/lib/seo";
 import { CtaBand } from "@/components/cta-band";
 import { TrackedLink } from "@/components/tracked-link";
 import { PageHero } from "@/components/page-hero";
@@ -50,7 +49,6 @@ const pricingFactors = [
 export default function SwitchingPage() {
   return (
     <>
-      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Switching billing partners", path: "/switching-medical-billing" }])} />
       <PageHero
         path={"/switching-medical-billing"}
         eyebrow="Switching billing partners"

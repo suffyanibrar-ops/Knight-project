@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { articleVisuals } from "@/components/sections/visuals";
 import { JsonLd } from "@/components/structured-data";
-import { pageMetadata, articleSchema, breadcrumbSchema } from "@/lib/seo";
+import { pageMetadata, articleSchema, breadcrumbSchema, fitSeoDescription, SITE_URL } from "@/lib/seo";
 import { ArrowLeft, ArrowRight, Check, Clock, Share2, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -9,17 +9,19 @@ import { notFound } from "next/navigation";
 import { CtaBand } from "@/components/cta-band";
 import { ArrowLink, Reveal } from "@/components/ui";
 import { getArticle, getArticles } from "@/lib/data";
-import { services } from "@/lib/site";
+import { serviceLinksFor } from "@/lib/internal-links";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticle(slug);
-  if (!article) return { title: "Article not found" };
+  // Resolve the status while generating metadata, before the streaming shell is
+  // flushed. Throwing only in the page component produced HTTP 200 soft 404s.
+  if (!article) notFound();
   return pageMetadata({
     title: `${article.title}`,
-    description: article.excerpt.slice(0, 158),
+    description: fitSeoDescription(article.excerpt),
     path: `/insights/${article.slug}`,
     image: articleVisuals[article.slug] ?? article.image,
     type: "article",
@@ -34,8 +36,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!article) notFound();
 
   const all = await getArticles();
-  const related = all.filter((item) => item.slug !== article.slug).slice(0, 3);
+  const others = all.filter((item) => item.slug !== article.slug);
+  // Same-category articles first, then the rest. Previously every article showed
+  // the same first three entries regardless of topic.
+  const related = [...others.filter((item) => item.category === article.category), ...others.filter((item) => item.category !== article.category)].slice(0, 3);
   const date = new Date(article.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  // Contextual service links derived from the article's own topic words.
+  const serviceLinks = serviceLinksFor(
+    [article.title, article.category, article.excerpt, ...article.body.flatMap((section) => [section.heading ?? "", ...section.paragraphs])].join(" "),
+    2,
+  );
 
   return (
     <>
@@ -87,15 +97,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 <p className="text-[0.66rem] font-extrabold uppercase tracking-[0.16em] text-ink-600/75">Keep exploring</p>
                 <h2 className="mt-1.5 text-[1.1rem] font-extrabold tracking-tight text-ink-950">Relevant services and resources</h2>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {[...new Set([
-                    ...(article.category === "Choosing a partner" ? ["medical-billing-and-coding", "complete-rcm-services"] : []),
-                    ...(article.category === "Operations" ? ["complete-rcm-services", "accounts-receivable-management"] : []),
-                    ...(article.category === "Pricing" ? ["medical-billing-and-coding", "revenue-performance-reporting"] : []),
-                    ...(article.category === "Billing & coding" ? ["medical-billing-and-coding", "denial-management"] : []),
-                  ])].map((slug) => {
-                    const service = services.find((item) => item.slug === slug);
-                    return service ? <Link key={slug} href={`/services/${slug}`} className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">{service.short}</Link> : null;
-                  })}
+                  {serviceLinks.map((service) => (
+                    <Link key={service.slug} href={`/services/${service.slug}`} className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">{service.short}</Link>
+                  ))}
                   <Link href="/software" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Software &amp; EHR expertise</Link>
                   <Link href="/why-knight" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Why Knight</Link>
                   <Link href="/results/case-studies" className="rounded-full border border-mist-200 bg-surface px-3 py-1.5 text-[0.72rem] font-bold text-ink-800 hover:border-brand-300 hover:text-brand-700">Case-study standard</Link>
@@ -113,7 +117,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   </div>
                 </div>
                 <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent((process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.knightmedicalbilling.com") + "/insights/" + article.slug)}`}
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${SITE_URL}/insights/${article.slug}`)}`}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="btn btn-light px-4 py-2.5 text-[0.78rem]"

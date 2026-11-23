@@ -34,6 +34,7 @@ import { formatDate } from "@/components/admin/ui";
 import { apiFetch, errorMessage } from "./api";
 import { MediaImportModal } from "./media-modal";
 import { BlogStatusBadge } from "./status-badge";
+import { OriginalityPanel } from "./originality-panel";
 import type { BlogCategoryWithCount, BlogPostFull, BlogStatus, BlogTagWithCount, PostAction, ResolvedMedia } from "./types";
 
 const inputClass =
@@ -206,6 +207,9 @@ export function BlogEditor({ postId }: { postId?: number }) {
   const router = useRouter();
 
   const [draft, setDraft] = useState<EditorDraft>(EMPTY_DRAFT);
+  // Mirror of the editor body so the originality panel can analyse the live draft
+  // (the ref is authoritative for saving; this state drives the analysis UI).
+  const [liveContent, setLiveContent] = useState("");
   const draftRef = useRef<EditorDraft>(EMPTY_DRAFT);
   const [id, setId] = useState<number | null>(postId ?? null);
   const idRef = useRef<number | null>(postId ?? null);
@@ -256,6 +260,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
           const nextDraft = draftFromPost(post);
           draftRef.current = nextDraft;
           contentHtmlRef.current = post.contentHtml;
+          setLiveContent(post.contentHtml);
           // Editing an existing post must not silently rewrite its slug.
           slugTouchedRef.current = true;
           setDraft(nextDraft);
@@ -355,7 +360,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
             setLastSavedAt(timeLabel(new Date()));
             setUpdatedAt(new Date().toISOString());
             setNotice("Post created.");
-            if (options?.navigate !== false) router.replace(`/admin/blog/${created.id}`);
+            if (options?.navigate !== false) router.replace(`/admin/blog/editor/${created.id}`);
             return created.id;
           }
 
@@ -425,6 +430,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
     if (!element) return;
     demoteHeadings(element);
     contentHtmlRef.current = element.innerHTML;
+    setLiveContent(element.innerHTML);
     markDirty();
   }, [markDirty]);
 
@@ -549,7 +555,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
         }
         setUpdatedAt(new Date().toISOString());
         if (wasNew) {
-          router.replace(`/admin/blog/${ensuredId}`);
+          router.replace(`/admin/blog/editor/${ensuredId}`);
           return;
         }
         setNotice(
@@ -632,6 +638,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
 
   return (
     <div className="space-y-4">
+      <OriginalityPanel live={{ title: draft.title, contentHtml: liveContent }} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
           <Link href="/admin/blog" className="text-[0.72rem] font-bold text-brand-700 transition-colors hover:text-brand-500">

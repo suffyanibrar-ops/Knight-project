@@ -18,11 +18,11 @@ export default function HipaaPage() {
           </>
         }
         updated="February 1, 2026"
-        intro="Revenue cycle work means handling protected health information every day. Knight Medical Billing follows HIPAA requirements with complete data and document security, strict quality control and information security policies across every client engagement."
+        intro="Revenue cycle work means handling protected health information every day. Knight Medical Billing meets HIPAA requirements for data and document security. Strict quality control and written information-security policies apply to every client engagement."
         sections={[
           {
             heading: "Our HIPAA compliance",
-            paragraphs: ["Knight Medical Billing handles protected health information as a business associate of our clients. We follow HIPAA requirements for privacy and security, and every engagement begins with a business associate agreement that defines permitted uses, safeguards, breach notification and data return obligations."],
+            paragraphs: ["Knight Medical Billing acts as a business associate of our clients, so we handle protected health information under HIPAA's privacy and security rules. Every engagement begins with a business associate agreement. That agreement defines permitted uses, required safeguards, breach notification and data return obligations."],
             list: [
               "Signed business associate agreement before PHI is exchanged",
               "HIPAA-compliant billing processes end to end",
@@ -33,7 +33,7 @@ export default function HipaaPage() {
           },
           {
             heading: "Data and document security",
-            paragraphs: ["Protected health information moves between our team, your facility and your payers through secure channels only. Access is limited to the team members working on your account, and every file transfer follows documented security procedures."],
+            paragraphs: ["Protected health information moves between our team, your facility and your payers through secure channels only. Only the team members working on your account can reach it. Every file transfer follows documented security procedures."],
             list: [
               "Secure data flow between KMB and our partners",
               "Role-based access limited to assigned team members",
@@ -44,23 +44,23 @@ export default function HipaaPage() {
           },
           {
             heading: "Our team and training",
-            paragraphs: ["Our billers and coders are trained on HIPAA privacy and security requirements and on the quality control policies that govern their work. Coding and privacy practices are reviewed regularly, and access to client data is granted only where it is needed to perform the work."],
+            paragraphs: ["Our billers and coders train on HIPAA privacy and security requirements. They also train on the quality-control policies that govern their work. We review coding and privacy practices regularly, and we grant access to client data only where the work requires it."],
           },
           {
             heading: "Strict quality control",
-            paragraphs: ["Quality control and information security policies apply to every claim we file. Work is reviewed for coding accuracy, payer requirements and confidentiality, and any error identified during auditing is corrected quickly."],
+            paragraphs: ["Quality-control and information-security policies apply to every claim we file. Our team reviews each claim for coding accuracy, payer requirements and confidentiality. When an audit finds an error, we correct it quickly."],
           },
           {
             heading: "Vendors and partners",
-            paragraphs: ["Where a vendor or partner is involved in processing data, they are bound by confidentiality obligations and appropriate agreements. We require the same standard of security from partners that we hold ourselves to."],
+            paragraphs: ["Where a vendor or partner processes data, confidentiality obligations and appropriate agreements bind them. We require the same security standard from partners that we hold ourselves to."],
           },
           {
             heading: "Reporting a concern",
-            paragraphs: [`If you believe there has been a privacy or security incident, contact us immediately at ${site.email} or ${site.phone}. Suspected incidents are escalated immediately during business hours, with notification obligations assessed under HIPAA and applicable state law.`],
+            paragraphs: [`If you believe a privacy or security incident has occurred, contact us immediately at ${site.email} or ${site.phone}. We escalate suspected incidents immediately during business hours and assess notification obligations under HIPAA and applicable state law.`],
           },
           {
             heading: "Request our documentation",
-            paragraphs: ["Prospects and clients can request our business associate agreement template and a summary of the security and quality control policies that apply to their engagement."],
+            paragraphs: ["Prospects and clients can request our business associate agreement template and a summary of the security and quality-control policies that apply to their engagement."],
           },
         ]}
         footer="This page summarizes our practices and is not a substitute for the legal agreements governing an engagement. Contact us for the current agreements before sharing any PHI."

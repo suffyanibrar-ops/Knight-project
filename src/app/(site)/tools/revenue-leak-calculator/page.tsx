@@ -8,7 +8,7 @@ import { Reveal, SectionLabel } from "@/components/ui";
 
 export const metadata: Metadata = pageMetadata({
   title: "Revenue Leak Calculator | Medical Billing Indicators",
-  description: "Use this educational revenue-leak calculator to review collection rate, aged A/R, denial exposure and billing-cost indicators. Estimates only — no data submitted.",
+  description: "Review collection rate, aged A/R, denial exposure and billing-cost indicators with this educational revenue-leak calculator. Estimates only.",
   path: "/tools/revenue-leak-calculator",
   keywords: ["medical billing calculator", "revenue cycle calculator", "A/R calculator", "denial rate calculator"],
 });

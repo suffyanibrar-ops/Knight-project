@@ -91,7 +91,7 @@ Removing Jiro does not delete the existing website database. Disable the SEO aut
 4. Sends only the collected evidence, existing article titles and known paths to DeepSeek.
 5. Stores explainable factors, sources, competitor headings/excerpts, outline and internal-link suggestions.
 6. Deduplicates by normalised topic/keyword.
-7. Saves a maximum of two opportunities per AI call to avoid truncated JSON.
+7. Saves up to four opportunities per AI call; discovery makes several bounded calls and deduplicates to reach the configured limit (default 15) without truncating JSON.
 8. Requires a human to accept or dismiss.
 
 No search volume, difficulty, CPC, ranking, traffic or indexing metric is estimated.
@@ -109,7 +109,7 @@ Defaults:
 | `refresh_min_age_days` | 90 |
 | `max_queries_per_run` | 4 |
 | `max_competitor_pages` | 2 |
-| `max_opportunities_per_run` | 6 (AI call capped at 2) |
+| `max_opportunities_per_run` | 15 (batched; AI call capped at 4) |
 | `daily_ai_runs` | 4 |
 
 The global kill switch is `enabled=false`. Manual task runs are available while paused.
@@ -214,7 +214,7 @@ Add the service-account email as a user of the Search Console property. Until th
 ## Cost controls
 
 - DeepSeek Flash only; no new AI provider.
-- Maximum two opportunities per AI call.
+- Maximum four opportunities per AI call, up to 15 per discovery run.
 - Maximum four Jiro queries and two competitor extractions per discovery run by default.
 - One discovery run per 24 hours by default.
 - Daily AI discovery run cap.

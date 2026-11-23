@@ -1074,12 +1074,14 @@ html.intro-open body {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(18, 58, 77, 0.42);
+  /* 0.75 alpha keeps the rail typographic but lifts it from 2.34:1 to 5.66:1 on white. */
+  color: rgba(18, 58, 77, 0.75);
   white-space: nowrap;
 }
 
 .dark .hero-flow__label {
-  color: rgba(168, 201, 216, 0.5);
+  /* 3.49:1 at 0.5 on the dark hero surface; 0.8 measures 7.08:1. */
+  color: rgba(168, 201, 216, 0.8);
 }
 
 html[data-intro="full"] [data-hero-flow-line] .hero-flow__track {
@@ -1123,6 +1125,7 @@ html[data-intro="full"] [data-hero-flow-line] .hero-flow__node {
 
 .hero-delay-2 { animation-delay: 160ms; }
 .hero-delay-3 { animation-delay: 240ms; }
+.hero-delay-4 { animation-delay: 320ms; }
 .hero-delay-5 { animation-delay: 400ms; }
 
 .hero-panel-in {
@@ -1392,4 +1395,26 @@ html[data-motion="reduced"] .ambient-field__cta-glow { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .ambient-field__wash,
   .ambient-field__cta-glow { transition: none; }
+}
+
+/*
+ * Mobile reading density.
+ *
+ * The page keeps every section; only the large desktop section rhythm is
+ * tightened below 768px. This removes roughly 1.5–2.5rem per section of empty
+ * vertical space (several screens on long pages) without hiding content.
+ */
+@media (max-width: 767px) {
+  main .py-12,
+  main .py-14,
+  main .py-16,
+  main .py-20 {
+    padding-top: 2.25rem;
+    padding-bottom: 2.25rem;
+  }
+
+  main .py-10 {
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
 }

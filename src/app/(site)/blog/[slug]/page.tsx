@@ -11,6 +11,7 @@ import { ShareLinks } from "@/components/blog/share-links";
 import { TableOfContents } from "@/components/blog/table-of-contents";
 import { JsonLd } from "@/components/structured-data";
 import { getAdjacentPosts, getPublicPost, getRelatedPosts } from "@/lib/blog";
+import { serviceLinksFor } from "@/lib/internal-links";
 import { SITE_URL, breadcrumbSchema, fitSeoDescription, fitSeoTitle } from "@/lib/seo";
 import { site } from "@/lib/site";
 
@@ -84,6 +85,8 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
 
   const post = result.post;
   const [related, adjacent] = await Promise.all([getRelatedPosts(post, 3), getAdjacentPosts(post)]);
+  // Contextual service links, derived from the article's own topic words only.
+  const serviceLinks = serviceLinksFor([post.title, post.excerpt ?? "", post.category?.name ?? "", ...post.tags.map((tag) => tag.name)].join(" "), 2);
 
   const canonical = canonicalUrlFor(post);
   const image = post.socialImage?.trim() || blogImageUrl(post) || DEFAULT_OG_IMAGE;
@@ -215,6 +218,26 @@ export default async function BlogArticlePage({ params }: { params: ArticleParam
                       {tag.name}
                     </Link>
                   ))}
+                </div>
+              ) : null}
+
+              {serviceLinks.length > 0 ? (
+                <div className="mt-6 rounded-2xl border border-mist-200 bg-mist-50 p-4 print:hidden">
+                  <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-ink-600/75">Where this work connects</p>
+                  <ul className="mt-2.5 space-y-2">
+                    {serviceLinks.map((service) => (
+                      <li key={service.slug}>
+                        <Link href={`/services/${service.slug}`} className="text-[0.78rem] font-bold text-brand-700 underline decoration-brand-200 underline-offset-2 hover:text-brand-500">
+                          {service.short}
+                        </Link>
+                      </li>
+                    ))}
+                    <li>
+                      <Link href="/services" className="text-[0.78rem] font-bold text-ink-700 hover:text-brand-700">
+                        All billing services
+                      </Link>
+                    </li>
+                  </ul>
                 </div>
               ) : null}
 

@@ -33,7 +33,7 @@ export function ProcessTimeline() {
                 <span
                   className={cn(
                     "relative z-10 grid h-[3rem] w-[3rem] shrink-0 place-items-center rounded-full border-2 text-sm font-extrabold transition-all duration-300",
-                    isActive ? "border-brand-500 bg-brand-500 text-white shadow-[0_12px_25px_-12px_rgba(25,163,205,0.9)]" : "border-mist-200 bg-surface text-ink-600",
+                    isActive ? "border-brand-600 bg-brand-600 text-white shadow-[0_12px_25px_-12px_rgba(14,131,171,0.9)]" : "border-mist-200 bg-surface text-ink-600",
                   )}
                 >
                   {isActive ? <Check className="h-5 w-5" strokeWidth={2.6} /> : step.step}

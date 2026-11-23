@@ -160,12 +160,12 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3.5">
               <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Illustrative cash unlocked</p>
               <p className="mt-1 text-xl font-extrabold">{currency(results.cashUnlocked)}</p>
-              <p className="text-[0.6rem] text-white/40">based on the A/R assumption</p>
+              <p className="text-[0.6rem] text-white/65">based on the A/R assumption</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3.5">
               <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/45">Illustrative return multiple</p>
               <p className="mt-1 text-xl font-extrabold text-mint-300">{results.roi.toFixed(1)}×</p>
-              <p className="text-[0.6rem] text-white/40">modelled, not a guarantee</p>
+              <p className="text-[0.6rem] text-white/65">modelled, not a guarantee</p>
             </div>
           </div>
 
@@ -180,7 +180,7 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
             </span>
           </div>
 
-          <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[0.64rem] leading-relaxed text-white/40">
+          <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[0.64rem] leading-relaxed text-white/65">
             Illustrative only. Actual outcomes depend on specialty, payer mix, claim volume, current processes, reimbursement and other factors. This is not a guarantee of revenue or savings.
           </p>
 
@@ -202,14 +202,16 @@ export function RoiCalculator({ compact = false }: { compact?: boolean }) {
                   }}
                   placeholder="Email for the full breakdown"
                   aria-label="Work email"
-                  className="min-w-0 flex-1 bg-transparent text-[0.8rem] text-white outline-none placeholder:text-white/40"
+                  autoComplete="email"
+                  inputMode="email"
+                  className="min-w-0 flex-1 bg-transparent text-[0.8rem] text-white outline-none placeholder:text-white/55"
                 />
-                <button type="submit" disabled={state === "loading"} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-500 text-white transition-colors hover:bg-brand-400 disabled:opacity-70" aria-label="Send my estimate">
+                <button type="submit" disabled={state === "loading"} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:opacity-70" aria-label="Send my estimate">
                   {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 </button>
               </div>
               {state === "error" && <p className="mt-2 text-[0.7rem] font-semibold text-rose-300">Enter a valid email and try again.</p>}
-              <p className="mt-2 text-[0.62rem] text-white/35">Illustrative only. No commitment, no spam.</p>
+              <p className="mt-2 text-[0.62rem] text-white/65">Illustrative only. No commitment, no spam.</p>
             </form>
           )}
         </div>

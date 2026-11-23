@@ -1,4 +1,5 @@
 import "server-only";
+import { isApexHost, PREFERRED_HOST, preferredSiteUrl } from "./canonical-host";
 import { isSqliteAvailable, sqliteStatus } from "./sqlite";
 
 /**
@@ -26,12 +27,15 @@ function has(key: string): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/** Absolute site URL, validated. Falls back to the production domain. */
+/**
+ * Absolute site URL, validated and normalised to the canonical host.
+ * Falls back to the production domain.
+ */
 export function siteUrl(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
   if (!raw) return "https://www.knightmedicalbilling.com";
-  if (!/^https?:\/\//.test(raw)) return `https://${raw}`;
-  return raw;
+  if (!/^https?:\/\//.test(raw)) return preferredSiteUrl(`https://${raw}`);
+  return preferredSiteUrl(raw);
 }
 
 export function adminEmail(): string {
@@ -94,6 +98,20 @@ export function configIssues(): ConfigIssue[] {
     }
     if (/localhost|127\.0\.0\.1/.test(url)) {
       issues.push({ key: "NEXT_PUBLIC_SITE_URL", severity: "error", message: "NEXT_PUBLIC_SITE_URL points at localhost — canonical URLs and the sitemap would be wrong." });
+    }
+    const configured = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim();
+    let configuredHost = "";
+    try {
+      configuredHost = new URL(configured.includes("://") ? configured : `https://${configured}`).hostname;
+    } catch {
+      configuredHost = "";
+    }
+    if (isApexHost(configuredHost)) {
+      issues.push({
+        key: "NEXT_PUBLIC_SITE_URL",
+        severity: "warning",
+        message: `NEXT_PUBLIC_SITE_URL points at the apex host. It is normalised to https://${PREFERRED_HOST} for canonicals, but set it to the preferred host explicitly to avoid confusion.`,
+      });
     }
   }
 

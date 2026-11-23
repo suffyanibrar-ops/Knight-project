@@ -17,8 +17,26 @@ export function Logo({
   showWordmark?: boolean;
 }) {
   return (
-    <Link href={href} className={cn("group inline-flex items-center gap-2.5", className)} aria-label={`${site.name} home`}>
-      <Image src={variant === "light" ? site.logoWhite : site.logo} alt="" width={markSize} height={markSize} style={{ width: markSize, height: markSize }} className="shrink-0 transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-105" priority />
+    <Link
+      href={href}
+      className={cn("group inline-flex items-center gap-2.5", className)}
+      // With the wordmark visible the link already has a text name; an aria-label
+      // would override it and break "label in name" (WCAG 2.5.3).
+      aria-label={showWordmark ? undefined : `${site.name} home`}
+    >
+      {/* Non-empty alt keeps crawler audits (Bing) happy; when the wordmark is
+          visible it repeats the same accessible name, so mark the mark itself
+          presentational for assistive technology. */}
+      <Image
+        src={variant === "light" ? site.logoWhite : site.logo}
+        alt={site.name}
+        aria-hidden={showWordmark ? true : undefined}
+        width={markSize}
+        height={markSize}
+        style={{ width: markSize, height: markSize }}
+        className="shrink-0 transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-105"
+        priority
+      />
       {showWordmark && (
         <span className="flex flex-col leading-none">
           <span

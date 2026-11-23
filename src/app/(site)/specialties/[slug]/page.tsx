@@ -1,5 +1,5 @@
 import { JsonLd } from "@/components/structured-data";
-import { pageMetadata, serviceSchema, breadcrumbSchema } from "@/lib/seo";
+import { pageMetadata, serviceSchema, breadcrumbSchema, fitSeoDescription } from "@/lib/seo";
 import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -28,10 +28,14 @@ const leakPoints = [
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const specialty = await getSpecialty(slug);
-  if (!specialty) return { title: "Specialty not found" };
+  // Resolve the status while generating metadata, before streaming flushes the
+  // 200 shell, so an unknown specialty is a real 404 rather than a soft 404.
+  if (!specialty) notFound();
+  // "Healthcare Billing" + "Medical Billing" would read as a duplicated phrase.
+  const titleNoun = /billing$/i.test(specialty.name) ? "Services" : "Medical Billing";
   return pageMetadata({
-    title: `${specialty.name} Medical Billing | Knight Medical Billing`,
-    description: `${specialty.name} medical billing and coding by Knight Medical Billing. ${specialty.blurb}`.slice(0, 158),
+    title: `${specialty.name} ${titleNoun} | Knight Medical Billing`,
+    description: fitSeoDescription(`${specialty.name} medical billing and coding. ${specialty.blurb}`),
     path: `/specialties/${specialty.slug}`,
     keywords: [`${specialty.name.toLowerCase()} medical billing`, `${specialty.name.toLowerCase()} medical coding`],
   });

@@ -3,7 +3,7 @@
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/motion/toast";
-import { trackConversion } from "@/lib/tracking";
+import { trackConversion, trackLeadFormStart } from "@/lib/tracking";
 import { cn } from "./ui";
 
 const topics = ["Medical billing & coding", "Accounts receivable", "Credentialing & contracting", "Out-of-network negotiation", "Eligibility & benefits", "Complete RCM services", "Patient billing", "Other"];
@@ -53,6 +53,7 @@ export function ContactForm() {
 
       setStatus("done");
       trackConversion("generate_lead", { form: "contact" });
+      trackConversion("lead_form_submit", { form: "contact" });
       toast({ tone: "success", title: "Message sent", description: "Our team replies within one business hour, Monday–Friday." });
     } catch (submitError) {
       setStatus("error");
@@ -79,7 +80,7 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft sm:p-8">
+    <form onSubmit={onSubmit} onFocusCapture={() => trackLeadFormStart("contact")} className="rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft sm:p-8">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="text-[0.78rem] font-bold text-ink-800">Full name *</span>

@@ -108,7 +108,7 @@ export function VoiceCallOverlay(props: VoiceCallOverlayProps) {
             <header className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.06]">
-                  <Image src={site.logoWhite} alt="" width={26} height={26} priority />
+                  <Image src={site.logoWhite} alt={site.name} width={26} height={26} priority />
                 </span>
                 <div>
                   <p className="text-[0.78rem] font-extrabold tracking-tight">Knight Medical Billing</p>
@@ -142,7 +142,7 @@ export function VoiceCallOverlay(props: VoiceCallOverlayProps) {
               </div>
 
               <p className="mt-7 text-[0.66rem] font-extrabold uppercase tracking-[0.22em] text-brand-200">{agentName} · Knight Medical Billing</p>
-              <h1 className="mt-2 text-[clamp(2rem,6vw,3.3rem)] font-extrabold leading-[1.02] tracking-[-0.04em]">
+              <h2 className="mt-2 text-[clamp(2rem,6vw,3.3rem)] font-extrabold leading-[1.02] tracking-[-0.04em]">
                 {ended
                   ? "Thanks for calling."
                   : voiceError
@@ -156,7 +156,7 @@ export function VoiceCallOverlay(props: VoiceCallOverlayProps) {
                           : voiceState === "off" || voiceState === "starting"
                             ? "Connecting you to Riley."
                             : "You’re connected."}
-              </h1>
+              </h2>
 
               <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 backdrop-blur-sm" aria-live="polite" aria-atomic="true">
                 <span className={`h-1.5 w-1.5 rounded-full ${voiceError ? "bg-amber-300" : ended ? "bg-white/35" : voiceState === "speaking" ? "animate-pulse bg-mint-300" : "animate-pulse bg-brand-300"}`} />

@@ -80,7 +80,8 @@ export function getBusinessMetrics(days = 7, bounds?: { startDay: string; endDay
     enquiriesToday: count("SELECT COUNT(*) AS n FROM submissions WHERE date(created_at) = date('now')"),
     consultationRequests: count(`SELECT COUNT(*) AS n FROM submissions WHERE ${textInRange} AND source <> 'contact-form'`, textParams),
     aiLeads: count(`SELECT COUNT(*) AS n FROM ai_leads WHERE ${epochRange}`, epochParams),
-    appointmentsUpcoming: count("SELECT COUNT(*) AS n FROM ai_appointments WHERE starts_at_utc >= ? AND status = 'confirmed'", [now]),
+    // Pending and confirmed both hold the slot; cancelled/deleted never count.
+    appointmentsUpcoming: count("SELECT COUNT(*) AS n FROM ai_appointments WHERE starts_at_utc >= ? AND deleted_at IS NULL AND status IN ('pending','confirmed')", [now]),
     appointmentsInRange: count(`SELECT COUNT(*) AS n FROM ai_appointments WHERE ${epochRange}`, epochParams),
     pendingHandoffs: count("SELECT COUNT(*) AS n FROM ai_handoffs WHERE status <> 'resolved'"),
     emailSent: count(`SELECT COUNT(*) AS n FROM email_outbox WHERE status IN ('sent','delivered') AND ${epochRange}`, epochParams),
@@ -153,7 +154,7 @@ function recentActivity(): ActivityItem[] {
       at: number(row.created_at),
     });
   }
-  for (const row of queryAll("SELECT id, name, starts_at_utc, status, timezone FROM ai_appointments ORDER BY created_at DESC LIMIT 5")) {
+  for (const row of queryAll("SELECT id, name, starts_at_utc, status, timezone FROM ai_appointments WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 5")) {
     items.push({
       id: `appointment-${row.id}`,
       kind: "appointment",

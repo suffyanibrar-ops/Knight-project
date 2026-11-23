@@ -67,7 +67,7 @@ export function CtaBand({
             ))}
           </ul>
           <div className="mt-5 rounded-2xl bg-white/[0.05] px-3.5 py-3">
-            <p className="text-[0.7rem] text-white/45">Every client receives a dedicated account manager.</p>
+            <p className="text-[0.7rem] text-white/65">Every client receives a dedicated account manager.</p>
             <p className="mt-1 text-[0.78rem] font-bold text-white">{site.email}</p>
           </div>
         </div>

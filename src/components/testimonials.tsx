@@ -65,12 +65,19 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-300/40 bg-brand-500/10 px-2.5 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-brand-200">
             {active.theme}
           </span>
-          <span className="text-[0.62rem] font-extrabold tracking-[0.14em] text-white/35">
-            {pad(index + 1)} <span className="text-white/20">/ {pad(items.length)}</span>
+          <span className="text-[0.62rem] font-extrabold tracking-[0.14em] text-white/60">
+            {pad(index + 1)} <span className="text-white/50">/ {pad(items.length)}</span>
           </span>
         </div>
 
-        <div aria-live="polite" aria-atomic="true" className="relative mt-5 flex flex-1 flex-col">
+        <div
+          role="tabpanel"
+          id="perspective-panel"
+          aria-labelledby={`perspective-tab-${active.id}`}
+          aria-live="polite"
+          aria-atomic="true"
+          className="relative mt-5 flex flex-1 flex-col"
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={active.id}
@@ -85,7 +92,7 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
               </blockquote>
 
               <div className="mt-5">
-                <p className="text-[0.55rem] font-extrabold uppercase tracking-[0.16em] text-white/35">What we would examine</p>
+                <p className="text-[0.55rem] font-extrabold uppercase tracking-[0.16em] text-white/60">What we would examine</p>
                 <ul className="mt-2 space-y-1.5">
                   {active.signals.map((signal) => (
                     <li key={signal} className="flex items-start gap-2 text-[0.76rem] leading-relaxed text-white/65">
@@ -102,7 +109,7 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
                     <p className="text-[0.82rem] font-extrabold text-white">{active.role}</p>
                     <p className="mt-0.5 text-[0.72rem] text-white/55">{active.context}</p>
                   </div>
-                  <span className="rounded-full border border-white/12 px-2.5 py-1 text-[0.54rem] font-bold uppercase tracking-[0.12em] text-white/40">
+                  <span className="rounded-full border border-white/12 px-2.5 py-1 text-[0.54rem] font-bold uppercase tracking-[0.12em] text-white/65">
                     Anonymised theme
                   </span>
                 </div>
@@ -118,7 +125,9 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
                 key={item.id}
                 type="button"
                 role="tab"
+                id={`perspective-tab-${item.id}`}
                 aria-selected={itemIndex === index}
+                aria-controls="perspective-panel"
                 aria-label={`Perspective ${itemIndex + 1}: ${item.theme}`}
                 onClick={() => setIndex(itemIndex)}
                 className="group grid h-6 w-6 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
@@ -164,10 +173,10 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
           </div>
           <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[0.56rem] font-extrabold uppercase tracking-[0.18em] text-white/40">Theme</p>
+              <p className="text-[0.56rem] font-extrabold uppercase tracking-[0.18em] text-white/65">Theme</p>
               <p className="mt-1 text-[1.15rem] font-extrabold tracking-tight text-white">{active.theme}</p>
             </div>
-            <ChevronRight className="h-4 w-4 text-white/30" aria-hidden />
+            <ChevronRight className="h-4 w-4 text-white/55" aria-hidden />
           </div>
         </div>
 
@@ -178,19 +187,19 @@ export function TestimonialsCarousel({ items }: { items: Perspective[] }) {
               type="button"
               onClick={() => setIndex(itemIndex)}
               aria-label={`Show ${item.theme}`}
-              aria-current={itemIndex === index}
+              aria-current={itemIndex === index ? "true" : undefined}
               className={`group relative overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-colors ${
                 itemIndex === index ? "border-brand-300/60 bg-white/10 text-white" : "border-white/12 text-white/55 hover:border-white/30 hover:text-white"
               }`}
             >
-              <span className="block text-[0.5rem] font-extrabold tracking-[0.12em] text-white/30">{pad(itemIndex + 1)}</span>
+              <span className="block text-[0.5rem] font-extrabold tracking-[0.12em] text-white/55">{pad(itemIndex + 1)}</span>
               <span className="mt-0.5 block truncate text-[0.7rem] font-bold">{item.theme}</span>
               {itemIndex === index && <span aria-hidden className="absolute inset-x-3 bottom-1.5 h-px bg-brand-300/70" />}
             </button>
           ))}
         </div>
 
-        <p className="mt-3 text-[0.65rem] leading-relaxed text-white/40">Shared themes from conversations, not attributed client quotes. Photos are representative.</p>
+        <p className="mt-3 text-[0.65rem] leading-relaxed text-white/65">Shared themes from conversations, not attributed client quotes. Photos are representative.</p>
       </div>
     </div>
   );

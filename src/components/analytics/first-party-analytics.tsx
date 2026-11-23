@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CONSENT_STORAGE_KEY, LEGACY_OPTOUT_KEY, analyticsAllowed, parseConsent } from "@/lib/consent";
 import { usePathname } from "next/navigation";
 
 /**
@@ -26,8 +27,20 @@ type Payload = {
   webdriver?: boolean;
 };
 
+/** Consent gate: no analytics request leaves the browser without permission. */
+function consentAllows(): boolean {
+  try {
+    const raw = window.localStorage.getItem(CONSENT_STORAGE_KEY);
+    const legacy = window.localStorage.getItem(LEGACY_OPTOUT_KEY) === "1";
+    return analyticsAllowed(parseConsent(raw), legacy, navigator.doNotTrack === "1");
+  } catch {
+    return false;
+  }
+}
+
 function send(payload: Payload) {
   if (typeof window === "undefined") return;
+  if (!consentAllows()) return;
   const body = JSON.stringify(payload);
   try {
     if (navigator.sendBeacon) {

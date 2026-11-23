@@ -5,6 +5,8 @@ import { AiChatWidget } from "@/components/ai/chat-widget";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { MobileCtaBar } from "@/components/mobile-cta-bar";
+import { ConversionOffer } from "@/components/conversion/conversion-offer";
+import { ConsentBanner } from "@/components/consent-banner";
 import { FirstPartyAnalytics } from "@/components/analytics/first-party-analytics";
 
 /**
@@ -32,6 +34,8 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <MobileCtaBar />
       <BackToTop />
       <AiChatWidget />
+      <ConversionOffer />
+      <ConsentBanner />
       <FirstPartyAnalytics />
     </>
   );

@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import Database from "better-sqlite3";
-import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, ANALYTICS_SCHEMA, BLOG_SCHEMA, CONTENT_AND_SECURITY_SCHEMA, RATE_LIMIT_SCHEMA, SCHEMA, SEO_AUTOMATION_SCHEMA } from "./sqlite-schema";
+import { AI_SCHEMA, AI_V6_SCHEMA, AI_V7_SCHEMA, ANALYTICS_SCHEMA, BLOG_SCHEMA, CONTENT_AND_SECURITY_SCHEMA, LIFECYCLE_SCHEMA, RATE_LIMIT_SCHEMA, SCHEMA, SEO_AUTOMATION_SCHEMA, SEO_INTELLIGENCE_SCHEMA } from "./sqlite-schema";
 
 /**
  * Embedded SQLite storage — a single local file, no external service, no API key
@@ -118,7 +118,7 @@ function wrapBetterSqlite3(instance: unknown): Driver {
  * database is upgraded in place without losing rows. Add a new entry (and bump
  * SCHEMA_VERSION) for future schema changes; never edit a shipped entry.
  */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 13;
 const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 1, statements: SCHEMA },
   // v2: store the provider's message id so delivery webhooks can update a row.
@@ -150,6 +150,10 @@ const MIGRATIONS: { version: number; statements: string }[] = [
   { version: 10, statements: RATE_LIMIT_SCHEMA },
   // v11: SEO automation opportunities, task/audit history and settings.
   { version: 11, statements: SEO_AUTOMATION_SCHEMA },
+  // v12: enquiry status + audit trail, appointment cancel/delete lifecycle columns.
+  { version: 12, statements: LIFECYCLE_SCHEMA },
+  // v13: SEO intelligence storage (properties, observations, findings, actions).
+  { version: 13, statements: SEO_INTELLIGENCE_SCHEMA },
 ];
 
 function migrate(driver: Driver, raw: RawDatabase) {
@@ -312,6 +316,7 @@ export type SubmissionRow = {
   message: string | null;
   source: string;
   email_status: string;
+  status: string;
   created_at: string;
 };
 
@@ -343,7 +348,7 @@ export function insertSubmission(input: SubmissionInput): { ok: boolean; id?: nu
   }
 }
 
-export function listSubmissions(options: { query?: string; limit?: number } = {}): SubmissionRow[] {
+export function listSubmissions(options: { query?: string; limit?: number; status?: string } = {}): SubmissionRow[] {
   const current = state();
   if (!current.driver) return [];
 
@@ -351,25 +356,99 @@ export function listSubmissions(options: { query?: string; limit?: number } = {}
   const query = options.query?.trim();
 
   try {
+    const status = isEnquiryStatus(options.status) ? options.status : null;
+    // Legacy rows stored `new`; the canonical pending bucket includes them.
+    const statusClause = status
+      ? status === "pending"
+        ? " AND (status = 'pending' OR status = 'new' OR status IS NULL)"
+        : " AND status = ?"
+      : "";
+    const statusParams = status && status !== "pending" ? [status] : [];
+
     if (query) {
       const like = `%${query.replace(/[%_]/g, (match) => `\\${match}`)}%`;
       return current.driver.all<SubmissionRow>(
         `SELECT * FROM submissions
-         WHERE name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR practice LIKE ? ESCAPE '\\'
-            OR specialty LIKE ? ESCAPE '\\' OR COALESCE(message, '') LIKE ? ESCAPE '\\'
+         WHERE (name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR practice LIKE ? ESCAPE '\\'
+            OR specialty LIKE ? ESCAPE '\\' OR COALESCE(message, '') LIKE ? ESCAPE '\\')${statusClause}
          ORDER BY datetime(created_at) DESC, id DESC
          LIMIT ?`,
-        [like, like, like, like, like, limit],
+        [like, like, like, like, like, ...statusParams, limit],
       );
     }
     return current.driver.all<SubmissionRow>(
-      `SELECT * FROM submissions ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`,
-      [limit],
+      `SELECT * FROM submissions WHERE 1=1${statusClause} ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`,
+      [...statusParams, limit],
     );
   } catch (error) {
     console.error("[sqlite] list failed", error);
     return [];
   }
+}
+
+/**
+ * Enquiry lifecycle. `submissions` is the authoritative enquiry record shown in
+ * the admin inbox; the CRM copies (`leads`, `contact_messages`) are written by
+ * the public forms and keep their own legacy status. Every change here is
+ * appended to `enquiry_status_events` so history survives later edits.
+ */
+export const ENQUIRY_STATUSES = ["pending", "contacted", "resolved", "cancelled"] as const;
+export type EnquiryStatus = (typeof ENQUIRY_STATUSES)[number];
+
+export function isEnquiryStatus(value: unknown): value is EnquiryStatus {
+  return typeof value === "string" && (ENQUIRY_STATUSES as readonly string[]).includes(value);
+}
+
+/** Legacy rows used `new`; treat it as the canonical `pending`. */
+export function normaliseEnquiryStatus(value: string | null | undefined): EnquiryStatus {
+  if (value === "new" || !value) return "pending";
+  return isEnquiryStatus(value) ? value : "pending";
+}
+
+export function updateSubmissionStatus(id: number, status: EnquiryStatus, actor: string | null, note?: string | null): boolean {
+  const current = state();
+  if (!current.driver) return false;
+  if (!Number.isInteger(id) || id <= 0 || !isEnquiryStatus(status)) return false;
+  try {
+    const row = current.driver.get<{ status: string | null }>("SELECT status FROM submissions WHERE id = ?", [id]);
+    if (!row) return false;
+    const from = normaliseEnquiryStatus(row.status);
+    current.driver.run("UPDATE submissions SET status = ? WHERE id = ?", [status, id]);
+    current.driver.run(
+      "INSERT INTO enquiry_status_events (kind, record_id, from_status, to_status, actor, note) VALUES ('submission', ?, ?, ?, ?, ?)",
+      [id, from, status, actor, note ?? null],
+    );
+    return true;
+  } catch (error) {
+    console.error("[sqlite] submission status update failed", error);
+    return false;
+  }
+}
+
+export function listEnquiryStatusEvents(id: number, limit = 10): { fromStatus: string | null; toStatus: string; actor: string | null; note: string | null; createdAt: number }[] {
+  const current = state();
+  if (!current.driver) return [];
+  try {
+    const rows = current.driver.all<{ from_status: string | null; to_status: string; actor: string | null; note: string | null; created_at: number }>(
+      "SELECT from_status, to_status, actor, note, created_at FROM enquiry_status_events WHERE kind = 'submission' AND record_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+      [id, limit],
+    );
+    return rows.map((row) => ({ fromStatus: row.from_status, toStatus: row.to_status, actor: row.actor, note: row.note, createdAt: Number(row.created_at) }));
+  } catch { return []; }
+}
+
+/** Status counts for the inbox header, computed server-side. */
+export function submissionStatusCounts(): Record<string, number> {
+  const current = state();
+  const empty: Record<string, number> = { pending: 0, contacted: 0, resolved: 0, cancelled: 0 };
+  if (!current.driver) return empty;
+  try {
+    for (const row of current.driver.all<{ status: string | null; n: number }>("SELECT status, COUNT(*) AS n FROM submissions GROUP BY status", [])) {
+      const key = normaliseEnquiryStatus(row.status);
+      empty[key] = (empty[key] ?? 0) + Number(row.n);
+    }
+    return empty;
+  } catch { return empty; }
 }
 
 export function countSubmissions(): number {

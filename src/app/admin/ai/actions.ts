@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated, logAdminAction } from "@/lib/auth";
 import { saveAiSettings, AI_SETTING_KEYS } from "@/lib/ai-config";
-import { addBlockedTime, deleteBlockedTime, saveAvailabilityRule, setAppointmentStatus } from "@/lib/ai-appointments";
+import { addBlockedTime, deleteAppointment, deleteBlockedTime, saveAvailabilityRule, setAppointmentStatus } from "@/lib/ai-appointments";
 import { updateHandoff } from "@/lib/ai-session";
 import { localToUtc } from "@/lib/ai-appointments";
 import { rebuildKnowledge } from "@/lib/ai-knowledge";
@@ -67,12 +67,32 @@ export async function updateHandoffAction(formData: FormData): Promise<void> {
 export async function appointmentStatusAction(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  const status = String(formData.get("status")) as "confirmed" | "cancelled";
+  const status = String(formData.get("status")) as "pending" | "confirmed" | "cancelled";
+  if (!Number.isInteger(id) || id <= 0) return;
   try {
-    setAppointmentStatus(id, status);
+    setAppointmentStatus(id, status, "admin");
     await logAdminAction("ai.appointment", `appointment ${id} -> ${status}`, null);
+  } catch { /* invalid transition ignored */ }
+  // Cancelling changes the calendar, dashboard totals and the appointments page.
+  revalidatePath("/admin/ai/appointments");
+  revalidatePath("/admin/ai");
+  revalidatePath("/admin");
+}
+
+export async function deleteAppointmentAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  const confirm = String(formData.get("confirm") ?? "");
+  if (!Number.isInteger(id) || id <= 0) return;
+  // Deletion is irreversible from the admin UI, so it requires the typed token.
+  if (confirm !== `delete-${id}`) return;
+  try {
+    const deleted = deleteAppointment(id);
+    await logAdminAction("ai.appointment", `appointment ${id} deleted=${deleted}`, null);
   } catch { /* ignore */ }
   revalidatePath("/admin/ai/appointments");
+  revalidatePath("/admin/ai");
+  revalidatePath("/admin");
 }
 
 

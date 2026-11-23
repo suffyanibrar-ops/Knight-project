@@ -13,7 +13,7 @@ import { Accordion, ArrowLink, Reveal, SectionLabel } from "@/components/ui";
 import { getFaqs } from "@/lib/data";
 import { benefits, serviceGroups, services } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Medical Billing Services | Knight Medical Billing', description: 'Complete medical billing services: medical billing and coding, accounts receivable management, credentialing and contracting, out-of-network negotiation, eligibility verification and full RCM.', path: '/services', keywords: ['medical billing services', 'medical coding services'] });
+export const metadata: Metadata = pageMetadata({ title: 'Medical Billing Services | Knight Medical Billing', description: 'Medical billing and coding, A/R management, credentialing, prior authorization and full RCM — delivered inside your existing software.', path: '/services', keywords: ['medical billing services', 'medical coding services'] });
 
 export const dynamic = "force-dynamic";
 

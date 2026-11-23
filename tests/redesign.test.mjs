@@ -24,7 +24,7 @@ for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390
   const visible = box !== null && box.y >= -2 && box.y < 90;
   record(`${vp.name}: header sticky after scroll`, visible, box ? `y=${Math.round(box.y)}` : "no box");
   // logo still visible within the sticky header
-  record(`${vp.name}: logo visible in sticky header`, await page.locator('header a[aria-label*="home"]').first().isVisible().catch(() => false));
+  record(`${vp.name}: logo visible in sticky header`, await page.locator('header a[href="/"]').first().isVisible().catch(() => false));
   await ctx.close();
 }
 
@@ -92,13 +92,17 @@ for (const vp of [{ name: "desktop", w: 1440, h: 900 }, { name: "mobile", w: 390
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   const h1 = page.locator("h1").first();
   const h1Text1 = await h1.innerText();
-  const subtitle = page.locator("[data-hero-typewriter]").first();
-  const subtitle1 = await subtitle.innerText();
+  const body1 = await page.locator("main").first().innerText();
   await page.waitForTimeout(2600);
   const h1Text2 = await h1.innerText();
-  const subtitle2 = await subtitle.innerText();
-  record("homepage has one stable semantic H1", (await page.locator("h1").count()) === 1 && h1Text1 === h1Text2 && /independent practices/i.test(h1Text1), `"${h1Text1}"`);
-  record("hero motion remains in a separate subtitle", subtitle1 !== subtitle2, `"${subtitle1.slice(-24)}" → "${subtitle2.slice(-24)}"`);
+  const body2 = await page.locator("main").first().innerText();
+  const EXPECTED_H1 = "A better-run revenue cycle starts with knowing what needs fixing.";
+  record(
+    "homepage has one stable exact H1",
+    (await page.locator("h1").count()) === 1 && h1Text1.trim() === EXPECTED_H1 && h1Text1 === h1Text2,
+    `"${h1Text1.trim().slice(0, 80)}"`,
+  );
+  record("hero copy is static (no typewriter)", body1 === body2 && (await page.locator("[data-hero-typewriter]").count()) === 0);
   await ctx.close();
 }
 

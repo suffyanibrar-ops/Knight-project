@@ -6,6 +6,7 @@ const STATUS_STYLES: Record<BlogStatus, string> = {
   scheduled: "border-amber-200 bg-amber-50 text-amber-700",
   published: "border-mint-200 bg-mint-50 text-mint-700",
   unpublished: "border-brand-200 bg-brand-50 text-brand-700",
+  archived: "border-mist-300 bg-white text-ink-600",
   trashed: "border-rose-200 bg-rose-50 text-rose-600",
 };
 
@@ -14,6 +15,7 @@ const STATUS_LABELS: Record<BlogStatus, string> = {
   scheduled: "Scheduled",
   published: "Published",
   unpublished: "Unpublished",
+  archived: "Archived",
   trashed: "Trashed",
 };
 

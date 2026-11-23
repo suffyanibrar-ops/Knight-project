@@ -3,7 +3,7 @@
 import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { ArrowRight, ChevronDown, Minus, Plus, Star } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export { cn };
@@ -173,31 +173,38 @@ export function Accordion({
   defaultOpen?: number | null;
 }) {
   const [open, setOpen] = useState<number | null>(defaultOpen);
+  const panelId = useId();
   return (
     <div className={cn("divide-y divide-mist-200 border-y border-mist-200", className)}>
       {items.map((item, index) => {
         const isOpen = open === index;
         return (
           <div key={item.q}>
-            <button
-              type="button"
-              onClick={() => setOpen(isOpen ? null : index)}
-              aria-expanded={isOpen}
-              className="flex w-full items-start justify-between gap-6 py-5 text-left"
-            >
-              <span className={cn("text-[1.0625rem] font-bold leading-snug transition-colors", isOpen ? "text-brand-700" : "text-ink-900")}>
-                {item.q}
-              </span>
-              <span
-                className={cn(
-                  "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all duration-300",
-                  isOpen ? "rotate-180 border-brand-500 bg-brand-500 text-white" : "border-mist-300 text-ink-800",
-                )}
+            {/* The question is a real H3 so the page outline exposes the FAQ
+                structure. The button stays the interactive control. */}
+            <h3 className="m-0">
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : index)}
+                aria-expanded={isOpen}
+                aria-controls={`${panelId}-faq-${index}`}
+                className="flex w-full items-start justify-between gap-6 py-5 text-left"
               >
-                {isOpen ? <Minus className="h-4 w-4" strokeWidth={2.4} /> : <Plus className="h-4 w-4" strokeWidth={2.4} />}
-              </span>
-            </button>
+                <span className={cn("text-[1.0625rem] font-bold leading-snug transition-colors", isOpen ? "text-brand-700" : "text-ink-900")}>
+                  {item.q}
+                </span>
+                <span
+                  className={cn(
+                    "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all duration-300",
+                    isOpen ? "rotate-180 border-brand-600 bg-brand-600 text-white" : "border-mist-300 text-ink-800",
+                  )}
+                >
+                  {isOpen ? <Minus className="h-4 w-4" strokeWidth={2.4} /> : <Plus className="h-4 w-4" strokeWidth={2.4} />}
+                </span>
+              </button>
+            </h3>
             <motion.div
+              id={`${panelId}-faq-${index}`}
               initial={false}
               animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
               transition={{ duration: 0.35, ease: easing }}

@@ -13,7 +13,7 @@ import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { benefits, coreValues, leadership, site, stats } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'About Us | Knight Medical Billing', description: 'Meet Knight Medical Billing: a clinician-led team with 25 years of combined billing and coding experience, dedicated to easing the financial burden of healthcare providers.', path: '/about', keywords: ['about knight medical billing', 'medical billing company indianapolis'] });
+export const metadata: Metadata = pageMetadata({ title: 'About Us | Knight Medical Billing', description: 'Meet the Knight Medical Billing team: 25 years of combined billing and coding experience helping providers get paid accurately and on time.', path: '/about', keywords: ['about knight medical billing', 'medical billing company indianapolis'] });
 
 const promises = [
   "A dedicated, accessible team member for every client",

@@ -32,7 +32,7 @@ export default function ContactPage() {
         description="Call, email or send us a message. Tell us about your facility, your specialty and roughly what you collect each month — we will respond with a clear next step. No prepayment, no hidden fees, no pressure."
         image={pageHeroVisuals.contact}
         imageAlt="Photograph of a welcoming medical office reception desk"
-        badges={["HIPAA compliant", "Business-hours support", "Free consultation"]}
+        badges={["HIPAA-conscious handling", "Business-hours support", "Free consultation"]}
         crumbs={[{ label: "Contact" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
         secondaryCta={{ label: "Talk With Knight", href: "/schedule-form" }}
@@ -54,7 +54,7 @@ export default function ContactPage() {
                       <CardIcon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-ink-600/75">{label}</p>
+                      <h3 className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-ink-600/75">{label}</h3>
                       <p className="mt-1 break-words text-[0.9rem] font-extrabold text-ink-950">{value}</p>
                       <p className="mt-0.5 text-[0.72rem] text-ink-600/80">{detail}</p>
                     </div>

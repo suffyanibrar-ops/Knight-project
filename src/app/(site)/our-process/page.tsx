@@ -11,12 +11,12 @@ import { photo } from "@/lib/photos";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { billingSoftware, processSteps, rcmLifecycle, site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Our Onboarding Process | Knight Medical Billing', description: 'A structured billing onboarding: consultation, scope and access, team assignment, account stabilization and ongoing reporting — planned around your organization.', path: '/our-process', keywords: ['medical billing onboarding', 'revenue cycle management process'] });
+export const metadata: Metadata = pageMetadata({ title: 'Our Onboarding Process | Knight Medical Billing', description: 'A structured onboarding: consultation, scope and access, team assignment, stabilization and ongoing reporting — planned around your organization.', path: '/our-process', keywords: ['medical billing onboarding', 'revenue cycle management process'] });
 
 const supportPoints = [
   { icon: Timer, title: "Daily claim worklists", detail: "Claims are reviewed, submitted and tracked from a consistent queue." },
   { icon: Headphones, title: "Direct account access", detail: "A named contact answers questions during business hours." },
-  { icon: ShieldCheck, title: "HIPAA-compliant process", detail: "Secure data flow, strict quality control and confidentiality." },
+  { icon: ShieldCheck, title: "HIPAA-conscious process", detail: "Secure data flow, strict quality control and confidentiality." },
 ];
 
 export default function OurProcessPage() {
@@ -30,7 +30,7 @@ export default function OurProcessPage() {
             A structured start, <span className="display-serif text-brand-600">not a disruption.</span>
           </>
         }
-        description="No prepayment, no hidden fees, no six-month implementation. We interview you about what you are looking for, then build a billing and coding team dedicated to your facility — and get to work."
+        description="No prepayment and no hidden fees. We interview you about what you need, agree scope and access, then build a billing and coding team dedicated to your facility and get to work."
         image={pageHeroVisuals.process}
         imageAlt="Photograph of a team presentation during onboarding"
         badges={["Structured onboarding", "No prepayment", "Business-hours support"]}

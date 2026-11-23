@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Bot, ChevronDown, Inbox, LayoutDashboard, Mail, Menu, PenLine, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, Bot, ChevronDown, Inbox, LayoutDashboard, Mail, Menu, MessageSquare, Newspaper, PenLine, SearchCheck, Settings, ShieldCheck, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -14,40 +14,43 @@ import { cn } from "@/lib/utils";
  * a deep-linked diagnostics page (dashboard surfaces failures) rather than a
  * primary module, because the owner does not manage it day to day.
  */
-type NavLink = { label: string; href: string; icon: typeof LayoutDashboard; match?: string[] };
+type NavLink = { label: string; href: string; description: string; icon: typeof LayoutDashboard; match?: string[] };
 const navGroups: { label: string; links: NavLink[] }[] = [
   {
     label: "Command Center",
     links: [
-      { label: "Overview", href: "/admin", icon: LayoutDashboard },
-      { label: "AI Team", href: "/admin/team", icon: Users },
-      { label: "Live Traffic", href: "/admin/traffic", icon: Activity },
+      { label: "Overview", href: "/admin", description: "Today's traffic, enquiries, alerts and recent activity.", icon: LayoutDashboard },
+      { label: "Live Traffic", href: "/admin/traffic", description: "Who is on the site now, where they came from and what they view.", icon: Activity },
     ],
   },
   {
     label: "Business",
     links: [
-      { label: "Enquiries", href: "/admin/inbox", icon: Inbox },
-      { label: "AI & Conversations", href: "/admin/ai", icon: Bot, match: ["/admin/ai"] },
+      { label: "Enquiries", href: "/admin/inbox", description: "Every contact and consultation request in one inbox.", icon: Inbox },
+      { label: "AI & Conversations", href: "/admin/ai", description: "AI chats, qualified leads, appointments and human handoffs.", icon: Bot, match: ["/admin/ai"] },
     ],
   },
   {
     label: "Content",
     links: [
-      { label: "Blog Workspace", href: "/admin/blog/workspace", icon: PenLine, match: ["/admin/blog/workspace"] },
-      { label: "SEO", href: "/admin/seo", icon: SearchCheck },
+      { label: "Blog Workspace", href: "/admin/blog/workspace", description: "Plan, research, draft, review and publish articles with AI.", icon: PenLine, match: ["/admin/blog/workspace"] },
+      { label: "Published Articles", href: "/admin/blog/published", description: "Everything already live on the public blog.", icon: Newspaper, match: ["/admin/blog/published"] },
+      { label: "SEO", href: "/admin/seo", description: "Search performance, content ideas and site audits.", icon: SearchCheck },
     ],
   },
   {
     label: "Communication",
     links: [
-      { label: "Email", href: "/admin/outbox", icon: Mail },
-      { label: "Subscribers", href: "/admin/subscribers", icon: Users },
+      { label: "Email", href: "/admin/outbox", description: "Owner notifications and delivery diagnostics.", icon: Mail },
+      { label: "Subscribers", href: "/admin/subscribers", description: "Newsletter sign-ups from the website footer.", icon: Users },
     ],
   },
   {
     label: "System",
-    links: [{ label: "Settings", href: "/admin/settings", icon: Settings }],
+    links: [
+      { label: "Settings", href: "/admin/settings", description: "Password, storage, email, AI and booking status.", icon: Settings },
+      { label: "Admin assistant", href: "/admin/assistant", description: "Prepare audited administrative changes in plain language.", icon: MessageSquare, match: ["/admin/assistant"] },
+    ],
   },
 ];
 
@@ -68,6 +71,7 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
                 <Link
                   key={link.href}
                   href={link.href}
+                  title={link.description}
                   onClick={() => setOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.8rem] font-bold transition-colors",
@@ -91,7 +95,7 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
         <aside className="sticky top-0 hidden h-screen w-[15.5rem] shrink-0 flex-col justify-between bg-night p-4 lg:flex">
           <div>
             <Link href="/admin" className="flex items-center gap-2.5 rounded-xl p-1">
-              <Image src="/images/knight-mark-white.png" alt="" width={36} height={36} className="h-9 w-9" />
+              <Image src="/images/knight-mark-white.png" alt="Knight Medical Billing" width={36} height={36} className="h-9 w-9" />
               <span>
                 <span className="block text-[0.95rem] font-extrabold leading-none text-white">Knight</span>
                 <span className="mt-1 block text-[0.52rem] font-bold uppercase tracking-[0.22em] text-brand-300">Control center</span>
@@ -115,7 +119,7 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
           <header className="sticky top-0 z-40 border-b border-mist-200 bg-white/95 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between px-4 py-3">
               <Link href="/admin" className="flex items-center gap-2">
-                <Image src="/images/knight-mark.png" alt="" width={30} height={30} className="h-8 w-8" />
+                <Image src="/images/knight-mark.png" alt="Knight Medical Billing" width={30} height={30} className="h-8 w-8" />
                 <span className="text-[0.85rem] font-extrabold text-ink-950">Knight Admin</span>
               </Link>
               <button type="button" onClick={() => setOpen(true)} aria-label="Open admin menu" className="grid h-10 w-10 place-items-center rounded-full border border-mist-200 text-ink-800">
@@ -131,7 +135,7 @@ export function AdminShell({ children, email, logout }: { children: ReactNode; e
                 <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", stiffness: 320, damping: 34 }} className="fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col justify-between bg-night p-4 lg:hidden">
                   <div>
                     <div className="flex items-center justify-between pb-4">
-                      <Image src="/images/knight-mark-white.png" alt="" width={32} height={32} className="h-8 w-8" />
+                      <Image src="/images/knight-mark-white.png" alt="Knight Medical Billing" width={32} height={32} className="h-8 w-8" />
                       <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white">
                         <X className="h-4 w-4" />
                       </button>

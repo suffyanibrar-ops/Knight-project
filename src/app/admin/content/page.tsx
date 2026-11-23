@@ -41,7 +41,8 @@ export default async function AdminContentPage() {
       <ContentStudio />
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Blog posts" value={stats.total} hint={`${stats.published} published · ${stats.drafts} drafts`} tone="brand" />
+        <StatCard label="Published articles" value={stats.published} hint="Live on the public blog" tone="good" />
+        <StatCard label="Workspace drafts" value={stats.drafts + stats.unpublished} hint="Drafts and unpublished articles" />
         <StatCard label="Scheduled" value={stats.scheduled} hint="Publishes on next public read after due date" />
         <StatCard label="Categories" value={categories.length} hint={`${tags.length} tags`} />
         <StatCard label="Insights resources" value={articles.length} hint="Curated educational library" />
@@ -57,7 +58,7 @@ export default async function AdminContentPage() {
             <ul className="divide-y divide-mist-100">
               {recent.posts.slice(0, 6).map((post) => (
                 <li key={post.id}>
-                  <Link href={`/admin/blog/${post.id}`} className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-mist-50/70">
+                  <Link href={`/admin/blog/editor/${post.id}`} className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-mist-50/70">
                     <span className="min-w-0"><span className="block truncate text-[0.78rem] font-extrabold text-ink-900">{post.title}</span><span className="mt-0.5 block text-[0.68rem] text-ink-600/65">/{post.slug} · {formatDate(post.updatedAt)}</span></span>
                     <span className="shrink-0 rounded-full border border-mist-200 bg-mist-50 px-2 py-0.5 text-[0.6rem] font-extrabold capitalize text-ink-700">{post.status}</span>
                   </Link>

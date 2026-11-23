@@ -553,7 +553,7 @@ export function AiChatWidget() {
                     <p className="text-[0.72rem] font-extrabold text-ink-950">Request a human follow-up</p>
                     <p className="text-[0.66rem] text-ink-600/80">The team will reply during business hours. This does not start a live agent session.</p>
                     <input value={handoff.name} onChange={(event) => setHandoff({ ...handoff, name: event.target.value })} placeholder="Your name" aria-label="Your name" className="w-full rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1.5 text-[0.74rem] outline-none focus:border-brand-400" />
-                    <input value={handoff.email} onChange={(event) => setHandoff({ ...handoff, email: event.target.value })} type="email" placeholder="Business email" aria-label="Business email" className="w-full rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1.5 text-[0.74rem] outline-none focus:border-brand-400" />
+                    <input value={handoff.email} onChange={(event) => setHandoff({ ...handoff, email: event.target.value })} type="email" autoComplete="email" inputMode="email" placeholder="Business email" aria-label="Business email" className="w-full rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1.5 text-[0.74rem] outline-none focus:border-brand-400" />
                     <input value={handoff.phone} onChange={(event) => setHandoff({ ...handoff, phone: event.target.value })} placeholder="Phone (optional)" aria-label="Phone" className="w-full rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1.5 text-[0.74rem] outline-none focus:border-brand-400" />
                     <textarea value={handoff.reason} onChange={(event) => setHandoff({ ...handoff, reason: event.target.value })} placeholder="What do you need help with?" aria-label="Reason" rows={2} className="w-full rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1.5 text-[0.74rem] outline-none focus:border-brand-400" />
                     <div className="flex gap-2">
@@ -623,7 +623,7 @@ export function AiChatWidget() {
         <button
           type="button"
           onClick={() => (open ? closeAll() : startCall())}
-          aria-label={open ? "Close Riley voice call" : "Talk to Riley voice assistant"}
+          aria-label={open ? "Close Riley voice call" : "Talk to Riley voice assistant, AI"}
           aria-expanded={open}
           className="group relative grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-[linear-gradient(145deg,#0d3346_0%,#04141f_100%)] text-white shadow-[0_20px_40px_-15px_rgba(4,20,31,0.7)] transition-colors hover:border-brand-300/40 hover:bg-[linear-gradient(145deg,#0f6988_0%,#071f2f_100%)]"
         >

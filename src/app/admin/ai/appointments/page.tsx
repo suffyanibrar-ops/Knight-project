@@ -4,20 +4,24 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { listAppointments, listAvailabilityRules, listBlockedTimes, formatSlot } from "@/lib/ai-appointments";
 import { AdminPageHeader } from "@/components/admin/ui";
 import { AiBadge, AiDate, AiPanel, adminButton, adminButtonLight, adminInput, adminLabel } from "@/components/admin/ai/ui";
-import { appointmentStatusAction, saveAvailabilityAction, addBlockedTimeAction, deleteBlockedTimeAction } from "../actions";
+import { appointmentStatusAction, deleteAppointmentAction, saveAvailabilityAction, addBlockedTimeAction, deleteBlockedTimeAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "AI appointments · Admin", robots: { index: false, follow: false } };
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-/** Split appointments into upcoming/recent vs older records at request time. */
-function splitAppointments<T extends { startsAtUtc: number }>(appointments: T[]) {
-  const now = Date.now();
-  const cutoff = now - 24 * 60 * 60 * 1000;
+/**
+ * Active vs history is decided by status on the server, not by time alone: a
+ * cancelled booking must leave the active list immediately, even when its slot
+ * is still in the future.
+ */
+function splitAppointments<T extends { startsAtUtc: number; status: string }>(appointments: T[]) {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const isActive = (appointment: T) => (appointment.status === "pending" || appointment.status === "confirmed") && appointment.startsAtUtc >= cutoff;
   return {
-    upcoming: appointments.filter((appointment) => appointment.startsAtUtc >= cutoff).sort((a, b) => a.startsAtUtc - b.startsAtUtc),
-    past: appointments.filter((appointment) => appointment.startsAtUtc < cutoff),
+    upcoming: appointments.filter(isActive).sort((a, b) => a.startsAtUtc - b.startsAtUtc),
+    history: appointments.filter((appointment) => !isActive(appointment)),
   };
 }
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -25,10 +29,10 @@ const toTime = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minu
 
 export default async function AdminAiAppointmentsPage() {
   if (!(await isAdminAuthenticated())) redirect("/admin/login");
-  const appointments = listAppointments(200);
+  const appointments = listAppointments(200, "all");
   const rules = listAvailabilityRules();
   const blocked = listBlockedTimes();
-  const { upcoming, past } = splitAppointments(appointments);
+  const { upcoming, history } = splitAppointments(appointments);
 
   return (
     <div className="space-y-5">
@@ -56,7 +60,40 @@ export default async function AdminAiAppointmentsPage() {
             ))}</tbody>
           </table></div>
         )}
-        {past.length > 0 && <p className="mt-3 text-[0.68rem] text-ink-600/60">{past.length} past appointment{past.length === 1 ? "" : "s"} retained for records.</p>}
+        {history.length > 0 && <p className="mt-3 text-[0.68rem] text-ink-600/60">{history.length} cancelled or past appointment{history.length === 1 ? "" : "s"} moved to history below.</p>}
+      </AiPanel>
+
+      <AiPanel title="History — cancelled and past appointments" description="Cancelled bookings stay here for records and never return to the active list. Deleting removes the row from every admin view while the audit log keeps the action.">
+        {history.length === 0 ? <p className="rounded-xl border border-dashed border-mist-200 bg-mist-50 px-4 py-6 text-center text-[0.78rem] text-ink-600/70">No cancelled or past appointments.</p> : (
+          <div className="space-y-2">
+            {history.map((appointment) => (
+              <div key={appointment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mist-200 bg-mist-50/60 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[0.76rem] font-bold text-ink-900">
+                    {appointment.dateLabel} · {appointment.timeLabel} — {appointment.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[0.68rem] text-ink-600/80">
+                    {appointment.email} · {appointment.organization ?? "—"} · {appointment.timezoneLabel}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AiBadge tone={appointment.status === "cancelled" ? "bad" : "default"}>{appointment.status}</AiBadge>
+                  <details className="relative">
+                    <summary className="cursor-pointer list-none rounded-xl border border-rose-200 px-3 py-2 text-[0.7rem] font-bold text-rose-700 hover:bg-rose-50">Delete…</summary>
+                    <form action={deleteAppointmentAction} className="absolute right-0 z-20 mt-1 w-64 rounded-xl border border-rose-200 bg-surface p-3 shadow-lg">
+                      <input type="hidden" name="id" value={appointment.id} />
+                      <label className="text-[0.64rem] font-bold text-ink-800">
+                        Type <code className="rounded bg-mist-100 px-1">delete-{appointment.id}</code> to confirm
+                        <input name="confirm" required autoComplete="off" className={`${adminInput} mt-1`} placeholder={`delete-${appointment.id}`} />
+                      </label>
+                      <button type="submit" className="mt-2 w-full rounded-lg bg-rose-600 px-3 py-1.5 text-[0.7rem] font-bold text-white">Permanently remove from admin</button>
+                    </form>
+                  </details>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </AiPanel>
 
       <div className="grid gap-4 xl:grid-cols-2">

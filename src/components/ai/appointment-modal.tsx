@@ -96,7 +96,7 @@ export function AppointmentModal({ onClose, onBooked }: { onClose: () => void; o
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-night/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Book an introductory call">
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-mist-200 bg-surface p-5 shadow-2xl sm:rounded-3xl">
+      <div className="max-h-[calc(100dvh-0.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-mist-200 bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-h-[92vh] sm:rounded-3xl sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-brand-700">15-minute introduction</p>

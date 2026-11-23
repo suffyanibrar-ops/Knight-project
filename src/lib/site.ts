@@ -1,3 +1,5 @@
+import { preferredSiteUrl } from "./canonical-host";
+
 export const site = {
   name: "Knight Medical Billing",
   shortName: "Knight",
@@ -25,7 +27,10 @@ export const site = {
   mapEmbed:
     "https://maps.google.com/maps?q=585+Grove+St+Ste+145,+Herndon,+VA+20170-4790&t=&z=16&ie=UTF8&iwloc=&output=embed",
   mapLink: "https://www.google.com/maps/search/?api=1&query=585+Grove+St+Ste+145,+Herndon,+VA+20170-4790",
-  url: process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com",
+  // One canonical origin everywhere. If NEXT_PUBLIC_SITE_URL is ever set to the
+  // apex host, it is normalised to https://www so canonicals, the sitemap,
+  // structured data and Open Graph can never advertise the redirecting host.
+  url: preferredSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.knightmedicalbilling.com"),
 };
 
 export type NavChild = { label: string; href: string; description?: string; icon?: string };
@@ -61,16 +66,6 @@ export const primaryNav: NavItem[] = [
     ],
   },
   {
-    label: "Specialties",
-    href: "/specialties",
-    children: [
-      { label: "Mental Health Billing", href: "/specialties/mental-health-billing", description: "Behavioral-health workflow and authorizations", icon: "HeartHandshake" },
-      { label: "Physical Therapy Billing", href: "/specialties/physical-therapy-billing", description: "Timed services, plans of care and visit limits", icon: "Activity" },
-      { label: "Podiatry Billing", href: "/specialties/podiatry-billing", description: "Routine vs. medical care and surgical detail", icon: "Footprints" },
-      { label: "View all specialties", href: "/specialties", description: "Browse the full specialty directory", icon: "Stethoscope" },
-    ],
-  },
-  {
     label: "Who We Serve",
     href: "/who-we-serve",
     children: [
@@ -79,6 +74,16 @@ export const primaryNav: NavItem[] = [
       { label: "Multi-Provider Practices", href: "/who-we-serve/multi-provider-practices", description: "Provider-level ownership and reporting", icon: "UsersRound" },
       { label: "Hospitals & Systems", href: "/who-we-serve/hospitals", description: "Hospital, health-system and facility billing", icon: "Building2" },
       { label: "View all audiences", href: "/who-we-serve", description: "See every practice setting we support", icon: "Layers" },
+    ],
+  },
+  {
+    label: "Specialties",
+    href: "/specialties",
+    children: [
+      { label: "Mental Health Billing", href: "/specialties/mental-health-billing", description: "Behavioral-health workflow and authorizations", icon: "HeartHandshake" },
+      { label: "Physical Therapy Billing", href: "/specialties/physical-therapy-billing", description: "Timed services, plans of care and visit limits", icon: "Activity" },
+      { label: "Podiatry Billing", href: "/specialties/podiatry-billing", description: "Routine vs. medical care and surgical detail", icon: "Footprints" },
+      { label: "View all specialties", href: "/specialties", description: "Browse the full specialty directory", icon: "Stethoscope" },
     ],
   },
   {
@@ -94,6 +99,7 @@ export const primaryNav: NavItem[] = [
     label: "Resources",
     href: "/insights",
     children: [
+      { label: "Blog", href: "/blog", description: "Field notes and long-form articles", icon: "FileText" },
       { label: "Insights & Guides", href: "/insights", description: "Practical revenue-cycle education", icon: "Newspaper" },
       { label: "How to Choose a Billing Company", href: "/insights/how-to-choose-medical-billing-company", description: "A buyer's due-diligence guide", icon: "ClipboardCheck" },
       { label: "In-House vs. Outsourced", href: "/insights/in-house-vs-outsourced-medical-billing", description: "A neutral operating comparison", icon: "Scale" },
@@ -103,21 +109,15 @@ export const primaryNav: NavItem[] = [
       { label: "Revenue Leak Calculator", href: "/tools/revenue-leak-calculator", description: "Educational revenue indicators", icon: "Calculator" },
     ],
   },
-  {
-    label: "Blog",
-    href: "/blog",
-  },
-  {
-    label: "Company",
-    href: "/about",
-    children: [
-      { label: "About Knight", href: "/about", description: "Mission, values and leadership", icon: "Building2" },
-      { label: "Why Knight", href: "/why-knight", description: "What we own and how we work", icon: "BadgeCheck" },
-      { label: "Our Process", href: "/our-process", description: "Onboarding and workflow", icon: "Workflow" },
-      { label: "Technology & Software", href: "/software", description: "The systems we work in", icon: "MonitorSmartphone" },
-      { label: "Contact", href: "/contact", description: "Talk to our team", icon: "Phone" },
-    ],
-  },
+];
+
+/** Secondary navigation: company information moved out of the primary bar. */
+export const secondaryNav: NavItem[] = [
+  { label: "About Knight", href: "/about" },
+  { label: "Why Knight", href: "/why-knight" },
+  { label: "Our Process", href: "/our-process" },
+  { label: "Software & EHR", href: "/software" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const heroPromises = [
@@ -144,6 +144,8 @@ export type Service = {
   icon: string;
   image: string;
   intro: string;
+  /** Optional hand-written meta description; falls back to a fitted intro. */
+  metaDescription?: string;
   bullets: string[];
   metrics: { value: string; label: string }[];
   highlights: { title: string; detail: string }[];
@@ -247,7 +249,7 @@ export const services: Service[] = [
     bullets: ["A/R follow-up by aging bucket", "Denial investigation and reopening", "Underpaid claim appeals", "Timely payment posting"],
     metrics: [
       { value: "A/R", label: "Aged claim recovery" },
-      { value: "180+", label: "Days outstanding targeted" },
+      { value: "Aging", label: "Follow-up by bucket" },
       { value: "Daily", label: "Follow-up cadence" },
     ],
     highlights: [
@@ -338,6 +340,7 @@ export const services: Service[] = [
   {
     slug: "credentialing-and-contracting",
     name: "Credentialing & Contracting",
+    metaDescription: "Provider credentialing and payer contracting support: applications, CAQH, roster maintenance and rate review that keep billing open.",
     short: "Credentialing & contracting",
     tagline: "Build your practice on healthy payer relationships.",
     icon: "BadgeCheck",
@@ -388,6 +391,7 @@ export const services: Service[] = [
   {
     slug: "out-of-network-negotiation",
     name: "Out-of-Network Negotiation",
+    metaDescription: "Out-of-network claim negotiation for hospitals and free-standing emergency rooms, with pre-payment and post-payment review by an experienced team.",
     short: "Out-of-network negotiation",
     tagline: "The trickiest billing in the industry. Our specialty.",
     icon: "Handshake",
@@ -437,6 +441,7 @@ export const services: Service[] = [
   },
   {
     slug: "eligibility-and-benefits-verification",
+    metaDescription: "Eligibility and benefits verification before the visit: coverage, authorization requirements, deductibles and patient responsibility confirmed.",
     name: "Eligibility & Benefits Verification",
     short: "Eligibility & benefits verification",
     tagline: "Verify coverage before the visit, not after the denial.",
@@ -446,7 +451,7 @@ export const services: Service[] = [
       "Eligibility and benefits verification is the first and most critical step in billing. We confirm insurance coverage, authorization requirements, deductibles and copays before your patient is seen — protecting your cash flow and your patient experience.",
     bullets: ["Primary and secondary coverage checks", "Copay, deductible and coinsurance", "Authorization requirement review", "Insurance discovery for self-pay"],
     metrics: [
-      { value: "Real-time", label: "Eligibility checks" },
+      { value: "Before the visit", label: "Eligibility checks" },
       { value: "Fewer", label: "Eligibility denials" },
       { value: "Higher", label: "Self-pay revenue" },
     ],
@@ -638,6 +643,7 @@ export const services: Service[] = [
   {
     slug: "chart-auditing-and-drg-review",
     name: "Chart Auditing & DRG Review",
+    metaDescription: "Chart audits and DRG reviews that confirm coding accuracy, catch missed documentation and protect reimbursement before a payer finds the gap.",
     short: "Chart auditing & DRG review",
     tagline: "Better accuracy means better results.",
     icon: "Microscope",
@@ -688,6 +694,7 @@ export const services: Service[] = [
   {
     slug: "denial-management",
     name: "Denial Management",
+    metaDescription: "Denial management that investigates every denial, corrects the upstream cause, appeals inside payer deadlines and reports the pattern back to your team.",
     short: "Denial management",
     tagline: "Stop losing revenue to preventable denials.",
     icon: "ShieldAlert",
@@ -837,6 +844,7 @@ export const services: Service[] = [
   },
   {
     slug: "contracting-and-enrollment",
+    metaDescription: "Contracting and enrollment support: payer applications, EDI and ERA setup, roster maintenance and contract terms that keep billing open.",
     name: "Contracting & Enrollment",
     short: "Contracting & enrollment",
     tagline: "Get in-network, stay enrolled, and keep agreements current.",
@@ -888,6 +896,7 @@ export const services: Service[] = [
   {
     slug: "eft-era-edi-support",
     name: "EFT, ERA & EDI Support",
+    metaDescription: "EDI, ERA and EFT support: claim submission, remittance advice and electronic funds transfer configured and maintained so payments post cleanly.",
     short: "EFT, ERA & EDI support",
     tagline: "Electronic claims in, electronic payments out.",
     icon: "Network",
@@ -937,6 +946,7 @@ export const services: Service[] = [
   },
   {
     slug: "revenue-performance-reporting",
+    metaDescription: "Revenue performance reporting: collections, clean claim acceptance, denials, days in A/R and the metrics that show whether cash is moving.",
     name: "Revenue Performance & Reporting",
     short: "Revenue performance & reporting",
     tagline: "Know where the money is — and where it is stuck.",
@@ -997,6 +1007,8 @@ export type Audience = {
   icon: string;
   image: string;
   intro: string;
+  /** Optional hand-written meta description; falls back to a fitted intro. */
+  metaDescription?: string;
   points: string[];
   services: string[];
   stat: { value: string; label: string };
@@ -1005,6 +1017,7 @@ export type Audience = {
 export const audiences: Audience[] = [
   {
     slug: "healthcare-systems",
+    metaDescription: "Health system billing support that extends your team through staffing shortages, coder gaps and changing payer regulations.",
     segment: "facilities",
     name: "Healthcare Systems",
     eyebrow: "Multi-facility support",
@@ -1027,6 +1040,7 @@ export const audiences: Audience[] = [
   },
   {
     slug: "hospitals",
+    metaDescription: "Hospital billing support that reduces costly errors: clean claims, faster payments and a team that works inside your existing systems.",
     segment: "facilities",
     name: "Hospitals",
     eyebrow: "Hospital billing services",
@@ -1049,6 +1063,7 @@ export const audiences: Audience[] = [
   },
   {
     slug: "emergency-rooms",
+    metaDescription: "Emergency department billing support: claims reviewed before submission, denials worked and out-of-network balances negotiated by our team.",
     segment: "facilities",
     name: "Emergency Rooms",
     eyebrow: "ER & free-standing ER billing",
@@ -1137,6 +1152,7 @@ export const audiences: Audience[] = [
   },
   {
     slug: "multi-provider-practices",
+    metaDescription: "Multi-provider billing support with provider-level ownership, consistent payer setup and reporting that shows each clinician's revenue.",
     segment: "practices",
     name: "Multi-Provider Practices",
     eyebrow: "Multiple providers, one accountable process",

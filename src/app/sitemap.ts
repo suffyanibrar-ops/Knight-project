@@ -39,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/insights": 0.7,
     "/faq": 0.7,
     "/contact": 0.7,
+    "/cookie-policy": 0.3,
   };
 
   const staticRoutes = [
@@ -62,6 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/hipaa-compliance",
     "/privacy-policy",
     "/terms-of-service",
+    "/cookie-policy",
   ].map((route) => ({
     url: `${site.url}${route}`,
     lastModified: new Date(),

@@ -52,7 +52,7 @@ export async function generateMetadata({ searchParams }: { searchParams: BlogSea
   return pageMetadata({
     title: page > 1 ? `Medical billing blog — page ${page}` : "Medical Billing Blog | Revenue Cycle Guides",
     description:
-      "Field notes and long-form guides from the Knight Medical Billing team on claims, denials, eligibility, A/R follow-up, credentialing and revenue cycle operations.",
+      "Field notes and long-form guides on claims, denials, eligibility, A/R follow-up, credentialing and revenue cycle operations.",
     path: canonicalPath(page),
     keywords: ["medical billing blog", "revenue cycle management guides", "claim denial articles"],
   });
@@ -196,7 +196,7 @@ export default async function BlogPage({ searchParams }: { searchParams: BlogSea
                   {evergreen.slice(0, 3).map((article) => (
                     <Link key={article.slug} href={`/insights/${article.slug}`} className="group overflow-hidden rounded-2xl border border-mist-200 bg-surface transition-colors hover:border-brand-300">
                       <div className="relative aspect-[16/8] overflow-hidden">
-                        <Image src={articleVisuals[article.slug] ?? article.image} alt="" fill className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" sizes="(max-width: 640px) 100vw, 33vw" />
+                        <Image src={articleVisuals[article.slug] ?? article.image} alt={article.title} fill className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" sizes="(max-width: 640px) 100vw, 33vw" />
                       </div>
                       <div className="p-3.5">
                         <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-brand-700">{article.category}</p>

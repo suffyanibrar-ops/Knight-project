@@ -48,7 +48,7 @@ export default async function BlogPreviewPage({ params }: { params: Promise<{ id
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-mist-200 bg-surface px-4 py-3">
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
-            href={`/admin/blog/${post.id}`}
+            href={`/admin/blog/editor/${post.id}`}
             className="inline-flex items-center gap-1.5 rounded-full bg-night-soft px-3.5 py-2 text-[0.7rem] font-bold text-white transition-colors hover:bg-brand-600"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to editor
@@ -70,7 +70,7 @@ export default async function BlogPreviewPage({ params }: { params: Promise<{ id
             </a>
           )}
           <Link
-            href={`/admin/blog/${post.id}`}
+            href={`/admin/blog/editor/${post.id}`}
             className="inline-flex items-center gap-1.5 rounded-full border border-mist-200 bg-surface px-3.5 py-2 text-[0.7rem] font-bold text-ink-800 transition-colors hover:border-brand-300"
           >
             <PenSquare className="h-3.5 w-3.5" /> Edit

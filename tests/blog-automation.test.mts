@@ -178,9 +178,12 @@ try {
   const finalPost = await blog.getAdminPost(1);
   ok("broken and duplicate internal links are removed", finalPost?.contentHtml.includes("does-not-exist") === false && (published?.data.automation?.technicalFixes ?? []).some((fix) => fix.includes("broken internal link")), JSON.stringify(published?.data.automation?.technicalFixes));
 
-  // The workspace can see the same workflow and post from the shared data layer.
+  // Phase 4 contract: a published article leaves the workspace queue and is
+  // reachable only through the history lookup (Published Articles / audit).
   const visible = await workflow.listContentWorkflows(50);
-  ok("workspace data includes the article", visible.some((item) => item.id === id && item.stage === "published"));
+  ok("published workflow leaves the workspace queue", visible.every((item) => item.id !== id));
+  const history = await workflow.listContentWorkflows(50, { includePublished: true });
+  ok("published workflow remains retrievable for history", history.some((item) => item.id === id && item.stage === "published"));
 
   const categories = await blog.listAdminCategories();
   const tags = await blog.listTags();

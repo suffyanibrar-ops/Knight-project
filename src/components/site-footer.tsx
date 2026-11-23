@@ -4,9 +4,11 @@ import { audiences, services, site } from "@/lib/site";
 import { Logo } from "./logo";
 import { NewsletterForm } from "./newsletter-form";
 import { ThemeToggle } from "./theme/theme-toggle";
+import { CookieSettingsLink } from "./cookie-settings-link";
 
 const companyLinks = [
   { label: "About us", href: "/about" },
+  { label: "Why Knight", href: "/why-knight" },
   { label: "Our process", href: "/our-process" },
   { label: "Switching billing partners", href: "/switching-medical-billing" },
   { label: "Results", href: "/results" },
@@ -59,7 +61,7 @@ export function SiteFooter() {
           <div>
             <Logo variant="light" markSize={44} />
             <p className="mt-4 max-w-xs text-[0.85rem] leading-relaxed text-white/60">
-              Medical billing and revenue cycle management for independent practices, clinics and specialty groups across the United States.
+              Medical billing and revenue cycle management for healthcare providers and organizations — private practices, clinics, specialty groups, hospitals and urgent care.
             </p>
 
             <div className="mt-5 flex gap-2">
@@ -193,6 +195,10 @@ export function SiteFooter() {
             <Link href="/hipaa-compliance" className="transition-colors hover:text-white">
               HIPAA &amp; security
             </Link>
+            <Link href="/cookie-policy" className="transition-colors hover:text-white">
+              Cookie policy
+            </Link>
+            <CookieSettingsLink />
             <Link href="/sitemap.xml" className="transition-colors hover:text-white">
               Sitemap
             </Link>

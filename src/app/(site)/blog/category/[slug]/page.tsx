@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogArchiveView } from "@/components/blog/archive-view";
 import { getCategoryBySlug, listCategoriesWithCounts, listPublicPosts, listTags } from "@/lib/blog";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, fitSeoDescription } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +30,10 @@ export async function generateMetadata({ params, searchParams }: { params: Param
 
   return pageMetadata({
     title: page > 1 ? `${category.name} articles — page ${page}` : `${category.name} articles`,
-    description:
-      category.description?.slice(0, 158) ||
-      `Medical billing and revenue cycle articles filed under ${category.name} on the Knight Medical Billing blog.`,
+    description: fitSeoDescription(
+      category.description ||
+        `Medical billing and revenue cycle articles filed under ${category.name} on the Knight Medical Billing blog.`,
+    ),
     path: canonicalPath(category.slug, page),
   });
 }

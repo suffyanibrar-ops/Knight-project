@@ -13,13 +13,14 @@ import { cn } from "@/lib/utils";
  */
 export function ParallaxImage({
   src,
-  alt = "",
+  alt,
   className,
   distance = 40,
   sizes = "100vw",
 }: {
   src: string;
-  alt?: string;
+  /** Descriptive alt for crawler audits; the wrapper hides the image from AT. */
+  alt: string;
   className?: string;
   distance?: number;
   sizes?: string;

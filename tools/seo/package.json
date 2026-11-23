@@ -1,0 +1,16 @@
+{
+  "name": "@knight/seo-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Isolated, CI-only SEO measurement tools for Knight Medical Billing. Never installed by the application deploy.",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "lighthouse": "12.8.2",
+    "linkinator": "8.1.0"
+  },
+  "scripts": {
+    "lighthouse": "lighthouse",
+    "linkinator": "linkinator"
+  }
+}

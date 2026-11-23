@@ -1,19 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sessionSecret } from "@/lib/admin-session";
+import { canonicalHostRedirect } from "@/lib/canonical-host";
+import { indexNowKeyPath } from "@/lib/seo/indexnow-key";
 
 /**
  * Next.js 16 renamed `middleware.ts` to `proxy.ts`.
- * This file enforces the admin session at the edge for every /admin and
- * /api/admin request. Each admin page also re-verifies the signed session
- * server-side, so protection does not depend on this file alone.
+ *
+ * Responsibilities, in order:
+ *  1. Permanent host canonicalisation: apex -> https://www (GET/HEAD only).
+ *  2. IndexNow key file.
+ *  3. Existing alias redirects.
+ *  4. Admin session enforcement.
+ *
+ * Each admin page also re-verifies the signed session server-side, so
+ * protection does not depend on this file alone.
  */
 
 const COOKIE = "kmb_admin_session";
 
-/**
- * Permanent aliases for the first dedicated SEO pages. These are handled here
- * so they are true 301 responses rather than framework-default 308s.
- */
 const CANONICAL_ALIASES: Record<string, string> = {
   "/specialties/mental-health": "/specialties/mental-health-billing",
   "/specialties/behavioral-health": "/specialties/mental-health-billing",
@@ -56,6 +60,33 @@ async function verifySession(token: string | undefined, secret: string) {
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  // Canonical hostname: the apex alias must never serve a second copy of the
+  // site. Nginx forwards the original Host header (see DEPLOYMENT.md), so this
+  // is checked here as the application-level guarantee. The production reverse
+  // proxy should still own the one-hop version; this is the safe fallback.
+  // GET/HEAD only, so no POST or server action can be downgraded by a 301.
+  const hostRedirect = canonicalHostRedirect({
+    host: request.headers.get("host") ?? request.headers.get("x-forwarded-host") ?? request.nextUrl.host,
+    pathname,
+    search,
+    method: request.method,
+  });
+  if (hostRedirect) {
+    return NextResponse.redirect(hostRedirect, 301);
+  }
+
+  // IndexNow ownership verification: plain text, no store, no logging.
+  if (indexNowKeyPath(pathname, process.env.INDEXNOW_KEY)) {
+    return new NextResponse((process.env.INDEXNOW_KEY ?? "").trim(), {
+      status: 200,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+        "x-robots-tag": "noindex",
+      },
+    });
+  }
   const alias = CANONICAL_ALIASES[pathname] ?? (pathname.startsWith("/case-studies/") ? "/results/case-studies" : undefined);
   if (alias) {
     const destination = request.nextUrl.clone();
@@ -103,16 +134,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Every page, sitemap/robots and root text file. Static assets, Next.js
+    // internals and public APIs are excluded from middleware for performance;
+    // admin APIs keep their explicit matcher below for session enforcement.
+    "/((?!_next|api/|images/|media/|blog-media/|favicon.ico).*)",
     "/admin",
     "/admin/:path*",
     "/api/admin/:path*",
-    "/specialties/mental-health",
-    "/specialties/behavioral-health",
-    "/specialties/physical-therapy",
-    "/specialties/podiatry",
-    "/insights/switching-medical-billing",
-    "/case-studies",
-    "/case-studies/:path*",
-    "/blog",
   ],
 };

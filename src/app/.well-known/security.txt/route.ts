@@ -1,3 +1,5 @@
+import { SITE_URL } from "@/lib/seo";
+
 export const dynamic = "force-static";
 
 export function GET() {
@@ -7,8 +9,8 @@ export function GET() {
     "Contact: tel:+1-812-994-0046",
     "Expires: 2027-12-31T23:59:00.000Z",
     "Preferred-Languages: en",
-    `Canonical: ${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com"}/.well-known/security.txt`,
-    `Policy: ${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://www.knightmedicalbilling.com"}/hipaa-compliance`,
+    `Canonical: ${SITE_URL}/.well-known/security.txt`,
+    `Policy: ${SITE_URL}/hipaa-compliance`,
     "",
     "# Report suspected vulnerabilities or privacy incidents here.",
     "# Please include reproduction steps and do not access or modify patient data.",

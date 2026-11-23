@@ -10,8 +10,9 @@ import { pageHeroVisuals } from "@/components/sections/visuals";
 import { photo } from "@/lib/photos";
 import { Reveal } from "@/components/ui";
 import { kpis, site } from "@/lib/site";
+import { reviewConcern } from "@/lib/revenue-review";
 
-export const metadata: Metadata = pageMetadata({ title: 'Request a Consultation | Knight Medical Billing', description: 'Request a medical billing consultation. Tell us about your organization and what you need help with. We will review it and follow up to arrange the conversation.', path: '/schedule-form', keywords: ['medical billing consultation'] });
+export const metadata: Metadata = pageMetadata({ title: 'Request a Consultation | Knight Medical Billing', description: 'Request a medical billing consultation. Tell us about your organization and what you need help with; we will follow up to arrange the call.', path: '/schedule-form', keywords: ['medical billing consultation'] });
 
 const promises = [
   { icon: Clock3, title: "A clear next step", detail: "We review your information first, then agree on scope, access and a realistic start plan." },
@@ -23,7 +24,11 @@ function WalletIcon(props: React.ComponentProps<typeof BadgeCheck>) {
   return <BadgeCheck {...props} />;
 }
 
-export default function SchedulePage() {
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ concern?: string | string[] }> }) {
+  const params = await searchParams;
+  const concern = Array.isArray(params.concern) ? params.concern[0] : params.concern;
+  const concernLabel = reviewConcern(concern)?.label;
+
   return (
     <>
       <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Request a consultation", path: "/schedule-form" }])} />
@@ -35,10 +40,10 @@ export default function SchedulePage() {
             Tell us what is <span className="display-serif text-brand-600">not working yet.</span>
           </>
         }
-        description="Tell us about your organization and what you need help with. We will review the information and follow up during business hours to arrange the conversation — with no prepayment required."
+        description="Tell us about your organization and what you need help with. We will review the information and follow up during business hours to arrange the conversation."
         image={pageHeroVisuals.schedule}
         imageAlt="Photograph of a clinician in a video consultation at a desk"
-        badges={["Free · no obligation", "No hidden fees", "Business-hours follow-up"]}
+        badges={["Free · no obligation", "Business-hours follow-up"]}
         crumbs={[{ label: "Request a consultation" }]}
         primaryCta={{ label: `Call ${site.phone}`, href: site.phoneHref }}
         secondaryCta={{ label: "Email us", href: `mailto:${site.email}` }}
@@ -48,14 +53,15 @@ export default function SchedulePage() {
         <div className="shell grid gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
           <div className="min-w-0">
             <Reveal>
-              <div className="grid gap-2.5">
+              <h2 className="text-[clamp(1.5rem,3vw,2.1rem)] font-extrabold tracking-[-0.03em] text-ink-950">What to expect before you commit.</h2>
+              <div className="mt-4 grid gap-2.5">
                 {promises.map(({ icon: PromiseIcon, title, detail }) => (
                   <div key={title} className="flex gap-3.5 rounded-2xl border border-mist-200 bg-surface p-4">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
                       <PromiseIcon className="h-4.5 w-4.5" />
                     </span>
                     <div>
-                      <p className="text-[0.9rem] font-extrabold text-ink-950">{title}</p>
+                      <h3 className="text-[0.9rem] font-extrabold text-ink-950">{title}</h3>
                       <p className="mt-1 text-[0.8rem] leading-relaxed text-ink-600/75">{detail}</p>
                     </div>
                   </div>
@@ -65,7 +71,7 @@ export default function SchedulePage() {
 
             <Reveal delay={0.08} className="mt-6">
               <div className="relative overflow-hidden rounded-3xl bg-night p-6 text-white">
-                <ParallaxImage src={photo.documentsReview} distance={26} className="opacity-35" />
+                <ParallaxImage src={photo.documentsReview} alt="Medical billing documents being reviewed during consultation planning" distance={26} className="opacity-35" />
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-night via-ink-950/95 to-ink-950/60" />
                 <div className="dot-grid absolute inset-0 opacity-[0.12]" />
                 <div className="relative">
@@ -114,7 +120,12 @@ export default function SchedulePage() {
 
           <Reveal delay={0.05} className="min-w-0">
             <div className="lg:sticky lg:top-28">
-              <DemoForm />
+              {concernLabel && (
+                <p className="mb-2 text-[0.74rem] font-semibold text-ink-700">
+                  Starting from your concern: <span className="text-brand-700">{concernLabel}</span>
+                </p>
+              )}
+              <DemoForm key={concern ?? "none"} initialConcern={concern} />
               <p className="mt-3 text-center text-[0.68rem] text-ink-600/75">We respond during business hours, Monday–Friday 8:00 AM – 5:00 PM ET.</p>
             </div>
           </Reveal>
@@ -136,7 +147,7 @@ export default function SchedulePage() {
             ].map((item) => (
               <li key={item.step} className="rounded-2xl border border-mist-200 bg-surface p-5">
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-night-soft text-[0.68rem] font-extrabold text-white">{item.step}</span>
-                <p className="mt-3 text-[0.9rem] font-extrabold text-ink-950">{item.title}</p>
+                <h3 className="mt-3 text-[0.9rem] font-extrabold text-ink-950">{item.title}</h3>
                 <p className="mt-1.5 text-[0.78rem] leading-relaxed text-ink-600/75">{item.detail}</p>
               </li>
             ))}

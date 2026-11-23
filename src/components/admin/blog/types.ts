@@ -6,7 +6,7 @@
  * `/api/admin/blog/*` (Drizzle `Date` values are serialised as ISO strings).
  */
 
-export const BLOG_STATUSES = ["draft", "scheduled", "published", "unpublished", "trashed"] as const;
+export const BLOG_STATUSES = ["draft", "scheduled", "published", "unpublished", "archived", "trashed"] as const;
 export type BlogStatus = (typeof BLOG_STATUSES)[number];
 
 export type BlogSort = "newest" | "oldest" | "updated";

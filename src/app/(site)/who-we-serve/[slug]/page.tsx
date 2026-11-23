@@ -1,5 +1,5 @@
 import { JsonLd } from "@/components/structured-data";
-import { pageMetadata, serviceSchema, breadcrumbSchema } from "@/lib/seo";
+import { pageMetadata, serviceSchema, breadcrumbSchema, fitSeoDescription } from "@/lib/seo";
 import { ArrowRight, Check, Phone, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!audience) return { title: "Not found" };
   return pageMetadata({
     title: `${audience.name} Billing | Knight Medical Billing`,
-    description: audience.intro.slice(0, 158),
+    description: audience.metaDescription ?? fitSeoDescription(audience.intro),
     path: `/who-we-serve/${audience.slug}`,
     keywords: [`${audience.name.toLowerCase()} medical billing`, "medical billing services"],
   });
@@ -66,7 +66,6 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
               <h2 className="mt-3 text-[clamp(1.6rem,3.4vw,2.2rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-ink-950">
                 What we handle for {audience.name.toLowerCase()}
               </h2>
-              <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-600/85">{audience.intro}</p>
             </Reveal>
 
             <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
@@ -120,7 +119,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
                 {[
                   "A dedicated billing and coding team assigned to your facility",
                   "Claims reviewed before submission and worked from a daily queue",
-                  "HIPAA-compliant data and document security",
+                  "HIPAA-conscious data and document handling",
                   "Consistent reporting and transparent communication",
                   "Works inside your existing billing software",
                   "No prepayment and no hidden fees",
@@ -147,7 +146,7 @@ export default async function AudiencePage({ params }: { params: Promise<{ slug:
                       <Icon name={audience.icon} className="h-5 w-5" />
                     </span>
                     <p className="mt-3 text-lg font-extrabold leading-snug tracking-tight">Let&apos;s review your {audience.short.toLowerCase()} billing.</p>
-                    <p className="mt-1.5 text-[0.78rem] text-white/60">Free consultation · no prepayment · no hidden fees.</p>
+                    <p className="mt-1.5 text-[0.78rem] text-white/60">Free consultation · business-hours follow-up.</p>
                   </div>
                 </div>
                 <div className="p-5">

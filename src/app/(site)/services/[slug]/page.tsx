@@ -1,5 +1,5 @@
 import { JsonLd } from "@/components/structured-data";
-import { pageMetadata, serviceSchema, breadcrumbSchema } from "@/lib/seo";
+import { pageMetadata, serviceSchema, breadcrumbSchema, fitSeoDescription } from "@/lib/seo";
 import { ArrowRight, Check, CheckCircle2, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!service) return { title: "Service not found" };
   return pageMetadata({
     title: `${service.name} | Knight Medical Billing`,
-    description: service.intro.slice(0, 158),
+    description: service.metaDescription ?? fitSeoDescription(service.intro),
     path: `/services/${service.slug}`,
     keywords: [service.name.toLowerCase(), "medical billing services", "revenue cycle management"],
   });
@@ -67,7 +67,6 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
               <h2 className="mt-3 text-[clamp(1.6rem,3.4vw,2.2rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink-950">{service.highlights[0].title}</h2>
               <div className="mt-4 space-y-4 text-[0.95rem] leading-relaxed text-ink-600/85">
                 <p>{service.highlights[0].detail}</p>
-                <p>{service.highlights[1].detail}</p>
               </div>
             </Reveal>
 
@@ -174,7 +173,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
       <NextSteps currentService={service.slug} />
 
-      <CtaBand title={`Put ${service.short.toLowerCase()} in expert hands.`} description="We will review your current process, show you where the revenue cycle loses momentum and explain how a dedicated Knight team would take responsibility. No prepayment required." />
+      <CtaBand title={`Put ${service.short.toLowerCase()} in expert hands.`} description="We will review your current process, show you where the revenue cycle loses momentum and explain how a dedicated Knight team would take responsibility." />
     </>
   );
 }

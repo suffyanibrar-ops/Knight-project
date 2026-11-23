@@ -149,7 +149,7 @@ export function RevenuePipeline() {
             <div className="min-w-0 border-b border-mist-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[0.58rem] font-extrabold uppercase tracking-[0.18em] text-ink-600/85">The cycle, in motion</p>
-                <p className="text-[0.58rem] font-bold tracking-[0.08em] text-ink-600/80">{String(active + 1).padStart(2, "0")} / 08</p>
+                <p className="text-[0.58rem] font-bold tracking-[0.08em] text-ink-600/85">{String(active + 1).padStart(2, "0")} / 08</p>
               </div>
 
               <div role="tablist" aria-orientation="vertical" aria-label="Revenue cycle stages" className="relative mt-3">
@@ -188,7 +188,7 @@ export function RevenuePipeline() {
                           <span className={cn("block text-[0.82rem] font-extrabold leading-tight", isActive ? "text-ink-950" : "text-ink-800")}>{item.label}</span>
                           <span className="mt-0.5 block truncate text-[0.64rem] font-semibold text-ink-600/80">{item.short}</span>
                         </span>
-                        <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isActive ? "translate-x-0 text-brand-600" : "-translate-x-1 text-ink-600/20 group-hover:translate-x-0 group-hover:text-brand-500")} />
+                        <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isActive ? "translate-x-0 text-brand-600" : "-translate-x-1 text-ink-600/60 group-hover:translate-x-0 group-hover:text-brand-500")} />
                       </button>
                     );
                   })}
@@ -247,7 +247,7 @@ export function RevenuePipeline() {
                           <span key={item.id} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${index < active ? "bg-brand-300/45" : index === active ? "bg-brand-300" : "bg-white/10"}`} />
                         ))}
                       </div>
-                      <p className="mt-2 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-white/30">
+                      <p className="mt-2 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-white/65">
                         Stage {String(active + 1).padStart(2, "0")} of 08 · follow the same revenue through a different failure point
                       </p>
                     </div>

@@ -29,7 +29,7 @@ export function PostRowActions({ id, status, slug }: { id: number; status: BlogS
         body: JSON.stringify({ action }),
       });
       if (action === "duplicate") {
-        router.push(`/admin/blog/${result.id}`);
+        router.push(`/admin/blog/editor/${result.id}`);
         return;
       }
       router.refresh();

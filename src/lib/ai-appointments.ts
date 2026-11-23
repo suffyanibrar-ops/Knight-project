@@ -489,7 +489,9 @@ export function cancelAppointmentByToken(token: string): boolean {
   const sql = db();
   const row = getAppointmentByToken(token);
   if (!row) return false;
-  sql.prepare("UPDATE ai_appointments SET status = 'cancelled', updated_at = ? WHERE id = ?").run(Date.now(), row.id as number);
+  const now = Date.now();
+  sql.prepare("UPDATE ai_appointments SET status = 'cancelled', cancelled_at = ?, cancelled_by = 'visitor', updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+    .run(now, now, row.id as number);
   return true;
 }
 
@@ -538,9 +540,26 @@ export interface AdminAppointment {
   dateLabel: string; timeLabel: string; durationMinutes: number; localDate: string | null; localTime: string | null;
 }
 
-export function listAppointments(limit = 100): AdminAppointment[] {
+export type AppointmentScope = "active" | "cancelled" | "history" | "all";
+
+/**
+ * Server-side lifecycle rules. Every admin view, count and widget must use these
+ * predicates so a cancelled or deleted booking can never leak back into an
+ * active list after a refresh or cache invalidation.
+ */
+const ACTIVE_WHERE = "deleted_at IS NULL AND status IN ('pending','confirmed')";
+const CANCELLED_WHERE = "deleted_at IS NULL AND status = 'cancelled'";
+const VISIBLE_WHERE = "deleted_at IS NULL";
+
+export function listAppointments(limit = 100, scope: AppointmentScope = "all"): AdminAppointment[] {
   try {
-    const rows = db().prepare("SELECT * FROM ai_appointments ORDER BY starts_at_utc DESC LIMIT ?").all(limit) as Record<string, unknown>[];
+    const where =
+      scope === "active" ? `WHERE ${ACTIVE_WHERE}`
+      : scope === "cancelled" ? `WHERE ${CANCELLED_WHERE}`
+      : scope === "history" ? `WHERE ${VISIBLE_WHERE} AND (status = 'cancelled' OR starts_at_utc < ?)`
+      : `WHERE ${VISIBLE_WHERE}`;
+    const params = scope === "history" ? [Date.now(), limit] : [limit];
+    const rows = db().prepare(`SELECT * FROM ai_appointments ${where} ORDER BY starts_at_utc DESC LIMIT ?`).all(...params) as Record<string, unknown>[];
     return rows.map((row) => {
       const startsAtUtc = Number(row.starts_at_utc);
       const timezone = resolveTimezone(String(row.timezone ?? "")) ?? BOOKING_TIMEZONE;
@@ -558,9 +577,45 @@ export function listAppointments(limit = 100): AdminAppointment[] {
   } catch { return []; }
 }
 
-export function setAppointmentStatus(id: number, status: "confirmed" | "cancelled"): void {
-  if (!["confirmed", "cancelled"].includes(status)) throw new Error("Invalid status.");
-  db().prepare("UPDATE ai_appointments SET status = ?, updated_at = ? WHERE id = ?").run(status, Date.now(), id);
+export type AppointmentStatus = "pending" | "confirmed" | "cancelled";
+
+/**
+ * Status transition with cancel metadata. A cancelled appointment keeps its row
+ * (history) but releases the slot, because the active-slot unique index only
+ * covers pending/confirmed.
+ */
+export function setAppointmentStatus(id: number, status: AppointmentStatus, actor: string | null = null): void {
+  if (!["pending", "confirmed", "cancelled"].includes(status)) throw new Error("Invalid status.");
+  const sql = db();
+  const now = Date.now();
+  if (status === "cancelled") {
+    sql.prepare("UPDATE ai_appointments SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+      .run(now, actor, now, id);
+  } else {
+    sql.prepare("UPDATE ai_appointments SET status = ?, cancelled_at = NULL, cancelled_by = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+      .run(status, now, id);
+  }
+}
+
+/**
+ * Soft delete. The existing retention approach keeps history, so the row stays
+ * for records while disappearing from every ordinary query.
+ */
+export function deleteAppointment(id: number): boolean {
+  const sql = db();
+  const now = Date.now();
+  const result = sql.prepare(
+    "UPDATE ai_appointments SET deleted_at = ?, status = CASE WHEN status IN ('pending','confirmed') THEN 'cancelled' ELSE status END, cancelled_at = COALESCE(cancelled_at, ?), updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+  ).run(now, now, now, id);
+  return result.changes > 0;
+}
+
+/** Upcoming count used by dashboards. Pending and confirmed both occupy the slot. */
+export function countUpcomingAppointments(now = Date.now()): number {
+  try {
+    const row = db().prepare(`SELECT COUNT(*) AS n FROM ai_appointments WHERE ${ACTIVE_WHERE} AND starts_at_utc >= ?`).get(now) as { n: number } | undefined;
+    return Number(row?.n ?? 0);
+  } catch { return 0; }
 }
 
 /** Build a display row for the manage page. */

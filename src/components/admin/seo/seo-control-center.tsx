@@ -81,6 +81,18 @@ const INTERVAL_OPTIONS = {
     { value: "4", label: "4 runs per day" },
     { value: "6", label: "6 runs per day" },
   ],
+  max_opportunities_per_run: [
+    { value: "4", label: "4 ideas per run" },
+    { value: "8", label: "8 ideas per run" },
+    { value: "12", label: "12 ideas per run" },
+    { value: "15", label: "15 ideas per run (deep research)" },
+  ],
+  max_queries_per_run: [
+    { value: "4", label: "4 search queries" },
+    { value: "6", label: "6 search queries" },
+    { value: "8", label: "8 search queries" },
+    { value: "10", label: "10 search queries" },
+  ],
 } as const;
 
 const SELECT_KEYS = Object.keys(INTERVAL_OPTIONS) as (keyof typeof INTERVAL_OPTIONS)[];
@@ -272,12 +284,12 @@ export function SeoControlCenter() {
           <ChevronDown className="h-3.5 w-3.5 text-ink-600/50 transition-transform group-open:rotate-180" />
         </summary>
         <div className="border-t border-mist-100 px-4 py-3.5">
-          <p className="text-[0.68rem] leading-relaxed text-ink-600/65">These are safe defaults. Change them only if you want a different research rhythm.</p>
+          <p className="text-[0.68rem] leading-relaxed text-ink-600/65">These are safe defaults. “Ideas per run” controls how deep the content finder researches: 15 uses up to four AI calls and produces the widest topic set. Higher query counts find more evidence but take longer.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {SELECT_KEYS.map((key) => (
               <label key={key} className="block">
                 <span className="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-600/65">
-                  {key === "discovery_interval_hours" ? "Find ideas" : key === "audit_interval_hours" ? "Audit site" : key === "refresh_min_age_days" ? "Review older content" : "Daily research budget"}
+                  {key === "discovery_interval_hours" ? "Find ideas" : key === "audit_interval_hours" ? "Audit site" : key === "refresh_min_age_days" ? "Review older content" : key === "daily_ai_runs" ? "Daily research budget" : key === "max_opportunities_per_run" ? "Ideas per run" : "Search queries per run"}
                 </span>
                 <select value={draftSettings[key] ?? ""} onChange={(event) => setDraftSettings((current) => ({ ...current, [key]: event.target.value }))} className="mt-1 w-full rounded-lg border border-mist-200 bg-surface px-2.5 py-2 text-[0.74rem] text-ink-900 outline-none focus:border-brand-400">
                   {(INTERVAL_OPTIONS[key] as readonly { value: string; label: string }[]).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -287,7 +299,7 @@ export function SeoControlCenter() {
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" disabled={Boolean(busy)} onClick={() => void post("settings", { settings: draftSettings, busyKey: "save" })} className="inline-flex items-center gap-1.5 rounded-full bg-night-soft px-3.5 py-2 text-[0.68rem] font-bold text-white hover:bg-brand-600 disabled:opacity-50">{busy === "save" ? <Loader2 className="h-3 w-3 animate-spin" /> : null} Save settings</button>
-            <span className="text-[0.64rem] text-ink-600/55">Search Console is not connected, so performance data is not shown.</span>
+            <span className="text-[0.64rem] text-ink-600/55">{data.searchConsole.connected ? "Search Console is connected. Performance data is stored and shown on the SEO overview." : "Search Console is not connected; connect it to include search performance in reports."}</span>
           </div>
         </div>
       </details>

@@ -12,7 +12,7 @@ import { Accordion, Reveal, SectionLabel } from "@/components/ui";
 import { getFaqs } from "@/lib/data";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: 'Frequently Asked Questions | Knight Medical Billing', description: 'Answers about our services, structured onboarding, claim review, supported billing software, out-of-network negotiation, HIPAA security and how to contact our team.', path: '/faq', keywords: ['medical billing faq'] });
+export const metadata: Metadata = pageMetadata({ title: 'Frequently Asked Questions | Knight Medical Billing', description: 'Answers on services, onboarding, claim review, supported software, HIPAA security, out-of-network negotiation and how to reach our team.', path: '/faq', keywords: ['medical billing faq'] });
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,7 @@ export default async function FaqPage() {
               <TiltCard className="group h-full">
                 <Link href="/our-process" className="group flex h-full flex-col rounded-2xl border border-mist-200 bg-surface p-5 transition-all hover:border-brand-300 hover:shadow-md">
                   <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-brand-700">Our process</p>
-                  <p className="mt-1.5 text-[0.95rem] font-extrabold text-ink-950 group-hover:text-brand-700">Live in 5 days</p>
+                  <p className="mt-1.5 text-[0.95rem] font-extrabold text-ink-950 group-hover:text-brand-700">A structured start</p>
                   <p className="mt-1 text-[0.78rem] text-ink-600/70">Consultation, dedicated team, stabilization, reporting.</p>
                 </Link>
               </TiltCard>

@@ -10,7 +10,7 @@ import { articleVisuals, pageHeroVisuals } from "@/components/sections/visuals";
 import { Reveal, SectionLabel } from "@/components/ui";
 import { getArticles } from "@/lib/data";
 
-export const metadata: Metadata = pageMetadata({ title: 'Billing Resources & Guides | Knight Medical Billing', description: 'Practical medical billing and coding guides from our specialists: clean claim checks, eligibility verification, A/R follow-up, credentialing and out-of-network negotiation.', path: '/insights', keywords: ['medical billing resources', 'revenue cycle guides'] });
+export const metadata: Metadata = pageMetadata({ title: 'Billing Resources & Guides | Knight Medical Billing', description: 'Practical medical billing guides: clean claims, eligibility verification, A/R follow-up, credentialing and out-of-network negotiation.', path: '/insights', keywords: ['medical billing resources', 'revenue cycle guides'] });
 
 export const dynamic = "force-dynamic";
 

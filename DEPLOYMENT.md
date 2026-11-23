@@ -625,6 +625,49 @@ proxy_set_header X-Forwarded-Proto $scheme;
 Do not enable additional proxy layers without updating `TRUST_PROXY`; otherwise
 the last hop becomes an internal address and all visitors share one bucket.
 
+### Canonical hostname contract
+
+The only public origin is `https://www.knightmedicalbilling.com`. The apex host
+`knightmedicalbilling.com` is an alias and must never serve a second copy of the
+site. The application already enforces this for `GET`/`HEAD` in `src/proxy.ts`
+(see `src/lib/canonical-host.ts`), and sitemap, canonical, Open Graph and
+structured-data URLs are normalised to the preferred host. The reverse proxy
+should still own the one-hop redirect so an `http://` apex request does not need
+two redirects:
+
+```nginx
+# HTTPS apex -> https://www, one hop, path and query preserved.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name knightmedicalbilling.com;
+
+    # Reuse the existing certificate lines already used by the www server block.
+    ssl_certificate     /path/to/existing/fullchain.pem;
+    ssl_certificate_key /path/to/existing/privkey.pem;
+
+    return 301 https://www.knightmedicalbilling.com$request_uri;
+}
+
+# HTTP (both names) -> https://www, one hop.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name knightmedicalbilling.com www.knightmedicalbilling.com;
+
+    return 301 https://www.knightmedicalbilling.com$request_uri;
+}
+```
+
+Leave the existing HTTPS `www` server block unchanged. Do not add a redirect in
+that block and do not redirect `www` to the apex. If the existing HTTP server
+block already redirects each host to its own HTTPS host, replace it with the
+block above to collapse `http://apex` from two redirects into one.
+
+The certificate must cover both names (the current production hostname serving
+both names already requires this). This server change is a production action and
+has **not** been applied by this repository change.
+
 ---
 
 ## 10. Corrected dedicated-server setup (future, explicit approval required)

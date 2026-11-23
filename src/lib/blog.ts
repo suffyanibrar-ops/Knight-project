@@ -1,6 +1,8 @@
 import "server-only";
 import { and, asc, count, desc, eq, gt, inArray, isNull, like, lte, ne, or } from "drizzle-orm";
 import { db } from "@/db";
+import { SITE_URL } from "@/lib/seo";
+import { articleUrl, notifyIndexNow } from "@/lib/seo/indexnow-notify";
 import {
   blogCategories,
   blogMedia,
@@ -22,7 +24,7 @@ import { estimateReadingTime, extractHeadings, sanitizeBlogHtml, type BlogHeadin
  * and the same sweep can be triggered from the admin dashboard.
  */
 
-export const BLOG_STATUSES = ["draft", "scheduled", "published", "unpublished", "trashed"] as const;
+export const BLOG_STATUSES = ["draft", "scheduled", "published", "unpublished", "archived", "trashed"] as const;
 export type BlogStatus = (typeof BLOG_STATUSES)[number];
 
 export type BlogSort = "newest" | "oldest" | "updated";
@@ -151,7 +153,7 @@ function escapeLike(value: string): string {
 export async function publishDuePosts(): Promise<number> {
   try {
     const due = await db
-      .select({ id: blogPosts.id, scheduledFor: blogPosts.scheduledFor })
+      .select({ id: blogPosts.id, slug: blogPosts.slug, scheduledFor: blogPosts.scheduledFor })
       .from(blogPosts)
       .where(
         and(
@@ -167,6 +169,8 @@ export async function publishDuePosts(): Promise<number> {
         .update(blogPosts)
         .set({ status: "published", publishedAt: row.scheduledFor ?? now, scheduledFor: null, updatedAt: now })
         .where(eq(blogPosts.id, row.id));
+      const url = articleUrl(SITE_URL, row.slug);
+      await notifyIndexNow({ urls: [url], versions: { [url]: String(now.getTime()) }, origin: SITE_URL });
     }
     return due.length;
   } catch {
@@ -436,6 +440,58 @@ export async function listAdminPosts(options: {
   }
 }
 
+/**
+ * Editorial separation, enforced in SQL rather than by filtering in React.
+ *
+ * Workspace queue  : draft + unpublished (never published, never archived).
+ * Published module : published and actually due (never future-scheduled).
+ * Archived posts   : excluded from both, reachable through the status filter.
+ */
+export async function listWorkspacePosts(limit = 50): Promise<BlogPostSummary[]> {
+  await publishDuePosts();
+  try {
+    const rows = await db
+      .select()
+      .from(blogPosts)
+      .where(and(inArray(blogPosts.status, ["draft", "unpublished"]), isNull(blogPosts.deletedAt)))
+      .orderBy(desc(blogPosts.updatedAt))
+      .limit(Math.min(Math.max(limit, 1), 100));
+    return hydrate(rows);
+  } catch { return []; }
+}
+
+export async function listPublishedPosts(limit = 50): Promise<BlogPostSummary[]> {
+  await publishDuePosts();
+  const now = Date.now();
+  try {
+    const rows = await db
+      .select()
+      .from(blogPosts)
+      .where(and(eq(blogPosts.status, "published"), isNull(blogPosts.deletedAt), lte(blogPosts.publishedAt, new Date(now))))
+      .orderBy(desc(blogPosts.publishedAt))
+      .limit(Math.min(Math.max(limit, 1), 100));
+    return hydrate(rows);
+  } catch { return []; }
+}
+
+/** Counts for the three modules, computed in one grouped query. */
+export async function getModuleCounts(): Promise<{ workspace: number; published: number; scheduled: number }> {
+  await publishDuePosts();
+  try {
+    const groups = await db
+      .select({ status: blogPosts.status, value: count() })
+      .from(blogPosts)
+      .where(isNull(blogPosts.deletedAt))
+      .groupBy(blogPosts.status);
+    const map = new Map(groups.map((row) => [row.status, Number(row.value)]));
+    return {
+      workspace: (map.get("draft") ?? 0) + (map.get("unpublished") ?? 0),
+      published: map.get("published") ?? 0,
+      scheduled: map.get("scheduled") ?? 0,
+    };
+  } catch { return { workspace: 0, published: 0, scheduled: 0 }; }
+}
+
 export async function getAdminPost(id: number): Promise<BlogPostFull | null> {
   try {
     const rows = await db.select().from(blogPosts).where(eq(blogPosts.id, id)).limit(1);
@@ -641,6 +697,8 @@ export async function setPostTaxonomy(id: number, categoryId: number | null, tag
 
 export async function setPostStatus(id: number, status: BlogStatus, scheduledFor?: Date | null): Promise<void> {
   const now = new Date();
+  // Read the slug up front so a publish/unpublish can notify search engines.
+  const meta = await db.select({ slug: blogPosts.slug }).from(blogPosts).where(eq(blogPosts.id, id)).limit(1);
   if (status === "published") {
     const rows = await db.select({ deletedAt: blogPosts.deletedAt }).from(blogPosts).where(eq(blogPosts.id, id)).limit(1);
     if (!rows.length) throw new Error("Post not found.");
@@ -651,6 +709,13 @@ export async function setPostStatus(id: number, status: BlogStatus, scheduledFor
     await db.update(blogPosts).set({ status: "scheduled", scheduledFor, updatedAt: now }).where(eq(blogPosts.id, id));
   } else {
     await db.update(blogPosts).set({ status, updatedAt: now }).where(eq(blogPosts.id, id));
+  }
+
+  // Only live pages are ever submitted: publishing and unpublishing change what
+  // the public sees; drafts, scheduling and trash do not.
+  if (meta[0]?.slug && (status === "published" || status === "unpublished")) {
+    const url = articleUrl(SITE_URL, meta[0].slug);
+    await notifyIndexNow({ urls: [url], versions: { [url]: `${status}:${now.getTime()}` }, origin: SITE_URL });
   }
 }
 

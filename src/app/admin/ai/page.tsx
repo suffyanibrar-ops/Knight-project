@@ -20,7 +20,7 @@ export default async function AdminAiOverviewPage() {
   const settings = getAiSettings();
   const knowledge = knowledgeStatus();
   const conversations = listConversations(8);
-  const appointments = listAppointments(6).filter((appointment) => appointment.status !== "cancelled");
+  const appointments = listAppointments(6, "active");
   const handoffs = listHandoffs(6).filter((handoff) => handoff.status !== "resolved");
   const deepseekConfigured = Boolean(process.env.DEEPSEEK_API_KEY);
 

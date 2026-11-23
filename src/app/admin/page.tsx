@@ -12,11 +12,21 @@ export const dynamic = "force-dynamic";
 
 const quickActions = [
   { label: "View enquiries", href: "/admin/inbox", icon: Inbox },
-  { label: "Open Live Traffic", href: "/admin/traffic", icon: Activity },
-  { label: "View AI handoffs", href: "/admin/ai/handoffs", icon: UserRound },
-  { label: "View appointments", href: "/admin/ai/appointments", icon: CalendarCheck },
-  { label: "Open content", href: "/admin/content", icon: Newspaper },
-  { label: "Run SEO check", href: "/admin/seo", icon: SearchCheck },
+  { label: "Live Traffic", href: "/admin/traffic", icon: Activity },
+  { label: "Blog Workspace", href: "/admin/blog/workspace", icon: Newspaper },
+  { label: "Search visibility", href: "/admin/seo", icon: SearchCheck },
+];
+
+const moduleGuide = [
+  { name: "Overview", href: "/admin", text: "The daily command center: traffic, enquiries, alerts and recent activity." },
+  { name: "Live Traffic", href: "/admin/traffic", text: "Real-time visitors, pages, sources and conversion events." },
+  { name: "Enquiries", href: "/admin/inbox", text: "All contact, consultation and lead messages, searchable and status-tracked." },
+  { name: "AI & Conversations", href: "/admin/ai", text: "Assistant conversations, qualified leads, appointments and human handoffs." },
+  { name: "Blog Workspace", href: "/admin/blog/workspace", text: "AI-assisted article planning, research, drafting, review and publishing." },
+  { name: "Published Articles", href: "/admin/blog/published", text: "The live blog library; edit or unpublish any existing article." },
+  { name: "SEO", href: "/admin/seo", text: "Search performance, content ideas, audits and technical findings." },
+  { name: "Email / Subscribers", href: "/admin/outbox", text: "Owner notifications and newsletter sign-ups from the website." },
+  { name: "Settings", href: "/admin/settings", text: "Password, storage, email, AI and booking configuration." },
 ];
 
 const activityIcon = {
@@ -60,6 +70,21 @@ export default async function AdminOverviewPage() {
           </>
         }
       />
+
+      <details className="group rounded-2xl border border-mist-200 bg-surface">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-[0.8rem] font-extrabold text-ink-900">
+          <span>What each module does</span>
+          <span className="text-[0.64rem] font-semibold text-ink-600/60">New here? Start with this 30-second guide</span>
+        </summary>
+        <div className="grid gap-2 border-t border-mist-100 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {moduleGuide.map((item) => (
+            <Link key={item.name} href={item.href} className="rounded-xl border border-mist-200 bg-mist-50/50 p-3 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+              <p className="text-[0.76rem] font-extrabold text-ink-900">{item.name}</p>
+              <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-600/75">{item.text}</p>
+            </Link>
+          ))}
+        </div>
+      </details>
 
       <section aria-label="System status" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <div className={`rounded-2xl border p-4 ${statusTone(status.website)}`}>

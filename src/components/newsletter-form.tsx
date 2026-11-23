@@ -50,17 +50,18 @@ export function NewsletterForm({ tone = "dark" }: { tone?: "dark" | "light" }) {
           }}
           required
           autoComplete="email"
+          inputMode="email"
           placeholder="Work email"
           aria-label="Work email"
           className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${
-            tone === "dark" ? "text-white placeholder:text-white/40" : "text-ink-900 placeholder:text-ink-600/70"
+            tone === "dark" ? "text-white placeholder:text-white/55" : "text-ink-900 placeholder:text-ink-600/70"
           }`}
         />
         <button
           type="submit"
           disabled={state === "loading"}
           className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-70 ${
-            state === "done" ? "bg-mint-500 text-white" : tone === "dark" ? "bg-brand-500 text-white hover:bg-brand-400" : "bg-night-soft text-white hover:bg-brand-700"
+            state === "done" ? "bg-mint-600 text-white" : tone === "dark" ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-night-soft text-white hover:bg-brand-700"
           }`}
           aria-label="Subscribe"
         >
@@ -70,7 +71,7 @@ export function NewsletterForm({ tone = "dark" }: { tone?: "dark" | "light" }) {
       {message && (
         <p className={`mt-2 text-xs font-semibold ${state === "error" ? "text-rose-400" : tone === "dark" ? "text-mint-300" : "text-mint-700"}`}>{message}</p>
       )}
-      {!message && <p className={`mt-2 text-[0.7rem] ${tone === "dark" ? "text-white/40" : "text-ink-600/80"}`}>Occasional billing insights. No spam, unsubscribe anytime.</p>}
+      {!message && <p className={`mt-2 text-[0.7rem] ${tone === "dark" ? "text-white/65" : "text-ink-600/80"}`}>Occasional billing insights. No spam, unsubscribe anytime.</p>}
     </form>
   );
 }

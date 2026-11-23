@@ -29,8 +29,8 @@ const SpecialtyExplorer = nextDynamic(() => import("@/components/specialty-explo
 import { audiences, benefits, coreValues, faqs as staticFaqs, kpis, payerLogos, rcmLifecycle, services, site, stats } from "@/lib/site";
 import { softwarePlatforms } from "@/lib/seo-content";
 
-const homeTitle = "Medical Billing & RCM for Independent Practices";
-const homeMetadata = pageMetadata({ title: homeTitle, description: 'Medical billing and revenue cycle management for independent practices. Claims, denials, A/R, posting and credentialing inside your existing software. No prepayment or hidden fees.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'medical billing for independent practices'] });
+const homeTitle = "Medical Billing & RCM for Healthcare Providers";
+const homeMetadata = pageMetadata({ title: homeTitle, description: 'Medical billing and revenue cycle management for healthcare providers and organizations, from private practices to hospitals. Claims, denials, A/R and reporting.', path: '/', keywords: ['medical billing company', 'medical billing services', 'revenue cycle management', 'hospital billing services', 'medical billing for healthcare providers'] });
 
 // Keep the brand first in the browser tab / search result title. The shared
 // title template appends the brand only when it is not already leading.
@@ -80,8 +80,7 @@ export default async function HomePage() {
               <p className="mt-3 text-[0.93rem] leading-relaxed text-ink-600/80">
                 These are the issues healthcare organizations describe most often — from independent practices to multi-facility systems. Each one has a process cause and a place to start.
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/schedule-form" className="btn btn-primary">Talk With Knight <ArrowRight className="h-4 w-4" /></Link>
+              <div className="mt-5">
                 <Link href="/services" className="btn btn-light">Explore our services</Link>
               </div>
             </Reveal>
@@ -252,7 +251,7 @@ export default async function HomePage() {
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             {[
-              { step: "01", title: "Who we help", detail: "Hospitals, healthcare systems, emergency rooms, urgent cares and private practices across the United States.", href: "/who-we-serve", cta: "See who we serve" },
+              { step: "01", title: "Who we help", detail: "Independent and growing practices, specialty groups and clinics — plus hospitals, emergency departments and urgent care organizations where the fit is right.", href: "/who-we-serve", cta: "See who we serve" },
               { step: "02", title: "What we handle", detail: "Coding, claims, A/R, credentialing, out-of-network negotiation, authorizations and patient billing.", href: "/services", cta: "Explore services" },
               { step: "03", title: "How we start", detail: "A structured onboarding around your software, access and existing A/R — with scope and timing agreed first.", href: "/our-process", cta: "See the process" },
             ].map((item, index) => (
@@ -302,16 +301,17 @@ export default async function HomePage() {
             </Reveal>
           </div>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <p className="mt-4 text-[0.66rem] font-bold text-ink-600/60 sm:hidden">Swipe to see all {services.length} services →</p>
+          <div className="mt-3 grid gap-4 max-sm:-mx-4 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:gap-3 max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-3 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="region" aria-label="Medical billing services" tabIndex={0}>
             {services.map((service, index) => (
-              <Reveal key={service.slug} delay={Math.min(index * 0.04, 0.3)}>
+              <Reveal key={service.slug} delay={Math.min(index * 0.04, 0.3)} className="max-sm:min-w-[16.5rem] max-sm:shrink-0 max-sm:snap-start">
                 <TiltCard className="group relative h-full overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:border-brand-300 hover:shadow-[0_30px_60px_-38px_rgba(4,20,31,0.45)]">
                 <Link href={`/services/${service.slug}`} className="relative flex h-full flex-col overflow-hidden p-5">
                   <div className="flex items-start justify-between">
                     <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition-colors duration-300 group-hover:bg-brand-500 group-hover:text-white">
                       <Icon name={service.icon} className="h-5 w-5" />
                     </span>
-                    <ArrowUpRight className="h-4 w-4 text-ink-600/25 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand-600" />
+                    <ArrowUpRight className="h-4 w-4 text-ink-600/60 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand-600" />
                   </div>
                   <h3 className="mt-4 text-[0.96rem] font-extrabold leading-snug tracking-tight text-ink-950">{service.short}</h3>
                   <p className="mt-2 flex-1 text-[0.78rem] leading-relaxed text-ink-600/75">{service.tagline}</p>
@@ -337,13 +337,13 @@ export default async function HomePage() {
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-mint-50 text-mint-700">
                     <BadgeCheck className="h-4 w-4" strokeWidth={2.2} />
                   </span>
-                  <p className="text-[0.72rem] font-extrabold leading-tight text-ink-900">No prepayment</p>
+                  <p className="text-[0.72rem] font-extrabold leading-tight text-ink-900">Your software stays</p>
                 </div>
-                <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-600/70">No hidden fees. A dedicated account manager from day one.</p>
+                <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-600/70">No rip-and-replace. A dedicated account manager from day one.</p>
               </div>
               <div className="absolute -left-2 top-6 hidden items-center gap-2 rounded-full border border-white bg-surface px-3 py-2 shadow-lg sm:flex">
                 <ShieldCheck className="h-4 w-4 text-mint-600" />
-                <span className="text-[0.7rem] font-extrabold text-ink-900">HIPAA compliant</span>
+                <span className="text-[0.7rem] font-extrabold text-ink-900">HIPAA-conscious handling</span>
               </div>
             </div>
           </Reveal>
@@ -390,8 +390,8 @@ export default async function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-night py-16 text-white sm:py-20">
-        <div className="absolute inset-0">
-          <Image src={photo.teamOffice} alt="" fill className="object-cover opacity-[0.34]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+        <div className="absolute inset-0" aria-hidden>
+          <Image src={photo.teamOffice} alt="Knight Medical Billing team collaborating in the office" fill className="object-cover opacity-[0.34]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
           <div className="absolute inset-0 bg-gradient-to-r from-ink-950/95 via-ink-950/85 to-ink-950/55" />
         </div>
         <div className="dot-grid absolute inset-0 opacity-[0.1]" />
@@ -400,10 +400,10 @@ export default async function HomePage() {
             <Reveal className="max-w-2xl">
               <SectionLabel tone="light">Who we serve</SectionLabel>
               <h2 className="mt-3 text-[clamp(1.85rem,4vw,2.75rem)] font-extrabold leading-[1.06] tracking-[-0.035em]">
-                From large health systems to <span className="display-serif text-brand-300">small practices.</span>
+                Built for independent practices first. <span className="display-serif text-brand-300">Larger facilities too.</span>
               </h2>
               <p className="mt-3 text-[0.92rem] leading-relaxed text-white/60">
-                Knight Medical Billing is a recognized medical billing organization serving a range of facilities — hospitals, emergency rooms, urgent cares, private practices and multi-site healthcare systems.
+                Knight is built around independent and growing practices, multi-provider groups, specialty clinics and the workflows they run every day. We also support hospitals, emergency departments and urgent care organizations where our model fits.
               </p>
             </Reveal>
             <Reveal delay={0.1}>
@@ -417,9 +417,9 @@ export default async function HomePage() {
                 <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-brand-300">Independent &amp; growing practices</p>
                 <Link href="/who-we-serve/private-practices" className="text-[0.72rem] font-bold text-brand-200 hover:text-white">Practice support →</Link>
               </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 max-sm:-mx-4 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-3 sm:grid-cols-2" role="region" aria-label="Practice settings we support" tabIndex={0}>
                 {practiceAudiences.map((audience) => (
-                  <Link key={audience.slug} href={`/who-we-serve/${audience.slug}`} className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-400/25 bg-white/[0.06] transition-all hover:-translate-y-1 hover:border-brand-400/50 hover:bg-white/[0.09] sm:row-span-2">
+                  <Link key={audience.slug} href={`/who-we-serve/${audience.slug}`} className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-400/25 bg-white/[0.06] transition-all hover:-translate-y-1 hover:border-brand-400/50 hover:bg-white/[0.09] max-sm:min-w-[17rem] max-sm:shrink-0 max-sm:snap-start sm:row-span-2">
                     <div className="relative aspect-[16/9] overflow-hidden">
                       <Image src={audience.image} alt={audience.name} fill className="object-cover opacity-80 transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, 50vw" />
                       <div className="absolute inset-0 bg-gradient-to-t from-night via-ink-950/30 to-transparent" />
@@ -434,7 +434,7 @@ export default async function HomePage() {
                     </div>
                   </Link>
                 ))}
-                <Link href="/services/complete-rcm-services" className="group flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07]">
+                <Link href="/services/complete-rcm-services" className="group flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07] max-sm:min-w-[17rem] max-sm:shrink-0 max-sm:snap-start">
                   <div>
                     <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-brand-300">Smaller or growing?</p>
                     <p className="mt-2 text-[0.95rem] font-extrabold leading-snug text-white">Start with the stage that is costing you most.</p>
@@ -447,9 +447,9 @@ export default async function HomePage() {
 
             <div>
               <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.18em] text-white/65">Hospitals, systems &amp; facilities</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-3 grid gap-3 max-sm:-mx-4 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-3 sm:grid-cols-2 lg:grid-cols-4" role="region" aria-label="Facility settings we support" tabIndex={0}>
                 {facilityAudiences.map((audience, index) => (
-                  <Reveal key={audience.slug} delay={index * 0.05}>
+                  <Reveal key={audience.slug} delay={index * 0.05} className="max-sm:min-w-[16.5rem] max-sm:shrink-0 max-sm:snap-start">
                     <Link href={`/who-we-serve/${audience.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all hover:-translate-y-1 hover:border-brand-400/40 hover:bg-white/[0.07]">
                       <div className="relative aspect-[4/3] overflow-hidden">
                         <Image src={audience.image} alt={audience.name} fill className="object-cover opacity-80 transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
@@ -503,12 +503,12 @@ export default async function HomePage() {
                 A structured start <span className="display-serif text-brand-600">around your operation.</span>
               </h2>
               <p className="mt-4 text-[0.95rem] leading-relaxed text-ink-600/80">
-                We learn how your organization works, agree on scope and access, then build a billing and coding team around your facility. No prepayment, no hidden fees, and no long implementation project.
+                We learn how your organization works, agree on scope and access, then build a billing and coding team around your facility. Scope, access and timing are agreed before work begins.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {[
                   { icon: Workflow, label: "Works in your software" },
-                  { icon: ShieldCheck, label: "HIPAA-compliant handling" },
+                  { icon: ShieldCheck, label: "HIPAA-conscious handling" },
                   { icon: Clock, label: "Daily claim worklists" },
                   { icon: Sparkles, label: "Dedicated account manager" },
                 ].map(({ icon: FeatureIcon, label }) => (
@@ -633,7 +633,7 @@ export default async function HomePage() {
                   </Link>
                 ))}
               </div>
-              <Link href="/software" className="mt-4 inline-flex items-center gap-1.5 text-[0.8rem] font-extrabold text-brand-700 hover:text-brand-500">
+              <Link href="/software" className="mt-4 inline-flex items-center gap-1.5 text-[0.8rem] font-extrabold text-brand-700 hover:text-brand-900">
                 View all software expertise <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Reveal>
@@ -675,12 +675,12 @@ export default async function HomePage() {
               <ArrowLink href="/insights">Browse all resources</ArrowLink>
             </Reveal>
           </div>
-          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 max-sm:-mx-4 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:gap-3 max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-3 sm:mt-9 sm:grid-cols-2 lg:grid-cols-3" role="region" aria-label="Latest billing resources" tabIndex={0}>
             {articles.slice(0, 3).map((article, index) => (
-              <Reveal key={article.slug} delay={index * 0.06}>
+              <Reveal key={article.slug} delay={index * 0.06} className="max-sm:min-w-[17.5rem] max-sm:shrink-0 max-sm:snap-start">
                 <Link href={`/insights/${article.slug}`} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-mist-200 bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg">
                   <div className="relative aspect-[16/10] overflow-hidden">
-                    <Image src={article.image} alt="" fill className="object-cover transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
+                    <Image src={article.image} alt={article.title} fill className="object-cover transition-transform duration-700 group-hover:scale-[1.05]" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" />
                     <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-brand-700 backdrop-blur">{article.category}</span>
                   </div>
                   <div className="flex flex-1 flex-col p-5">
@@ -753,7 +753,7 @@ export default async function HomePage() {
             <h2 className="mt-3 text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink-950">
               Questions practices ask <span className="display-serif text-brand-600">before switching.</span>
             </h2>
-            <p className="mt-4 text-[0.94rem] leading-relaxed text-ink-600/80">Call or email us directly — we answer questions the same day during business hours.</p>
+            <p className="mt-4 text-[0.94rem] leading-relaxed text-ink-600/80">Call or email us directly — we answer questions during business hours.</p>
             <div className="mt-6 space-y-2.5">
               <a href={site.phoneHref} className="flex items-center gap-3 rounded-2xl border border-mist-200 bg-surface p-3.5 transition-colors hover:border-brand-300">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700">
@@ -806,7 +806,7 @@ export default async function HomePage() {
               <p className="mt-3 text-[0.92rem] leading-relaxed text-white/60">
                 Anonymised feedback themes gathered in our conversations with administrators and clinicians — not published client endorsements.
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-white/35">
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-white/65">
                 <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-brand-300" /> Four recurring themes</span>
                 <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-mint-300" /> Administrator &amp; clinician conversations</span>
               </div>

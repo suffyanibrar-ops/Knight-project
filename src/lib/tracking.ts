@@ -15,6 +15,18 @@ export type ConversionName =
   | "fit_assessment_completed"
   | "ai_lead"
   | "ai_handoff"
+  // Phase 3 consultation popup (privacy-safe, no PII)
+  | "consultation_popup_impression"
+  | "consultation_popup_dismissed"
+  | "consultation_popup_booking_click"
+  | "offer_impression"
+  | "offer_open"
+  | "offer_dismiss"
+  | "offer_cta_click"
+  | "lead_form_start"
+  | "review_concern_select"
+  | "lead_form_submit"
+  | "cookie_consent_choice"
   | "ai_appointment_started"
   | "ai_appointment_confirmed"
   | "ai_appointment_cancelled"
@@ -47,6 +59,15 @@ function readUtm(): Record<string, string> {
     if (stored) firstTouch = JSON.parse(stored) as Record<string, string>;
   } catch { /* storage blocked */ }
   return firstTouch ?? {};
+}
+
+const startedForms = new Set<string>();
+
+/** Fire once per form per page load; never includes field values. */
+export function trackLeadFormStart(form: string): void {
+  if (startedForms.has(form)) return;
+  startedForms.add(form);
+  trackConversion("lead_form_start", { form });
 }
 
 export function trackConversion(event: ConversionName, params: Record<string, string | number | boolean> = {}): void {

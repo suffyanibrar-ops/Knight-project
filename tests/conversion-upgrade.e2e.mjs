@@ -30,7 +30,8 @@ const waitForIntro = async () => {
 await page.goto(`${BASE}/?utm_source=regression&utm_medium=e2e`, { waitUntil: "domcontentloaded", timeout: 60_000 });
 await waitForIntro();
 const homeText = await page.locator("main, body").first().innerText();
-ok("hero names independent practices", /independent practices/i.test(homeText), homeText.slice(0, 350));
+ok("hero names healthcare providers and organizations", /healthcare providers and organizations/i.test(homeText), homeText.slice(0, 350));
+ok("hero is not limited to independent practices", !/revenue cycle management for independent practices/i.test(homeText));
 ok("hero names hospitals and health systems", /hospitals/i.test(homeText) && /health systems/i.test(homeText));
 ok("homepage includes why organizations consider a change", /Why organizations consider a change/i.test(homeText));
 ok("homepage no longer repeats 99.9% acceptance", !/99\.9%/.test(homeText));
@@ -39,7 +40,7 @@ ok("homepage no longer promises 24/5 support", !/24\/5/.test(homeText));
 ok("homepage no longer promises a five-day start", !/5-day|five days|five-day/i.test(homeText));
 
 const navLabels = (await page.locator("header nav[aria-label='Primary'] > div > a").allInnerTexts()).map((label) => label.trim()).filter(Boolean);
-ok("navigation exposes Who We Serve and Results", JSON.stringify(navLabels) === JSON.stringify(["Services", "Specialties", "Who We Serve", "Results", "Resources", "Company"]), navLabels.join(" | "));
+ok("primary navigation is exactly five items", JSON.stringify(navLabels) === JSON.stringify(["Services", "Who We Serve", "Specialties", "Results", "Resources"]), navLabels.join(" | "));
 ok("navigation has the Talk With Knight CTA", (await page.locator('header a[href="/schedule-form"]').innerText()).includes("Talk With Knight"));
 
 // ---- diagnostic: stage guidance + analytics event with UTM ----
@@ -94,7 +95,7 @@ await page.getByRole("button", { name: /talk to riley voice assistant/i }).click
 await page.waitForTimeout(500);
 await page.getByRole("button", { name: /open text chat/i }).first().click();
 await page.waitForTimeout(1200);
-const widgetText = await page.locator('[role="dialog"]').innerText();
+const widgetText = await page.getByRole('dialog', { name: /Chat with Riley/i }).innerText();
 ok("AI offers concern-led quick starts", /Improve A\/R/i.test(widgetText) && /Reduce denials/i.test(widgetText) && /Not sure where to start/i.test(widgetText));
 ok("AI still offers a booking action", /Book a 15-min call/i.test(widgetText));
 ok("AI still offers a human handoff", /Talk to a person/i.test(widgetText));

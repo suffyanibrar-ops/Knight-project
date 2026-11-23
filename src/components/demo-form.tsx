@@ -5,8 +5,9 @@ import { ArrowLeft, ArrowRight, CalendarCheck, Check, CheckCircle2, Loader2, Pho
 import Link from "next/link";
 import { useState } from "react";
 import { collectionBands, services, site, specialties } from "@/lib/site";
+import { REVIEW_CONCERNS, isPrimaryConcernInterest, reviewConcern } from "@/lib/revenue-review";
 import { useToast } from "./motion/toast";
-import { trackConversion } from "@/lib/tracking";
+import { trackConversion, trackLeadFormStart } from "@/lib/tracking";
 import { cn } from "./ui";
 
 const steps = ["About you", "Your facility", "What you need"];
@@ -17,8 +18,9 @@ const providerCounts = ["Solo provider", "2–5 providers", "6–15 providers", 
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-mist-200 bg-surface px-3.5 py-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-ink-600/40 focus:border-brand-400 focus:ring-2 focus:ring-brand-100";
 
-export function DemoForm({ source = "schedule-form" }: { source?: string }) {
+export function DemoForm({ source = "schedule-form", initialConcern = null }: { source?: string; initialConcern?: string | null }) {
   const [step, setStep] = useState(0);
+  const [concern, setConcern] = useState<string>(() => reviewConcern(initialConcern)?.id ?? "");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState("");
   const { toast } = useToast();
@@ -65,7 +67,13 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
     setStatus("loading");
     setError("");
 
-    const payload = { ...form, source };
+    // The chosen concern rides along as one extra interest string, so the
+    // existing submission pipeline stores it without a second endpoint.
+    const selectedConcern = reviewConcern(concern);
+    const interests = selectedConcern
+      ? [...form.interests.filter((item) => !isPrimaryConcernInterest(item)), selectedConcern.interest]
+      : form.interests;
+    const payload = { ...form, interests, source };
 
     try {
       // 1. Save to the embedded SQLite database — this is the source of truth.
@@ -102,6 +110,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
 
       setStatus("done");
       trackConversion("consultation_request", { form: "consultation" });
+      trackConversion("lead_form_submit", { form: "consultation" });
       toast({ tone: "success", title: "Request received", description: "We will be in touch during business hours to arrange your consultation." });
     } catch (submitError) {
       setStatus("error");
@@ -146,7 +155,7 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="relative overflow-hidden rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft sm:p-8">
+    <form onSubmit={onSubmit} className="relative overflow-hidden rounded-3xl border border-mist-200 bg-surface p-6 shadow-soft sm:p-8" onFocusCapture={() => trackLeadFormStart("consultation")}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">Consultation request</p>
@@ -156,6 +165,8 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
           <CalendarCheck className="h-5 w-5" />
         </span>
       </div>
+
+      <p className="mt-1.5 text-[0.72rem] font-medium text-ink-600/70">About a minute. No obligation, and no payment details at any point.</p>
 
       <div className="mt-4 flex gap-1.5">
         {steps.map((label, index) => (
@@ -169,6 +180,32 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
         <motion.div key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="mt-6 space-y-4">
           {step === 0 && (
             <>
+              <fieldset>
+                <legend className="text-[0.78rem] font-bold text-ink-800">What should we review first?</legend>
+                <p className="mt-0.5 text-[0.68rem] leading-relaxed text-ink-600/70">Optional. One choice is enough — it just tells the team where to start.</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {REVIEW_CONCERNS.map((item) => {
+                    const active = concern === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setConcern(active ? "" : item.id);
+                          if (!active) trackConversion("review_concern_select", { concern: item.id });
+                        }}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[0.74rem] font-bold transition-colors",
+                          active ? "border-brand-500 bg-brand-600 text-white" : "border-mist-200 bg-surface text-ink-700 hover:border-brand-300 hover:text-brand-700",
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="text-[0.78rem] font-bold text-ink-800">Full name *</span>
                 <input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Dr. Jordan Ellis" className={cn(fieldClass, errors.name && "border-rose-300")} autoComplete="name" />
@@ -231,6 +268,11 @@ export function DemoForm({ source = "schedule-form" }: { source?: string }) {
 
           {step === 2 && (
             <>
+              {reviewConcern(concern) && (
+                <p className="rounded-xl border border-brand-100 bg-brand-50/70 px-3 py-2 text-[0.74rem] font-semibold text-brand-800">
+                  Primary concern noted: {reviewConcern(concern)?.label}. Add anything else below.
+                </p>
+              )}
               <div>
                 <span className="text-[0.78rem] font-bold text-ink-800">What do you need help with?</span>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
