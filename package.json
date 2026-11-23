@@ -44,6 +44,7 @@
     "test:host": "NODE_OPTIONS=--conditions=react-server tsx tests/canonical-host.test.mts",
     "test:popup": "tsx tests/conversion-offer.test.mts",
     "test:conversion:ux": "node tests/conversion-ux.e2e.mjs",
+    "test:offers": "node tests/offer-triggers.e2e.mjs",
     "test:consent": "tsx tests/consent.test.mts",
     "test:concern": "tsx tests/revenue-review.test.mts",
     "test:admin-actions": "NODE_OPTIONS=--conditions=react-server tsx tests/admin-actions.test.mts",

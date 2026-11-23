@@ -15,12 +15,12 @@ export const OFFER_SESSION_KEY = "kmb-offer-session";
 export const OFFER_COOLDOWN_DAYS = 14;
 export const OFFER_GLOBAL_COOLDOWN_DAYS = 3;
 export const OFFER_MAX_SHOWS = 2;
-export const OFFER_MIN_EXIT_SECONDS = 15;
-export const OFFER_MIN_EXIT_SCROLL = 15;
-export const OFFER_DWELL_SECONDS = 40;
-export const OFFER_DWELL_SCROLL = 55;
-export const OFFER_MOBILE_DWELL_SECONDS = 60;
-export const OFFER_MOBILE_DWELL_SCROLL = 65;
+export const OFFER_MIN_EXIT_SECONDS = 12;
+export const OFFER_MIN_EXIT_SCROLL = 12;
+export const OFFER_DWELL_SECONDS = 35;
+export const OFFER_DWELL_SCROLL = 50;
+export const OFFER_MOBILE_DWELL_SECONDS = 45;
+export const OFFER_MOBILE_DWELL_SCROLL = 60;
 
 export type OfferChannel = "exit" | "dwell";
 export type OfferType = "review" | "workflow" | "denial" | "ar" | "eligibility" | "credentialing" | "specialty" | "software" | "resource" | "results" | "company";
@@ -248,8 +248,8 @@ export function offerForPath(pathname: string): ConversionOffer | null {
       ctaLabel: "Review My Revenue Cycle",
       ctaHref: "/schedule-form",
       priority: 90,
-      highIntent: false,
-      channels: ["exit"],
+      highIntent: true,
+      channels: ["exit", "dwell"],
     };
   }
 
@@ -364,10 +364,21 @@ export function recordConverted(state: OfferState | null, now = Date.now()): Off
   return { ...base, version: OFFER_STATE_VERSION, convertedAt: now };
 }
 
-/** Offers use functional storage for dismissal memory, so consent must allow it. */
-export function offersAllowedByConsent(record: ConsentRecord | null): boolean {
+/**
+ * Offering is not tracking.
+ *
+ * The offer itself is rendered from the page the visitor is already reading and
+ * needs no optional storage, so it may appear without functional consent. Only
+ * *remembering* it across visits (dismissals, cooldowns, impression counts) is
+ * non-essential, and that is what this gates. Without it the same frequency
+ * rules run against in-memory state for the page session and nothing persists.
+ */
+export function offerPersistenceAllowed(record: ConsentRecord | null): boolean {
   return hasConsent(record, "functional");
 }
+
+/** @deprecated Use offerPersistenceAllowed — showing is never consent-gated. */
+export const offersAllowedByConsent = offerPersistenceAllowed;
 
 export interface OfferDecisionInput {
   offer: ConversionOffer | null;
@@ -377,7 +388,6 @@ export interface OfferDecisionInput {
   secondsOnPage: number;
   maxScroll: number;
   consentOpen: boolean;
-  consentRecord: ConsentRecord | null;
   modalOpen: boolean;
   formActive: boolean;
   state: OfferState | null;
@@ -392,7 +402,6 @@ export function evaluateOffer(input: OfferDecisionInput): OfferDecision {
   const state = input.state;
   if (!input.offer) return { show: false, reason: "no_offer" };
   if (input.consentOpen) return { show: false, reason: "consent_open" };
-  if (!offersAllowedByConsent(input.consentRecord)) return { show: false, reason: "consent_blocked" };
   if (input.modalOpen) return { show: false, reason: "modal_open" };
   if (input.formActive) return { show: false, reason: "form_active" };
   if (state?.convertedAt) return { show: false, reason: "converted" };

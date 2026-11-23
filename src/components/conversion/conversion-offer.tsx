@@ -16,10 +16,11 @@ import {
   parseOfferState,
   recordConverted,
   recordOfferDismissed,
-  offersAllowedByConsent,
+  offerPersistenceAllowed,
   recordOfferShown,
   type ConversionOffer,
   type OfferChannel,
+  type OfferState,
 } from "@/lib/conversion-offers";
 import { trackConversion } from "@/lib/tracking";
 
@@ -40,7 +41,20 @@ function readConsent(): ConsentRecord | null {
   }
 }
 
-function readOfferState() {
+/**
+ * In-memory frequency state.
+ *
+ * Offering needs no optional storage: when functional consent is absent the
+ * same limits run against this module-level memory for the page session and
+ * nothing is written to disk. The public layout keeps this component mounted
+ * across client navigations, so the session rules survive route changes.
+ */
+const memory: { state: OfferState; session: { pagesViewed: number; shownThisSession: string[] } } = {
+  state: EMPTY_OFFER_STATE,
+  session: { pagesViewed: 0, shownThisSession: [] },
+};
+
+function readStoredOfferState(): OfferState {
   try {
     return parseOfferState(window.localStorage.getItem(OFFER_STORAGE_KEY)) ?? EMPTY_OFFER_STATE;
   } catch {
@@ -48,24 +62,44 @@ function readOfferState() {
   }
 }
 
-function saveOfferState(state: ReturnType<typeof readOfferState>): void {
+function readStoredSession(): { pagesViewed: number; shownThisSession: string[] } {
+  try {
+    return parseOfferSession(window.sessionStorage.getItem(OFFER_SESSION_KEY));
+  } catch {
+    return { pagesViewed: 0, shownThisSession: [] };
+  }
+}
+
+/** Persisted state is only read when functional consent allows remembering it. */
+function readOfferState(persist: boolean): OfferState {
+  return persist ? readStoredOfferState() : memory.state;
+}
+
+function saveOfferState(state: OfferState, persist: boolean): void {
+  if (!persist) {
+    memory.state = state;
+    return;
+  }
+  memory.state = state;
   try {
     window.localStorage.setItem(OFFER_STORAGE_KEY, JSON.stringify(state));
   } catch {
-    /* storage blocked: the offer is simply not repeated this session */
+    /* storage blocked: the in-memory copy still prevents repeats this session */
   }
 }
 
-function readSession(pages = 0) {
-  try {
-    const parsed = parseOfferSession(window.sessionStorage.getItem(OFFER_SESSION_KEY));
-    return { ...parsed, pagesViewed: Math.max(parsed.pagesViewed, pages) };
-  } catch {
-    return { pagesViewed: pages, shownThisSession: [] as string[] };
-  }
+function readSession(persist: boolean): { pagesViewed: number; shownThisSession: string[] } {
+  const stored = persist ? readStoredSession() : { pagesViewed: 0, shownThisSession: [] as string[] };
+  return {
+    pagesViewed: Math.max(stored.pagesViewed, memory.session.pagesViewed),
+    shownThisSession: Array.from(new Set([...stored.shownThisSession, ...memory.session.shownThisSession])),
+  };
 }
 
-function saveSession(session: { pagesViewed: number; shownThisSession: string[] }): void {
+function saveSession(session: { pagesViewed: number; shownThisSession: string[] }, persist: boolean): void {
+  memory.session.pagesViewed = Math.max(memory.session.pagesViewed, session.pagesViewed);
+  memory.session.shownThisSession = Array.from(new Set([...memory.session.shownThisSession, ...session.shownThisSession]));
+  if (!persist) return;
   try {
     window.sessionStorage.setItem(OFFER_SESSION_KEY, JSON.stringify(session));
   } catch {
@@ -92,6 +126,7 @@ export function ConversionOffer() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef<HTMLElement | null>(null);
   const openTracked = useRef(false);
+  const countedRoute = useRef(false);
   const dismissRef = useRef<(method: string) => void>(() => undefined);
 
   const tryShow = useCallback((nextChannel: OfferChannel) => {
@@ -99,7 +134,12 @@ export function ConversionOffer() {
     const now = Date.now();
     if (now - lastAttempt.current < 3000) return;
     lastAttempt.current = now;
-
+    const persist = offerPersistenceAllowed(readConsent());
+    const state = readOfferState(persist);
+    // The branded intro owns the viewport; an offer rendered behind it would be
+    // invisible yet counted, so nothing is evaluated until it hands over.
+    const intro = document.documentElement.dataset.intro;
+    if (intro === "full" || intro === "brief") return;
     const consentOpen = document.documentElement.dataset.consentBanner === "open";
     const modalOpen = Boolean(document.querySelector('[role="dialog"]'));
     const activeForm = formActive.current || Boolean(document.activeElement?.closest("form"));
@@ -115,16 +155,15 @@ export function ConversionOffer() {
         secondsOnPage,
         maxScroll: maxScroll.current,
         highIntentPath: offer.highIntent,
-        returning: Boolean(readOfferState().shown),
+        returning: Boolean(state.shown),
         ctaInteracted: ctaInteracted.current,
       }),
       secondsOnPage,
       maxScroll: maxScroll.current,
       consentOpen,
-      consentRecord: readConsent(),
       modalOpen,
       formActive: activeForm,
-      state: readOfferState(),
+      state,
       shownThisSession: sessionShown,
       now,
     });
@@ -133,23 +172,25 @@ export function ConversionOffer() {
     dialogOpen.current = true;
     setChannel(nextChannel);
     setVisibleFor(pathname);
-    saveOfferState(recordOfferShown(readOfferState(), now));
+    saveOfferState(recordOfferShown(state, now), persist);
     shownThisSession.current = [...sessionShown, offer.id];
-    saveSession({ pagesViewed: pagesViewed.current, shownThisSession: shownThisSession.current });
+    saveSession({ pagesViewed: pagesViewed.current, shownThisSession: shownThisSession.current }, persist);
     openTracked.current = false;
     trackConversion("offer_impression", { offer: offer.id, offerType: offer.type, channel: nextChannel });
   }, [offer, pathname]);
 
   // Route lifecycle: count the page, reset engagement, hide a stale offer.
   useEffect(() => {
-    const session = readSession();
-    const nextCount = pathname === "/" ? Math.max(1, session.pagesViewed) : session.pagesViewed + 1;
-    pagesViewed.current = nextCount;
-    shownThisSession.current = session.shownThisSession;
-    // Offer counters are functional storage; do not write them without consent.
-    if (offersAllowedByConsent(readConsent())) {
-      saveSession({ pagesViewed: nextCount, shownThisSession: session.shownThisSession });
+    const persist = offerPersistenceAllowed(readConsent());
+    const session = readSession(persist);
+    if (countedRoute.current) {
+      pagesViewed.current += 1;
+    } else {
+      pagesViewed.current = pathname === "/" ? Math.max(1, session.pagesViewed) : session.pagesViewed + 1;
+      countedRoute.current = true;
     }
+    shownThisSession.current = session.shownThisSession;
+    saveSession({ pagesViewed: pagesViewed.current, shownThisSession: session.shownThisSession }, persist);
     pageStartedAt.current = Date.now();
     maxScroll.current = 0;
     lastAttempt.current = 0;
@@ -178,7 +219,8 @@ export function ConversionOffer() {
     const onConversion = (event: Event) => {
       const name = (event as CustomEvent<{ event?: unknown }>).detail?.event;
       if (typeof name !== "string" || !CONVERTED_EVENTS.has(name)) return;
-      if (offersAllowedByConsent(readConsent())) saveOfferState(recordConverted(readOfferState()));
+      const persist = offerPersistenceAllowed(readConsent());
+      saveOfferState(recordConverted(readOfferState(persist)), persist);
       setVisibleFor(null);
       dialogOpen.current = false;
     };
@@ -240,12 +282,16 @@ export function ConversionOffer() {
     if (typeof window === "undefined") return;
     if (!window.matchMedia("(pointer: fine)").matches || window.innerWidth < 768) return;
     const onMouseOut = (event: MouseEvent) => {
+      // Browsers report a null relatedTarget when the pointer leaves the
+      // document; clientY near 0 means it left through the top edge.
       if (event.relatedTarget) return;
+      if (event.buttons !== 0) return;
+      if (document.visibilityState !== "visible") return;
       if (event.clientY > 8) return;
       tryShow("exit");
     };
-    document.addEventListener("mouseout", onMouseOut);
-    return () => document.removeEventListener("mouseout", onMouseOut);
+    document.addEventListener("mouseout", onMouseOut, { capture: true });
+    return () => document.removeEventListener("mouseout", onMouseOut, { capture: true });
   }, [tryShow]);
 
   // High-intent pages may surface one offer after real dwell + scroll depth.
@@ -268,7 +314,8 @@ export function ConversionOffer() {
     dismissRef.current = (method: string) => {
       if (!offer) return;
       trackConversion("offer_dismiss", { offer: offer.id, offerType: offer.type, channel, method });
-      saveOfferState(recordOfferDismissed(readOfferState(), offer.id));
+      const persist = offerPersistenceAllowed(readConsent());
+      saveOfferState(recordOfferDismissed(readOfferState(persist), offer.id), persist);
       setVisibleFor(null);
       dialogOpen.current = false;
     };

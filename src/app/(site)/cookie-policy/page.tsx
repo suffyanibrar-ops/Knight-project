@@ -16,8 +16,8 @@ const inventory = [
   { name: "gsc_oauth_state", type: "Essential cookie", purpose: "Protects the one-time Search Console OAuth handshake in the admin console.", duration: "10 minutes", party: "First party" },
   { name: "kmb-consent", type: "Essential storage", purpose: "Remembers the cookie choice you made, including its version and timestamp.", duration: "Until cleared", party: "First party" },
   { name: "kmb-analytics-optout", type: "Essential storage", purpose: "Honours a visitor's earlier analytics opt-out so it is never overridden.", duration: "Until cleared", party: "First party" },
-  { name: "kmb-offer-state", type: "Functional storage", purpose: "Remembers a dismissed contextual offer so it is not shown repeatedly.", duration: "Until cleared", party: "First party" },
-  { name: "kmb-offer-session", type: "Functional storage", purpose: "Keeps one-session offer limits and page count; expires when the tab closes.", duration: "Session", party: "First party" },
+  { name: "kmb-offer-state", type: "Functional storage", purpose: "Remembers dismissed contextual offers, cooldowns and impression counts so an offer is not repeated. Written only with functional consent.", duration: "Until cleared", party: "First party" },
+  { name: "kmb-offer-session", type: "Functional storage", purpose: "Keeps one-session offer limits and page count; expires when the tab closes. Written only with functional consent.", duration: "Session", party: "First party" },
   { name: "kmb-utm", type: "Functional storage", purpose: "Keeps campaign parameters for the current visit so an enquiry can be attributed.", duration: "Session", party: "First party" },
   { name: "First-party page-view measurement", type: "Analytics (opt-in)", purpose: "Records anonymous page views, referrers and device class on our own server. No advertising identifiers, no cross-site profile.", duration: "Rolling retention", party: "First party" },
 ] as const;
@@ -55,10 +55,17 @@ export default function CookiePolicyPage() {
             <h2 className="text-[1.15rem] font-extrabold text-ink-950">Categories</h2>
             <ul className="mt-2 space-y-2">
               <li><strong>Essential</strong> — required for the site and the admin console to work. These cannot be switched off.</li>
-              <li><strong>Functional</strong> — small conveniences such as remembering a dismissed contextual offer.</li>
+              <li><strong>Functional</strong> — small conveniences such as remembering a dismissed contextual offer. The offer itself can still appear without it, using in-memory limits only, so nothing is saved.</li>
               <li><strong>Analytics</strong> — first-party page-view measurement, enabled only if you accept. No advertising identifiers are used.</li>
               <li><strong>Marketing</strong> — not currently used anywhere on this site.</li>
             </ul>
+          </section>
+
+          <section>
+            <h2 className="text-[1.15rem] font-extrabold text-ink-950">Contextual offers</h2>
+            <p className="mt-2">
+              An occasional, page-specific offer (for example a revenue-cycle review on a billing page) is rendered from the page you are already reading. It is not tracking and needs no optional storage. If you choose essential-only or reject optional cookies, the same frequency limits still apply for the current page session, held in memory and discarded when you close the tab.
+            </p>
           </section>
 
           <section>

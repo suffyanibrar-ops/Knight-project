@@ -59,6 +59,7 @@ export function SiteIntro() {
       root.classList.remove("intro-open");
       root.dataset.intro = "done";
       overlay.classList.add("is-done");
+      try { window.dispatchEvent(new CustomEvent("kmb:intro-done")); } catch { /* the banner also checks the attribute */ }
     };
 
     const revealHero = () => {

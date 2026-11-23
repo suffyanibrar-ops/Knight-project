@@ -52,7 +52,6 @@ try {
     secondsOnPage: 25,
     maxScroll: 35,
     consentOpen: false,
-    consentRecord: accepted,
     modalOpen: false,
     formActive: false,
     state: c.EMPTY_OFFER_STATE,
@@ -60,10 +59,12 @@ try {
     now,
   };
   ok("homepage exit offer is allowed after engagement", c.evaluateOffer({ ...base, offer: homepage }).show);
-  ok("homepage never uses a dwell offer", c.evaluateOffer({ ...base, offer: homepage, channel: "dwell", intent: "high", secondsOnPage: 120, maxScroll: 100 }).reason === "channel_not_allowed");
+  ok("homepage can offer after sustained engagement",
+    c.evaluateOffer({ ...base, offer: homepage, channel: "dwell", intent: "high", secondsOnPage: c.OFFER_DWELL_SECONDS + 1, maxScroll: c.OFFER_DWELL_SCROLL + 1 }).show);
+  ok("homepage dwell still needs the threshold", c.evaluateOffer({ ...base, offer: homepage, channel: "dwell", intent: "high", secondsOnPage: 10, maxScroll: 20 }).reason === "not_high_intent");
   ok("consent banner blocks every offer", c.evaluateOffer({ ...base, offer: denial, consentOpen: true }).reason === "consent_open");
-  ok("rejecting optional storage blocks offers", c.evaluateOffer({ ...base, offer: denial, consentRecord: consent.rejectAll(new Date(now)) }).reason === "consent_blocked");
-  ok("essential-only blocks offers", c.evaluateOffer({ ...base, offer: denial, consentRecord: essential }).reason === "consent_blocked");
+  ok("a rejected optional-storage choice does not hide offers", c.evaluateOffer({ ...base, offer: denial }).show);
+  ok("essential-only does not hide offers", c.evaluateOffer({ ...base, offer: denial }).show);
   ok("active modal blocks offers", c.evaluateOffer({ ...base, offer: denial, modalOpen: true }).reason === "modal_open");
   ok("active form blocks offers", c.evaluateOffer({ ...base, offer: denial, formActive: true }).reason === "form_active");
   ok("converted visitors are never interrupted", c.evaluateOffer({ ...base, offer: denial, state: c.recordConverted(null, now) }).reason === "converted");
@@ -93,7 +94,9 @@ try {
   ok("stale offer state is ignored", c.parseOfferState(JSON.stringify({ version: "0", shown: 9 })) === null);
   ok("state round-trips", c.parseOfferState(JSON.stringify(state))?.shown === 1);
   ok("session parser is defensive", c.parseOfferSession("{broken").pagesViewed === 0);
-  ok("functional consent is required for offers", c.offersAllowedByConsent(accepted) && !c.offersAllowedByConsent(essential));
+  ok("offers never require functional consent to appear", c.evaluateOffer({ ...base, offer: denial, consentRecord: essential }).reason === "exit_intent");
+  ok("functional consent gates remembering, not showing", c.offerPersistenceAllowed(accepted) && !c.offerPersistenceAllowed(essential) && !c.offerPersistenceAllowed(consent.rejectAll(new Date(now))));
+  ok("exit intent is reachable after a short engagement window", c.OFFER_MIN_EXIT_SECONDS <= 15 && c.OFFER_MIN_EXIT_SCROLL <= 15 && c.OFFER_DWELL_SECONDS <= 40 && c.OFFER_MOBILE_DWELL_SECONDS <= 60);
 
   console.log(`RESULT pass=${passed} fail=0`);
 } catch (error) {

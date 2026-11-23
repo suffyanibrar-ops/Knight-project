@@ -14,6 +14,10 @@ import {
   type ConsentRecord,
 } from "@/lib/consent";
 import { trackConversion } from "@/lib/tracking";
+import { cn } from "./ui";
+
+/** One shared treatment: no choice is visually pushed ahead of another. */
+const CHOICE = "min-h-11 justify-center rounded-full border border-mist-200 bg-surface px-4 py-2.5 text-[0.76rem] font-bold text-ink-800 transition-colors hover:border-brand-300 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400";
 
 export const OPEN_CONSENT_EVENT = "kmb:open-consent";
 
@@ -30,6 +34,7 @@ export function ConsentBanner() {
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState({ analytics: false, functional: false });
+  const [waitingForIntro, setWaitingForIntro] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +50,13 @@ export function ConsentBanner() {
         analytics: Boolean(stored?.categories.analytics),
         functional: Boolean(stored?.categories.functional),
       });
-      if (!stored) setOpen(true);
+      if (!stored) {
+        // The branded intro is a full-screen layer, so a banner opened behind it
+        // would be invisible. Wait for the intro to hand the page over.
+        const intro = document.documentElement.dataset.intro;
+        if (intro === "done" || intro === "off") setOpen(true);
+        else setWaitingForIntro(true);
+      }
       setReady(true);
     });
 
@@ -56,6 +67,22 @@ export function ConsentBanner() {
       window.removeEventListener(OPEN_CONSENT_EVENT, onOpenRequest);
     };
   }, []);
+
+  // Reveal the first-visit banner the moment the intro finishes, with a bounded
+  // fallback in case that hand-off never arrives.
+  useEffect(() => {
+    if (!waitingForIntro) return;
+    const reveal = () => {
+      setWaitingForIntro(false);
+      setOpen(true);
+    };
+    const timer = window.setTimeout(reveal, 5000);
+    window.addEventListener("kmb:intro-done", reveal, { once: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("kmb:intro-done", reveal);
+    };
+  }, [waitingForIntro]);
 
   useEffect(() => {
     if (!ready) return;
@@ -122,16 +149,16 @@ export function ConsentBanner() {
         {record ? <p className="mt-2 text-[0.66rem] font-semibold text-ink-600/70">Current choice: {current}. You can change it at any time.</p> : null}
 
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <button type="button" onClick={() => persist(acceptAll(), "accept_all")} className="btn btn-primary min-h-11 justify-center px-4 py-2.5 text-[0.76rem]">
+          <button type="button" onClick={() => persist(acceptAll(), "accept_all")} className={CHOICE}>
             Accept all
           </button>
-          <button type="button" onClick={() => persist(rejectAll(), "reject_all")} className="btn btn-light min-h-11 justify-center px-4 py-2.5 text-[0.76rem]">
+          <button type="button" onClick={() => persist(rejectAll(), "reject_all")} className={CHOICE}>
             Reject all
           </button>
           <button
             type="button"
             onClick={() => persist(essentialOnly(), "essential_only")}
-            className="col-span-2 min-h-11 rounded-full border border-mist-200 px-4 py-2.5 text-[0.76rem] font-bold text-ink-800 transition-colors hover:border-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 sm:col-span-1"
+            className={cn(CHOICE, "col-span-2 sm:col-span-1")}
           >
             Essential only
           </button>
